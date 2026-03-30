@@ -1,105 +1,123 @@
-# Ata: Sistema de Gestão de Atas de Reunião
+# Portal PET C3
 
-Projeto web desenvolvido com **Flask** para o gerenciamento de **Atas de Reunião**, com persistência de dados via **SQLAlchemy (ORM)** e versionamento do banco utilizando **Flask-Migrate**.
+Aplicação web em **Node.js + Express + Nunjucks** que unifica dois serviços no mesmo sistema:
 
-O banco de dados padrão em ambiente de desenvolvimento é o **SQLite**, localizado em:
+- **Gestor de Atas**
+- **Almoxarifado / Patrimônio**
 
-```
+O projeto usa **login único**, **sessão compartilhada** e **SQLite** como banco local.
+
+## O que o sistema faz
+
+- autenticação centralizada para os dois serviços
+- tela de seleção entre **Atas** e **Almoxarifado**
+- gestão de membros e projetos
+- criação e download de atas em PDF
+- controle de patrimônio, categorias, locais e retiradas
+- histórico de movimentações do almoxarifado
+- controle de permissão por perfil de usuário
+
+## Perfis de acesso
+
+- `admin`: pode gerenciar membros, projetos, usuários, itens de patrimônio, categorias e locais
+- `common`: pode usar os dois serviços, criar atas, consultar estoque e registrar retiradas, mas sem ações administrativas
+
+## Stack atual
+
+- **Backend:** Node.js + Express
+- **Views:** Nunjucks
+- **Banco:** SQLite
+- **Auth:** cookie-session + bcryptjs
+- **PDF:** PDFKit
+
+## Banco de dados
+
+Por padrão, o banco fica em:
+
+```bash
 instance/ata.sqlite3
 ```
 
----
+Ele é criado e atualizado automaticamente pela aplicação.
 
-## 🚀 Como configurar e rodar o projeto
+## Rodando localmente
 
-Os passos abaixo assumem um ambiente Linux/macOS. No Windows, apenas adapte os comandos de ativação do ambiente virtual.
-
----
-
-## 1. Preparação do ambiente
-
-No terminal:
+1. Instale as dependências:
 
 ```bash
-# Clone o repositório
-git clone https://github.com/SEU_USUARIO/SEU_REPOSITORIO.git
-cd SEU_REPOSITORIO/
-
-# Crie e ative o ambiente virtual
-python3 -m venv venv
-source venv/bin/activate  # Linux/macOS
-# .\\venv\\Scripts\\activate  # Windows (PowerShell)
-
-# Instale as dependências
-pip install -r requirements.txt
+npm install
 ```
 
----
-
-## 2. Configuração do Flask (SQLite)
-
-Crie ou edite o arquivo **.flaskenv** na raiz do projeto para definir as variáveis de ambiente essenciais:
-
-```env
-FLASK_APP=run.py
-FLASK_ENV=development
-DATABASE_URI=sqlite:///instance/ata.sqlite3
-```
-
-Essas variáveis permitem que o Flask identifique corretamente o ponto de entrada da aplicação e o banco de dados utilizado.
-
----
-
-## 3. Inicialização do banco de dados
-
-Para criar a estrutura do banco e aplicar as migrações:
+2. Crie o primeiro usuário:
 
 ```bash
-# Inicializa o sistema de migrações (executar apenas uma vez)
-flask db init
-
-# Aplica todas as migrações e cria o arquivo ata.sqlite3
-flask db upgrade
+npm run create-user
 ```
 
-Ao final desse processo, o banco **ata.sqlite3** será criado automaticamente dentro da pasta `instance/`.
-
----
-
-## 4. Criar o usuário administrador
-
-Crie o usuário que será utilizado para acessar a aplicação:
+3. Inicie a aplicação:
 
 ```bash
-flask create-user
+npm start
 ```
 
-O comando abrirá um prompt solicitando:
-- Nome de usuário
-- Senha
-
----
-
-## 5. Iniciar o servidor
-
-Com o ambiente virtual ativo, execute:
+4. Acesse:
 
 ```bash
-flask run
+http://127.0.0.1:3000
 ```
 
-A aplicação estará disponível, por padrão, em:
+## Scripts úteis
 
+```bash
+npm start
+npm run dev
+npm run create-user
+npm run verify
 ```
-http://127.0.0.1:5000
+
+## Variáveis de ambiente
+
+```bash
+PORT=3000
+SECRET_KEY=sua-chave-secreta
+DATABASE_PATH=instance/ata.sqlite3
 ```
 
----
+## Estrutura principal
 
-## 🧠 Observações finais
+- `server.js`: ponto de entrada da aplicação
+- `src/app.js`: rotas, sessão, autenticação e permissões
+- `src/database.js`: schema SQLite e regras de persistência
+- `src/pdf.js`: geração das atas em PDF
+- `src/utils.js`: helpers de rota, datas, CSRF e utilidades gerais
+- `scripts/create-user.js`: criação manual de usuários `admin` ou `common`
+- `scripts/verify-app.js`: verificação automatizada do sistema
+- `app/templates/`: templates Nunjucks
+- `app/static/`: CSS, JS e imagens
 
-- Certifique-se de que o ambiente virtual esteja **ativo** sempre que for rodar o projeto.
-- Em produção, recomenda-se substituir o SQLite por um banco mais robusto (ex.: PostgreSQL).
-- O arquivo `run.py` deve conter o ponto de entrada da aplicação com `app.run()`.
+## Verificação
 
-Código não executa intenções. Executa comandos.
+Para validar a aplicação sem mexer no banco principal:
+
+```bash
+npm run verify
+```
+
+Esse comando usa uma cópia temporária do SQLite e verifica, entre outras coisas:
+
+- renderização das páginas principais
+- rotas do portal integrado
+- criação e leitura de atas
+- geração de PDF
+- fluxo do almoxarifado com categorias, locais e retiradas
+
+## Deploy
+
+O projeto já possui arquivos para deploy com Docker:
+
+- `Dockerfile`
+- `render.yaml`
+
+## Observação
+
+Esta é a versão integrada e consolidada do sistema. O repositório não depende mais da antiga base Flask nem das pastas legadas que foram usadas durante a migração.

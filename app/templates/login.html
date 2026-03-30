@@ -5,16 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ title if title else "Login" }} - Gestor de Atas</title>
 
-    <!-- Estilo específico para a página de login -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
-    <link rel="icon" type="image/png" href="{{ url_for('static', filename='uploads/icone.png') }}">
-
+    <link rel="stylesheet" href="{{ urlFor('static', { filename: 'css/login.css' }) }}">
+    <link rel="stylesheet" href="{{ urlFor('static', { filename: 'css/custom_styles.css' }) }}">
+    <link rel="icon" type="image/png" href="{{ urlFor('static', { filename: 'uploads/icone.png' }) }}">
 </head>
 
-<!-- Biblioteca de partículas para animação de fundo -->
 <script src="https://cdn.jsdelivr.net/npm/tsparticles@2/tsparticles.bundle.min.js"></script>
 <script>
-    // Inicializa a animação de partículas após o carregamento da página
     document.addEventListener('DOMContentLoaded', async () => {
         await tsParticles.load("particles-background", {
             fpsLimit: 60,
@@ -34,7 +31,7 @@
                     enable: true,
                     speed: 1.2,
                     random: true,
-                    outModes: { default: "out" },
+                    outModes: { default: "out" }
                 },
                 links: {
                     enable: true,
@@ -48,50 +45,51 @@
                 detectsOn: "canvas",
                 events: {
                     onHover: { enable: true, mode: "grab" },
-                    onClick: { enable: true, mode: "repulse" },
+                    onClick: { enable: true, mode: "repulse" }
                 },
                 modes: {
                     grab: { distance: 150, links: { opacity: 0.3 } },
-                    repulse: { distance: 100, duration: 0.4 },
-                },
+                    repulse: { distance: 100, duration: 0.4 }
+                }
             },
             detectRetina: true
         });
-    }); 
+    });
 </script>
 
 <body class="login-page-body">
-    <!-- Container principal do login -->
+    <div id="particles-background"></div>
+
     <div class="login-container">
         <h1 class="titulo-com-logo">
-    <img src="{{ url_for('static', filename='uploads/logo_branca.png') }}" alt="Logo PET" class="logo-pet">
-    PET C3
-</h1>
-        {% if subtitle %}
-        <p class="subtitle">{{ subtitle }}</p>
+            <img src="{{ urlFor('static', { filename: 'uploads/logo_branca.png' }) }}" alt="Logo PET" class="logo-pet">
+            PET C3
+        </h1>
+
+        {% if flashMessages.length %}
+            <ul class="flash-messages">
+            {% for flash in flashMessages %}
+                <li class="flash-{{ flash.category }}">{{ flash.message }}</li>
+            {% endfor %}
+            </ul>
         {% endif %}
 
-        <!-- Exibe mensagens de erro, aviso ou sucesso -->
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                <ul class="flash-messages">
-                {% for category, message in messages %}
-                    <li class="flash-{{ category }}">{{ message }}</li>
-                {% endfor %}
-                </ul>
-            {% endif %}
-        {% endwith %}
-
-        <!-- Formulário de login -->
-        <form method="POST" action="{{ url_for('login') }}" novalidate class="login-form">
-            {{ form.hidden_tag() }}
+        <form method="POST" action="{{ urlFor('login') }}" novalidate class="login-form">
+            <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+            <input type="hidden" name="next" value="{{ next or '' }}">
 
             <div class="form-group">
-                {{ form.username.label(class="form-label") }}
-                {{ form.username(class="form-control", placeholder="Seu usuário") }}
-                {% if form.username.errors %}
+                <label class="form-label" for="username">Usuário</label>
+                <input
+                    id="username"
+                    name="username"
+                    class="form-control"
+                    placeholder="Seu usuário"
+                    value="{{ formData.username or '' }}"
+                >
+                {% if errors.username %}
                 <div class="form-error">
-                    {% for error in form.username.errors %}
+                    {% for error in errors.username %}
                         <span>{{ error }}</span>
                     {% endfor %}
                 </div>
@@ -99,11 +97,17 @@
             </div>
 
             <div class="form-group">
-                {{ form.password.label(class="form-label") }}
-                {{ form.password(class="form-control", placeholder="Sua senha") }}
-                {% if form.password.errors %}
+                <label class="form-label" for="password">Senha</label>
+                <input
+                    id="password"
+                    name="password"
+                    type="password"
+                    class="form-control"
+                    placeholder="Sua senha"
+                >
+                {% if errors.password %}
                 <div class="form-error">
-                    {% for error in form.password.errors %}
+                    {% for error in errors.password %}
                         <span>{{ error }}</span>
                     {% endfor %}
                 </div>
@@ -111,11 +115,9 @@
             </div>
 
             <div class="form-group">
-                {{ form.submit(class="btn-submit") }}
+                <button type="submit" class="btn-submit">Entrar</button>
             </div>
         </form>
     </div>
-
-
 </body>
 </html>

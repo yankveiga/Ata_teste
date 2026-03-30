@@ -1,78 +1,91 @@
 {% extends "base.html" %}
+{% set activeAtaTab = 'projects' %}
 
 {% block content %}
-    <div class="page-header" style="margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid #ccc;">
-        <h1>{{ title }}</h1>
+    {% include "partials/atas_tabs.html" %}
+
+    <div class="page-header page-header-split">
+        <div>
+            <h1>{{ title }}</h1>
+            <p class="lead">Monte o contexto do projeto com nome, identidade visual e time vinculado.</p>
+        </div>
+        <span class="page-badge">Projetos</span>
     </div>
 
-    {# Formulário com enctype para permitir upload de arquivos #}
-    <form action="" method="post" novalidate enctype="multipart/form-data">
-        {{ form.hidden_tag() }} {# CSRF e outros campos ocultos #}
+    <form action="" method="post" novalidate enctype="multipart/form-data" class="content-panel portal-form-card portal-form-grid">
+        <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
 
-        {# Campo Nome do Projeto #}
-        <div class="form-group" style="margin-bottom: 20px;">
-            {{ form.name.label(class="form-label", style="display: block; margin-bottom: 5px; font-weight: bold;") }}
-            {{ form.name(class="form-control", size=60, style="width: 100%; max-width: 500px; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;") }}
-            {% if form.name.errors %}
-                <ul class="errors" style="color: #c0392b; font-size: 0.9em; list-style: none; padding-left: 0; margin-top: 5px;">
-                    {% for error in form.name.errors %}<li>{{ error }}</li>{% endfor %}
+        <div class="form-group">
+            <label class="form-label" for="name">Nome do Projeto</label>
+            <input
+                id="name"
+                name="name"
+                class="form-control"
+                value="{{ formData.name or '' }}"
+            >
+            {% if errors.name %}
+                <ul class="errors form-error-list">
+                    {% for error in errors.name %}<li>{{ error }}</li>{% endfor %}
                 </ul>
             {% endif %}
         </div>
 
-        {# Campo Logo (Upload) #}
-        <div class="form-group" style="margin-bottom: 20px;">
-            {{ form.logo.label(class="form-label", style="display: block; margin-bottom: 5px; font-weight: bold;") }}
-            {# Exibe o logo atual, se estiver editando e existir um #}
-            {% if action == 'Salvar Alterações' and project and project.logo %}
-                <div style="margin-bottom: 10px;">
-                    <img src="{{ url_for('static', filename='uploads/' + project.logo) }}" alt="Logo Atual" style="max-height: 80px; max-width: 150px; border: 1px solid #eee; border-radius: 4px; margin-right: 15px; vertical-align: middle;">
-                    <input type="checkbox" name="logo-clear" id="logo-clear" style="vertical-align: middle;">
-                    <label for="logo-clear" style="vertical-align: middle; font-weight: normal; color: #555;">Remover logo atual?</label>
-                 </div>
+        <div class="form-group">
+            <label class="form-label" for="logo">Logo do Projeto (Opcional)</label>
+            {% if project and project.logo %}
+                <div class="project-logo-preview">
+                    <img src="{{ urlFor('static', { filename: 'uploads/' ~ project.logo }) }}" alt="Logo Atual">
+                    <label class="checkbox-inline">
+                        <input type="checkbox" name="logo-clear" id="logo-clear" {% if formData.logoClear %}checked{% endif %}>
+                        <span>Remover logo atual?</span>
+                    </label>
+                </div>
             {% endif %}
-            {# Input para novo upload #}
-            {{ form.logo(class="form-control-file", style="display: block; margin-top: 5px;") }}
-            {% if form.logo.errors %}
-                <ul class="errors" style="color: #c0392b; font-size: 0.9em; list-style: none; padding-left: 0; margin-top: 5px;">
-                    {% for error in form.logo.errors %}<li>{{ error }}</li>{% endfor %}
+            <input id="logo" name="logo" type="file" class="form-control-file">
+            {% if errors.logo %}
+                <ul class="errors form-error-list">
+                    {% for error in errors.logo %}<li>{{ error }}</li>{% endfor %}
                 </ul>
             {% endif %}
-            <small style="color: #777; display: block; margin-top: 5px;">Envie um novo arquivo para substituir o logo atual. Tipos permitidos: jpg, png, jpeg, gif.</small>
+            <small class="form-hint">Envie um novo arquivo para substituir o logo atual. Tipos permitidos: jpg, png, jpeg, gif.</small>
         </div>
 
-        {# Campo Membros (Checkboxes) #}
-        <div class="form-group" style="margin-bottom: 20px;">
-            {{ form.members.label(class="form-label", style="display: block; margin-bottom: 10px; font-weight: bold;") }}
-            <div class="checkbox-list" style="max-height: 200px; overflow-y: auto; border: 1px solid #ccc; padding: 10px; border-radius: 4px; background-color: #fdfdfd;">
-                {# WTForms renderiza QuerySelectMultipleField com widget CheckboxInput como uma lista ul/li por padrão #}
-                {{ form.members(style="list-style: none; padding: 0;") }}
-                {# Se precisar de mais controle, pode iterar:
-                <ul style="list-style: none; padding: 0;">
-                {% for subfield in form.members %}
-                    <li style="margin-bottom: 5px;">{{ subfield() }} {{ subfield.label }}</li>
-                {% endfor %}
-                </ul>
-                #}
+        <div class="form-group">
+            <label class="form-label">Membros Associados ao Projeto (Ativos)</label>
+            <div class="member-select-panel">
+                {% if activeMembers.length %}
+                    <ul class="member-select-list">
+                    {% for member in activeMembers %}
+                        <li>
+                            <label class="checkbox-inline">
+                                <input type="checkbox" name="members" value="{{ member.id }}" {% if member.id in formData.memberIds %}checked{% endif %}>
+                                <span>{{ member.name }}</span>
+                            </label>
+                        </li>
+                    {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="text-muted">Nenhum membro ativo disponível.</p>
+                {% endif %}
             </div>
-             {% if form.members.errors %}
-                <ul class="errors" style="color: #c0392b; font-size: 0.9em; list-style: none; padding-left: 0; margin-top: 5px;">
-                    {% for error in form.members.errors %}<li>{{ error }}</li>{% endfor %}
+             {% if errors.members %}
+                <ul class="errors form-error-list">
+                    {% for error in errors.members %}<li>{{ error }}</li>{% endfor %}
                 </ul>
             {% endif %}
         </div>
 
-        {# Botões de Ação #}
         <div class="form-actions">
-            {{ form.submit(value=action, class="btn btn-primary", style="padding: 10px 20px; background-color: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 1em;") }}
-            <a href="{{ url_for('list_projects') }}" class="btn btn-secondary" style="margin-left: 10px; color: #555; text-decoration: none;">Cancelar</a>
+            <button type="submit" class="btn-submit">
+                {{ actionLabel }}
+            </button>
+            <a href="{{ urlFor('list_projects') }}" class="btn-cancel">Cancelar</a>
         </div>
     </form>
 {% endblock %}
 
 {% block scripts %}
     <script>
-        // Foca no campo de nome ao carregar
         document.addEventListener('DOMContentLoaded', function() {
             var nameInput = document.querySelector('input[name="name"]');
             if (nameInput) {

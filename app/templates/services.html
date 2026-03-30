@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block styles %}
+    <link rel="stylesheet" href="{{ urlFor('static', { filename: 'css/services.css' }) }}">
+{% endblock %}
+
+{% block content %}
+    <div class="services-page">
+        <section class="service-grid">
+            <article class="service-card service-card-atas">
+                <div class="service-card-icon">
+                    <ion-icon name="document-text-outline"></ion-icon>
+                </div>
+                <h2>Gestor de Atas</h2>
+                <p>
+                    Crie atas, baixe PDFs, acompanhe o histórico recente e organize as reuniões dos projetos.
+                </p>
+                <ul class="service-feature-list">
+                    <li>Criar novas atas e baixar PDFs</li>
+                    <li>Consultar membros e projetos vinculados</li>
+                    <li>Gerenciar cadastros administrativos{% if not currentUser.is_admin %} bloqueado para seu perfil{% endif %}</li>
+                </ul>
+                <a href="{{ urlFor('home') }}" class="service-card-link">
+                    Abrir Gestor de Atas
+                </a>
+            </article>
+
+            <article class="service-card service-card-almox">
+                <div class="service-card-icon">
+                    <ion-icon name="cube-outline"></ion-icon>
+                </div>
+                <h2>Almoxarifado</h2>
+                <p>
+                    Consulte o estoque, registre retiradas e acompanhe o histórico de movimentações do material.
+                </p>
+                <ul class="service-feature-list">
+                    <li>Consultar estoque e histórico de retiradas</li>
+                    <li>Retirar itens com o usuário logado</li>
+                    <li>Cadastrar usuários e produtos{% if not currentUser.is_admin %} bloqueado para seu perfil{% endif %}</li>
+                </ul>
+                <a href="{{ urlFor('almox_home') }}" class="service-card-link">
+                    Abrir Almoxarifado
+                </a>
+            </article>
+        </section>
+    </div>
+{% endblock %}

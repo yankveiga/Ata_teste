@@ -1,8 +1,0 @@
-# Variáveis de ambiente para o Flask
-FLASK_APP=run.py
-FLASK_DEBUG=1
-
-# --- Configuração do Banco de Dados ---
-# Copie este arquivo para .flaskenv e preencha com suas próprias credenciais.
-# NÃO ADICIONE O ARQUIVO .flaskenv AO GIT.
-DATABASE_URI='postgresql://USUARIO_DO_BANCO:SENHA_DO_BANCO@localhost:5432/NOME_DO_BANCO'

@@ -1,0 +1,18 @@
+<nav class="module-tab-nav" aria-label="Seções do Gestor de Atas">
+    <a href="{{ urlFor('home') }}" class="module-tab-link {{ 'is-active' if activeAtaTab == 'home' else '' }}">
+        <ion-icon name="sparkles-outline"></ion-icon>
+        Visão Geral
+    </a>
+    <a href="{{ urlFor('create_ata') }}" class="module-tab-link {{ 'is-active' if activeAtaTab == 'create' else '' }}">
+        <ion-icon name="add-circle-outline"></ion-icon>
+        Criar Ata
+    </a>
+    <a href="{{ urlFor('list_members') }}" class="module-tab-link {{ 'is-active' if activeAtaTab == 'members' else '' }}">
+        <ion-icon name="people-outline"></ion-icon>
+        Membros
+    </a>
+    <a href="{{ urlFor('list_projects') }}" class="module-tab-link {{ 'is-active' if activeAtaTab == 'projects' else '' }}">
+        <ion-icon name="layers-outline"></ion-icon>
+        Projetos
+    </a>
+</nav>

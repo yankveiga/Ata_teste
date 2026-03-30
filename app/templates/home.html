@@ -1,39 +1,61 @@
-{# seu_projeto_flask/app/templates/home.html - Atualizado #}
-
 {% extends "base.html" %}
+{% set activeAtaTab = 'home' %}
 
 {% block content %}
-    <div class="home-page-header">
-        <h1>Bem-vindo(a), {{ current_user.username }}!</h1>
-        <p class="lead">Esta é a página inicial do seu Gestor de Atas.</p>
-    </div>
+    {% include "partials/atas_tabs.html" %}
 
-    <div class="home-actions">
-        <a href="{{ url_for('create_ata') }}" class="btn-create-ata">
-            Criar Nova Ata
-        </a>
-    </div>
+    <section class="ata-hero">
+        <div class="ata-hero-copy">
+            <p class="ata-kicker">Gestor de Atas</p>
+            <h1>Atas de {{ currentUser.name }}</h1>
+            <p class="lead">Crie, baixe e acompanhe o histórico das reuniões com uma interface mais rápida, limpa e organizada.</p>
 
-    <div class="recent-atas-section">
-        <h2>Atas Recentes</h2>
-        {% if recent_atas %}
+            <div class="home-actions">
+                <a href="{{ urlFor('create_ata') }}" class="btn-create-ata">
+                    <ion-icon name="add-circle-outline"></ion-icon>
+                    Criar Nova Ata
+                </a>
+            </div>
+        </div>
+
+        <div class="ata-summary-grid">
+            <article class="ata-summary-card">
+                <span class="ata-summary-label">Atas recentes</span>
+                <strong>{{ recentAtas.length }}</strong>
+                <small>Últimos registros disponíveis na área principal.</small>
+            </article>
+            <article class="ata-summary-card">
+                <span class="ata-summary-label">Perfil</span>
+                <strong>{{ 'Admin' if currentUser.is_admin else 'Comum' }}</strong>
+                <small>{{ 'Pode administrar membros e projetos.' if currentUser.is_admin else 'Pode criar atas e consultar cadastros.' }}</small>
+            </article>
+        </div>
+    </section>
+
+    <section class="recent-atas-section content-panel">
+        <div class="panel-header">
+            <div>
+                <h2>Atas Recentes</h2>
+                <p>As reuniões mais recentes ficam aqui para download ou exclusão rápida.</p>
+            </div>
+        </div>
+
+        <div class="panel-body">
+        {% if recentAtas.length %}
             <ul class="recent-atas-list">
-                {% for ata in recent_atas %}
+                {% for ata in recentAtas %}
                     <li>
                         <div class="ata-info">
-                            <strong>{{ ata.project.name }}</strong> -
-                            <span class="meeting-time">{{ ata.meeting_datetime.strftime('%d/%m/%Y %H:%M') }}</span><br>
+                            <strong>{{ ata.project.name }}</strong>
+                            <span class="meeting-time">{{ ata.meeting_datetime | formatDateTime }}</span>
                         </div>
                         <div class="ata-actions">
-                            <a href="{{ url_for('download_ata_pdf', id=ata.id) }}" title="Baixar PDF" class="btn-download">
+                            <a href="{{ urlFor('download_ata_pdf', { id: ata.id }) }}" title="Baixar PDF" class="btn-download">
                                 <ion-icon name="download-outline"></ion-icon>
                             </a>
 
-                            {# Link/Botão Editar Ata (Ainda comentado) #}
-                            {# <!-- <a href="{{ url_for('edit_ata', id=ata.id) }}" title="Editar Ata"><ion-icon name="create-outline"></ion-icon></a> --> #}
-
-                            <form action="{{ url_for('delete_ata', id=ata.id) }}" method="POST" style="display: inline;" onsubmit="return confirm('Tem certeza que deseja excluir esta ata? Esta ação não pode ser desfeita.');">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <form action="{{ urlFor('delete_ata', { id: ata.id }) }}" method="POST" class="inline-action-form" onsubmit="return confirm('Tem certeza que deseja excluir esta ata? Esta ação não pode ser desfeita.');">
+                                <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
                                 <button type="submit" title="Excluir Ata" class="btn-delete">
                                      <ion-icon name="trash-outline"></ion-icon>
                                 </button>
@@ -43,8 +65,8 @@
                 {% endfor %}
             </ul>
         {% else %}
-            <p style="color: #777;">Nenhuma ata foi criada ainda.</p>
+            <p class="ata-empty-state">Nenhuma ata foi criada ainda.</p>
         {% endif %}
-    </div>
-
+        </div>
+    </section>
 {% endblock %}

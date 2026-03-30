@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: ata-flask
+    name: ata-node
     env: docker
     plan: free
     autoDeploy: true

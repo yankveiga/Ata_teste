@@ -5,70 +5,61 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     {% if title %}
-    <title>{{ title }} - Gestor de Atas</title>
+    <title>{{ title }} - Portal PET C3</title>
     {% else %}
-    <title>Gestor de Atas</title>
+    <title>Portal PET C3</title>
     {% endif %}
 
-    <!-- Novo CSS Principal -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin_dashboard_style.css') }}">
-    <!-- CSS para personalizações e flash messages -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/custom_styles.css') }}">
-    <link rel="icon" type="image/png" href="{{ url_for('static', filename='uploads/icone.png') }}">
+    <link rel="stylesheet" href="{{ urlFor('static', { filename: 'css/admin_dashboard_style.css' }) }}">
+    <link rel="stylesheet" href="{{ urlFor('static', { filename: 'css/custom_styles.css' }) }}">
+    <link rel="icon" type="image/png" href="{{ urlFor('static', { filename: 'uploads/icone.png' }) }}">
 
-    <!-- Bloco para CSS específico da página -->
     {% block styles %}{% endblock %}
 
-    <!-- Ionicons (necessário para os ícones do menu) -->
     <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
     <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
-
 </head>
-<body>
+<body class="{% if currentUser %}portal-shell section-{{ activeSection or 'services' }}{% else %}guest-shell{% endif %}">
+    {% if currentUser %}
     <div class="container">
-        <!-- =============== Navigation ================ -->
         <div class="navigation">
             <ul>
                 <li>
-                    <a href="#"> <!-- Link para o logo/nome, pode ser para a home -->
+                    <a href="{{ urlFor('services') }}">
                         <span class="icon">
-                            <!-- Exemplo de ícone, pode ser o logo da sua aplicação -->
-                            <ion-icon name="document-text-outline"></ion-icon>
+                            <img
+                                src="{{ urlFor('static', { filename: 'uploads/arvorepetvetorizada.svg' }) }}"
+                                alt="Logo PET C3"
+                                class="sidebar-brand-logo"
+                            >
                         </span>
-                        <span class="title">Gestor Atas</span>
+                        <span class="title">Portal PET C3</span>
                     </a>
                 </li>
 
-                <li class="{{ 'hovered' if request.endpoint == 'home' else '' }}">
-                    <a href="{{ url_for('home') }}">
-                        <span class="icon"><ion-icon name="home-outline"></ion-icon></span>
+                <li class="{{ 'hovered' if activeSection == 'services' else '' }}">
+                    <a href="{{ urlFor('services') }}">
+                        <span class="icon"><ion-icon name="home"></ion-icon></span>
                         <span class="title">Início</span>
                     </a>
                 </li>
 
-                <li class="{{ 'hovered' if request.endpoint.startswith('list_members') or request.endpoint.startswith('add_member') or request.endpoint.startswith('edit_member') else '' }}">
-                    <a href="{{ url_for('list_members') }}">
-                        <span class="icon"><ion-icon name="people-outline"></ion-icon></span>
-                        <span class="title">Membros</span>
+                <li class="{{ 'hovered' if activeSection in ['home', 'atas', 'members', 'projects'] else '' }}">
+                    <a href="{{ urlFor('home') }}">
+                        <span class="icon"><ion-icon name="document-text-outline"></ion-icon></span>
+                        <span class="title">Atas</span>
                     </a>
                 </li>
 
-                <li class="{{ 'hovered' if request.endpoint.startswith('list_projects') or request.endpoint.startswith('add_project') or request.endpoint.startswith('edit_project') else '' }}">
-                    <a href="{{ url_for('list_projects') }}">
-                        <span class="icon"><ion-icon name="briefcase-outline"></ion-icon></span>
-                        <span class="title">Projetos</span>
-                    </a>
-                </li>
-                 <!-- Exemplo de link para Criar Ata, se desejar no menu principal -->
-                <li class="{{ 'hovered' if request.endpoint == 'create_ata' else '' }}">
-                    <a href="{{ url_for('create_ata') }}">
-                        <span class="icon"><ion-icon name="add-circle-outline"></ion-icon></span>
-                        <span class="title">Criar Ata</span>
+                <li class="{{ 'hovered' if activeSection == 'almox' else '' }}">
+                    <a href="{{ urlFor('almox_home') }}">
+                        <span class="icon"><ion-icon name="cube-outline"></ion-icon></span>
+                        <span class="title">Almoxarifado</span>
                     </a>
                 </li>
 
-                <li class="{{ 'hovered' if request.endpoint == 'logout' else '' }}">
-                    <a href="{{ url_for('logout') }}">
+                <li>
+                    <a href="{{ urlFor('logout') }}">
                         <span class="icon"><ion-icon name="log-out-outline"></ion-icon></span>
                         <span class="title">Sair</span>
                     </a>
@@ -76,58 +67,38 @@
             </ul>
         </div>
 
-        <!-- ========================= Main ==================== -->
         <div class="main">
             <div class="topbar">
                 <div class="toggle">
                     <ion-icon name="menu-outline"></ion-icon>
                 </div>
 
-                <!-- Search (opcional, pode ser removido se não usar) -->
-                <!--
-                <div class="search">
-                    <label>
-                        <input type="text" placeholder="Search here">
-                        <ion-icon name="search-outline"></ion-icon>
-                    </label>
-                </div>
-                -->
-
                 <div class="user-info-topbar">
-                    Logado como: {{ current_user.username }}
+                    {{ currentUser.name }} · {{ 'Administrador' if currentUser.is_admin else 'Comum' }}
                 </div>
-
-                <!-- User img (opcional) -->
-                <!--
-                <div class="user">
-                    <img src="{{ url_for('static', filename='img/customer01.jpg') }}" alt="User">
-                </div>
-                -->
             </div>
+            <main class="content-wrapper">
+    {% else %}
+    <main class="content-wrapper guest-content">
+    {% endif %}
+        {% if flashMessages.length %}
+            <ul class="flash-messages">
+            {% for flash in flashMessages %}
+                <li class="flash-{{ flash.category }}">{{ flash.message }}</li>
+            {% endfor %}
+            </ul>
+        {% endif %}
 
-            <!-- Conteúdo Principal e Flash Messages -->
-            <div class="content-wrapper" style="padding: 20px;">
-                {% with messages = get_flashed_messages(with_categories=true) %}
-                    {% if messages %}
-                        <ul class="flash-messages">
-                        {% for category, message in messages %}
-                            <li class="flash-{{ category }}">{{ message }}</li>
-                        {% endfor %}
-                        </ul>
-                    {% endif %}
-                {% endwith %}
+        {% block content %}{% endblock %}
+    </main>
 
-                {% block content %}
-                    <!-- Conteúdo específico da página vai aqui -->
-                {% endblock %}
-            </div>
+    {% if currentUser %}
         </div>
     </div>
 
-    <!-- Novo JS -->
-    <script src="{{ url_for('static', filename='js/admin_dashboard_script.js') }}"></script>
+    <script src="{{ urlFor('static', { filename: 'js/admin_dashboard_script.js' }) }}"></script>
+    {% endif %}
 
-    <!-- Bloco para JS específico da página -->
     {% block scripts %}{% endblock %}
 </body>
 </html>

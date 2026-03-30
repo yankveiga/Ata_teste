@@ -1,0 +1,20 @@
+{
+  "name": "ata-node",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Gestor de atas migrado de Flask para Node.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "create-user": "node scripts/create-user.js",
+    "verify": "node scripts/verify-app.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cookie-session": "^2.1.0",
+    "express": "^4.21.2",
+    "multer": "^2.1.1",
+    "nunjucks": "^3.2.4",
+    "pdfkit": "^0.16.0"
+  }
+}

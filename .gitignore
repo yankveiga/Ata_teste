@@ -13,6 +13,7 @@ env/    # Outro nome comum
 # IDEs e ferramentas de projeto
 .vscode/
 .idea/
+.codex
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
@@ -44,3 +45,4 @@ Thumbs.db
 dist/
 build/
 *.egg-info/
+node_modules/

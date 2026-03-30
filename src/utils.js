@@ -1,0 +1,426 @@
+const crypto = require("node:crypto");
+const fs = require("node:fs");
+const path = require("node:path");
+
+const ROUTES = Object.freeze({
+  static: "/static/:filename",
+  login: "/login",
+  logout: "/logout",
+  services: "/services",
+  almox_home: "/almoxarifado",
+  home: "/home",
+  list_members: "/members",
+  add_member: "/members/add",
+  edit_member: "/members/edit/:id",
+  delete_member: "/members/delete/:id",
+  list_projects: "/projects",
+  add_project: "/projects/add",
+  edit_project: "/projects/edit/:id",
+  delete_project: "/projects/delete/:id",
+  create_ata: "/atas/create",
+  create_ata_for: "/atas/create/for/:project_id",
+  download_ata_pdf: "/atas/download/:id",
+  delete_ata: "/atas/delete/:id",
+  api_get_project_members: "/api/project/:project_id/members",
+});
+
+const MONTHS_PT = [
+  "janeiro",
+  "fevereiro",
+  "março",
+  "abril",
+  "maio",
+  "junho",
+  "julho",
+  "agosto",
+  "setembro",
+  "outubro",
+  "novembro",
+  "dezembro",
+];
+
+const DAYS_EXTENSO = {
+  1: "primeiro",
+  2: "dois",
+  3: "três",
+  4: "quatro",
+  5: "cinco",
+  6: "seis",
+  7: "sete",
+  8: "oito",
+  9: "nove",
+  10: "dez",
+  11: "onze",
+  12: "doze",
+  13: "treze",
+  14: "quatorze",
+  15: "quinze",
+  16: "dezesseis",
+  17: "dezessete",
+  18: "dezoito",
+  19: "dezenove",
+  20: "vinte",
+  21: "vinte e um",
+  22: "vinte e dois",
+  23: "vinte e três",
+  24: "vinte e quatro",
+  25: "vinte e cinco",
+  26: "vinte e seis",
+  27: "vinte e sete",
+  28: "vinte e oito",
+  29: "vinte e nove",
+  30: "trinta",
+  31: "trinta e um",
+};
+
+function urlFor(name, params = {}) {
+  if (name === "create_ata" && params.project_id) {
+    return `/atas/create/for/${params.project_id}`;
+  }
+
+  const template = ROUTES[name];
+  if (!template) {
+    throw new Error(`Rota desconhecida: ${name}`);
+  }
+
+  if (name === "static") {
+    const filename = String(params.filename || "").replace(/^\/+/, "");
+    return `/static/${filename}`;
+  }
+
+  return template.replace(/:([a-zA-Z_]+)/g, (_, key) => {
+    const value = params[key];
+    if (value === undefined || value === null) {
+      throw new Error(`Parâmetro ausente para rota "${name}": ${key}`);
+    }
+    return encodeURIComponent(String(value));
+  });
+}
+
+function addFlash(req, category, message) {
+  if (!req.session) {
+    return;
+  }
+  if (!Array.isArray(req.session.flashes)) {
+    req.session.flashes = [];
+  }
+  req.session.flashes.push({ category, message });
+}
+
+function consumeFlashes(req) {
+  if (!req.session || !Array.isArray(req.session.flashes)) {
+    return [];
+  }
+  const flashes = [...req.session.flashes];
+  req.session.flashes = [];
+  return flashes;
+}
+
+function ensureCsrfToken(req) {
+  if (!req.session) {
+    return "";
+  }
+  if (!req.session.csrfToken) {
+    req.session.csrfToken = crypto.randomBytes(24).toString("hex");
+  }
+  return req.session.csrfToken;
+}
+
+function verifyCsrf(req) {
+  const token =
+    req.body?.csrf_token ||
+    req.body?._csrf ||
+    req.headers["x-csrf-token"] ||
+    req.query?.csrf_token;
+
+  return Boolean(token && req.session && token === req.session.csrfToken);
+}
+
+function sanitizeFilename(filename) {
+  const base = path.basename(filename || "");
+  const ascii = base.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const cleaned = ascii
+    .replace(/[^a-zA-Z0-9._-]/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_+|_+$/g, "");
+
+  return cleaned || `arquivo_${Date.now()}`;
+}
+
+function safeUnlink(filePath) {
+  if (!filePath) {
+    return;
+  }
+
+  try {
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+  } catch (error) {
+    console.error(`Falha ao remover arquivo ${filePath}:`, error);
+  }
+}
+
+function trimToNull(value) {
+  if (value === undefined || value === null) {
+    return null;
+  }
+  const trimmed = String(value).trim();
+  return trimmed ? trimmed : null;
+}
+
+function parseId(value) {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+function parseIdArray(value) {
+  if (Array.isArray(value)) {
+    return [...new Set(value.map(parseId).filter(Boolean))];
+  }
+  const parsed = parseId(value);
+  return parsed ? [parsed] : [];
+}
+
+function extractDateParts(value) {
+  if (!value) {
+    return null;
+  }
+
+  if (typeof value === "string") {
+    const normalized = value.trim().replace("T", " ");
+    const match = normalized.match(
+      /^(\d{4})-(\d{2})-(\d{2})(?: (\d{2}):(\d{2})(?::(\d{2}))?)?$/,
+    );
+
+    if (match) {
+      return {
+        year: Number(match[1]),
+        month: Number(match[2]),
+        day: Number(match[3]),
+        hour: Number(match[4] || 0),
+        minute: Number(match[5] || 0),
+        second: Number(match[6] || 0),
+      };
+    }
+  }
+
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return {
+      year: value.getFullYear(),
+      month: value.getMonth() + 1,
+      day: value.getDate(),
+      hour: value.getHours(),
+      minute: value.getMinutes(),
+      second: value.getSeconds(),
+    };
+  }
+
+  return null;
+}
+
+function zeroPad(value) {
+  return String(value).padStart(2, "0");
+}
+
+function toSqlDateTime(value) {
+  const parts = extractDateParts(value);
+  if (!parts) {
+    return null;
+  }
+
+  return `${parts.year}-${zeroPad(parts.month)}-${zeroPad(parts.day)} ${zeroPad(parts.hour)}:${zeroPad(parts.minute)}:${zeroPad(parts.second)}`;
+}
+
+function toDateTimeLocalValue(value) {
+  const parts = extractDateParts(value);
+  if (!parts) {
+    return "";
+  }
+
+  return `${parts.year}-${zeroPad(parts.month)}-${zeroPad(parts.day)}T${zeroPad(parts.hour)}:${zeroPad(parts.minute)}`;
+}
+
+function formatDateTimePt(value) {
+  const parts = extractDateParts(value);
+  if (!parts) {
+    return "";
+  }
+
+  return `${zeroPad(parts.day)}/${zeroPad(parts.month)}/${parts.year} ${zeroPad(parts.hour)}:${zeroPad(parts.minute)}`;
+}
+
+function formatDatePt(value) {
+  const parts = extractDateParts(value);
+  if (!parts) {
+    return "";
+  }
+
+  return `${zeroPad(parts.day)}/${zeroPad(parts.month)}/${parts.year}`;
+}
+
+function defaultMeetingDateTimeInput() {
+  return toDateTimeLocalValue(new Date());
+}
+
+function firstNamesSummary(members) {
+  if (!Array.isArray(members) || members.length === 0) {
+    return "";
+  }
+
+  return members
+    .map((member) => String(member.name || "").trim().split(/\s+/)[0])
+    .filter(Boolean)
+    .join(", ");
+}
+
+function isAllowedImage(filename) {
+  return /\.(jpg|jpeg|png|gif)$/i.test(filename || "");
+}
+
+function isUniqueConstraintError(error) {
+  const message = String(error?.message || "");
+  return message.includes("UNIQUE constraint failed");
+}
+
+function safeRedirectPath(nextPath, fallback) {
+  if (
+    typeof nextPath !== "string" ||
+    !nextPath.startsWith("/") ||
+    nextPath.startsWith("//")
+  ) {
+    return fallback;
+  }
+  return nextPath;
+}
+
+function numberToPortuguese(value) {
+  const number = Number(value);
+
+  if (!Number.isInteger(number) || number < 0) {
+    return String(value);
+  }
+
+  const units = [
+    "zero",
+    "um",
+    "dois",
+    "três",
+    "quatro",
+    "cinco",
+    "seis",
+    "sete",
+    "oito",
+    "nove",
+    "dez",
+    "onze",
+    "doze",
+    "treze",
+    "quatorze",
+    "quinze",
+    "dezesseis",
+    "dezessete",
+    "dezoito",
+    "dezenove",
+  ];
+
+  const tens = [
+    "",
+    "",
+    "vinte",
+    "trinta",
+    "quarenta",
+    "cinquenta",
+    "sessenta",
+    "setenta",
+    "oitenta",
+    "noventa",
+  ];
+
+  const hundreds = [
+    "",
+    "cento",
+    "duzentos",
+    "trezentos",
+    "quatrocentos",
+    "quinhentos",
+    "seiscentos",
+    "setecentos",
+    "oitocentos",
+    "novecentos",
+  ];
+
+  if (number < 20) {
+    return units[number];
+  }
+
+  if (number < 100) {
+    const ten = Math.floor(number / 10);
+    const remainder = number % 10;
+    return remainder ? `${tens[ten]} e ${numberToPortuguese(remainder)}` : tens[ten];
+  }
+
+  if (number === 100) {
+    return "cem";
+  }
+
+  if (number < 1000) {
+    const hundred = Math.floor(number / 100);
+    const remainder = number % 100;
+    return remainder
+      ? `${hundreds[hundred]} e ${numberToPortuguese(remainder)}`
+      : hundreds[hundred];
+  }
+
+  if (number < 1000000) {
+    const thousand = Math.floor(number / 1000);
+    const remainder = number % 1000;
+    const prefix = thousand === 1 ? "mil" : `${numberToPortuguese(thousand)} mil`;
+    if (!remainder) {
+      return prefix;
+    }
+    const connector = remainder < 100 ? " e " : " ";
+    return `${prefix}${connector}${numberToPortuguese(remainder)}`;
+  }
+
+  return String(number);
+}
+
+function formatDateExtenso(value) {
+  const parts = extractDateParts(value);
+  if (!parts) {
+    return "";
+  }
+
+  const day = DAYS_EXTENSO[parts.day] || numberToPortuguese(parts.day);
+  const month = MONTHS_PT[parts.month - 1] || "";
+  const year = numberToPortuguese(parts.year);
+
+  return `${day} dias do mês de ${month} de ${year}`;
+}
+
+module.exports = {
+  ROUTES,
+  MONTHS_PT,
+  addFlash,
+  consumeFlashes,
+  defaultMeetingDateTimeInput,
+  ensureCsrfToken,
+  extractDateParts,
+  firstNamesSummary,
+  formatDateExtenso,
+  formatDatePt,
+  formatDateTimePt,
+  isAllowedImage,
+  isUniqueConstraintError,
+  parseId,
+  parseIdArray,
+  safeRedirectPath,
+  safeUnlink,
+  sanitizeFilename,
+  toDateTimeLocalValue,
+  toSqlDateTime,
+  trimToNull,
+  urlFor,
+  verifyCsrf,
+};

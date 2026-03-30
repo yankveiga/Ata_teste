@@ -1,13 +1,11 @@
-{# app/templates/errors/500.html #}
-{% extends "base.html" %} {# Ou pode ser um HTML standalone simples se preferir #}
+{% extends "base.html" %}
 
 {% block content %}
     <div class="page-header">
         <h1>Erro Interno do Servidor (500)</h1>
     </div>
-    <div class="alert alert-danger" style="background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; padding: 15px; border-radius: 4px;">
+    <div class="message-card message-card-danger">
         <p>Ocorreu um erro inesperado no servidor ao processar sua solicitação.</p>
-        <p>A equipe técnica já foi notificada (verifique os logs do servidor para detalhes).</p>
-        <p>Por favor, tente novamente mais tarde ou volte para a <a href="{{ url_for('home') }}">página inicial</a>.</p>
+        <p>Por favor, tente novamente mais tarde ou volte para a <a href="{{ urlFor('services') }}">central de serviços</a>.</p>
     </div>
 {% endblock %}

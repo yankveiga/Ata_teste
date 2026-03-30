@@ -1,80 +1,75 @@
 {% extends "base.html" %}
-
-{% block title %}Lista de Membros{% endblock %} {# Definindo um título específico para a aba do navegador #}
+{% set activeAtaTab = 'members' %}
 
 {% block content %}
-    <div class="page-header"> {# Usando a classe que definimos #}
-        <h1>{{ title if title else "Membros" }}</h1> {# Garante um título mesmo que 'title' não venha da view #}
-        {# O botão foi movido para .page-actions para melhor estrutura semântica #}
+    {% include "partials/atas_tabs.html" %}
+
+    <div class="page-header page-header-split">
+        <div>
+            <h1>{{ title if title else "Membros" }}</h1>
+            <p class="lead">Cadastre e mantenha o quadro ativo dos participantes vinculados aos projetos.</p>
+        </div>
+        <span class="page-badge">{{ members.length }} cadastrados</span>
     </div>
 
-    <div class="page-actions"> {# Nova seção para o botão de adicionar #}
-        <a href="{{ url_for('add_member') }}" class="btn-primary-action">
-            <ion-icon name="add-circle-outline"></ion-icon> Adicionar Membro
-        </a>
-    </div>
+    {% if currentUser.is_admin %}
+        <div class="page-actions">
+            <a href="{{ urlFor('add_member') }}" class="btn-primary-action">
+                <ion-icon name="add-circle-outline"></ion-icon> Adicionar Membro
+            </a>
+        </div>
+    {% endif %}
 
-    <div class="content-panel"> {# Envolvendo a tabela em um painel #}
+    <div class="content-panel">
         <div class="panel-header">
-            <h2>Membros Cadastrados</h2>
-            {# Aqui você poderia adicionar uma barra de busca ou filtros no futuro #}
+            <div>
+                <h2>Membros Cadastrados</h2>
+                <p>Lista principal usada na criação das atas e associação com projetos.</p>
+            </div>
         </div>
         <div class="panel-body">
-            {% if members %}
-                <table class="styled-table"> {# Aplicando a classe da tabela estilizada #}
+            {% if members.length %}
+                <table class="styled-table">
                     <thead>
                         <tr>
                             <th>Nome</th>
-                            {# Adicione mais colunas se necessário, como Email, Cargo, etc. #}
-                            {# Exemplo: #}
-                            {# <th>Email</th> #}
-                            {# <th>Cargo</th> #}
-                            <th style="width: 150px; text-align: right;">Ações</th> {# Mantendo o alinhamento e largura específicos se necessário #}
+                            {% if currentUser.is_admin %}
+                                <th class="actions-col">Ações</th>
+                            {% endif %}
                         </tr>
                     </thead>
                     <tbody>
                         {% for member in members %}
                             <tr>
                                 <td>{{ member.name }}</td>
-                                {# Exemplo de como adicionar mais colunas: #}
-                                {# <td>{{ member.email if member.email else '-' }}</td> #}
-                                {# <td>{{ member.role if member.role else '-' }}</td> #}
-                                <td class="actions-cell"> {# Usando a classe para a célula de ações #}
-                                    <a href="{{ url_for('edit_member', id=member.id) }}" class="btn-icon btn-edit" title="Editar">
-                                        <ion-icon name="create-outline"></ion-icon>
-                                    </a>
-                                    <form action="{{ url_for('delete_member', id=member.id) }}" method="POST" style="display: inline;" onsubmit="return confirm('Tem certeza que deseja excluir o membro \'{{ member.name|e }}\'? Esta ação não pode ser desfeita.');">
-                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                        <button type="submit" class="btn-icon btn-delete" title="Excluir">
-                                            <ion-icon name="trash-outline"></ion-icon>
-                                        </button>
-                                    </form>
-                                </td>
+                                {% if currentUser.is_admin %}
+                                    <td class="actions-cell">
+                                        <a href="{{ urlFor('edit_member', { id: member.id }) }}" class="btn-icon btn-edit" title="Editar">
+                                            <ion-icon name="create-outline"></ion-icon>
+                                        </a>
+                                        <form action="{{ urlFor('delete_member', { id: member.id }) }}" method="POST" class="inline-action-form" onsubmit="return confirm('Tem certeza que deseja excluir o membro \'{{ member.name }}\'? Esta ação não pode ser desfeita.');">
+                                            <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+                                            <button type="submit" class="btn-icon btn-delete" title="Excluir">
+                                                <ion-icon name="trash-outline"></ion-icon>
+                                            </button>
+                                        </form>
+                                    </td>
+                                {% endif %}
                             </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             {% else %}
-                {# Usando as classes de flash messages para a mensagem de "nenhum membro" #}
-                {# Ou uma classe .empty-message mais específica, se preferir #}
                 <div class="flash-messages">
-                    <li class="flash-info"> {# Reutilizando estilo de flash message #}
-                        Nenhum membro cadastrado ainda. <a href="{{ url_for('add_member') }}" style="font-weight: bold; color: var(--black1);">Adicione o primeiro!</a>
+                    <li class="flash-info">
+                        {% if currentUser.is_admin %}
+                            Nenhum membro cadastrado ainda. <a href="{{ urlFor('add_member') }}" class="inline-link-strong">Adicione o primeiro!</a>
+                        {% else %}
+                            Nenhum membro cadastrado ainda.
+                        {% endif %}
                     </li>
                 </div>
-                {# Ou, usando a classe .empty-message que definimos: #}
-                {# <p class="empty-message">
-                    Nenhum membro cadastrado ainda. <a href="{{ url_for('add_member') }}" style="font-weight: bold; color: var(--black1);">Adicione o primeiro!</a>
-                </p> #}
             {% endif %}
         </div>
     </div>
-{% endblock %}
-
-{% block scripts %}
-    {# Seu bloco de scripts permanece o mesmo #}
-    <script>
-        // Exemplo: poderia adicionar JS para confirmação de exclusão mais elaborada
-        // ou para filtros/busca na tabela.
-    </script>
 {% endblock %}

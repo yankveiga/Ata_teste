@@ -1,12 +1,11 @@
-{# app/templates/errors/404.html #}
-{% extends "base.html" %} {# Ou pode ser standalone #}
+{% extends "base.html" %}
 
 {% block content %}
     <div class="page-header">
         <h1>Página Não Encontrada (404)</h1>
     </div>
-    <div class="alert alert-warning" style="background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; padding: 15px; border-radius: 4px;">
+    <div class="message-card message-card-warning">
         <p>Oops! A página que você está procurando não existe.</p>
-        <p>Verifique se o endereço foi digitado corretamente ou volte para a <a href="{{ url_for('home') }}">página inicial</a>.</p>
+        <p>Verifique se o endereço foi digitado corretamente ou volte para a <a href="{{ urlFor('services') }}">central de serviços</a>.</p>
     </div>
 {% endblock %}

@@ -1,0 +1,904 @@
+{% extends "base.html" %}
+
+{% block styles %}
+    <link rel="stylesheet" href="{{ urlFor('static', { filename: 'css/almoxarifado.css' }) }}">
+{% endblock %}
+
+{% block content %}
+    <div class="almox-page" id="almox-page" data-active-tab="{{ activeTab }}">
+        <section class="almox-header">
+            <div>
+                <p class="almox-eyebrow">Controle de materiais</p>
+                <h1>Almoxarifado</h1>
+                <p class="almox-lead">
+                    Consumo sai por retirada. Patrimônio sai por empréstimo e volta com devolução prevista em 7 dias, podendo ser prorrogada por um administrador.
+                </p>
+            </div>
+
+            <div class="almox-header-side">
+                <span class="role-chip {{ 'role-chip-admin' if currentUser.is_admin else 'role-chip-common' }}">
+                    {{ 'Administrador' if currentUser.is_admin else 'Usuário Comum' }}
+                </span>
+                <a href="{{ urlFor('services') }}" class="almox-secondary-link">Voltar aos Serviços</a>
+            </div>
+        </section>
+
+        <nav class="almox-tab-nav" aria-label="Seções do Almoxarifado">
+            <a href="{{ urlFor('almox_home') }}?tab=overview" class="almox-tab-link {{ 'is-active' if activeTab == 'overview' else '' }}" data-tab-link="overview">
+                Visão Geral
+            </a>
+            <a href="{{ urlFor('almox_home') }}?tab=users" class="almox-tab-link {{ 'is-active' if activeTab == 'users' else '' }}" data-tab-link="users">
+                Usuários
+            </a>
+            <a href="{{ urlFor('almox_home') }}?tab=stock" class="almox-tab-link {{ 'is-active' if activeTab == 'stock' else '' }}" data-tab-link="stock">
+                Estoque
+            </a>
+            <a href="{{ urlFor('almox_home') }}?tab=manage" class="almox-tab-link {{ 'is-active' if activeTab == 'manage' else '' }}" data-tab-link="manage">
+                Cadastro
+            </a>
+            <a href="{{ urlFor('almox_home') }}?tab=withdraw" class="almox-tab-link {{ 'is-active' if activeTab == 'withdraw' else '' }}" data-tab-link="withdraw">
+                Retiradas
+            </a>
+            <a href="{{ urlFor('almox_home') }}?tab=borrow" class="almox-tab-link {{ 'is-active' if activeTab == 'borrow' else '' }}" data-tab-link="borrow">
+                Empréstimos
+            </a>
+            <a href="{{ urlFor('almox_home') }}?tab=borrowed" class="almox-tab-link {{ 'is-active' if activeTab == 'borrowed' else '' }}" data-tab-link="borrowed">
+                Materiais Emprestados
+            </a>
+            <a href="{{ urlFor('almox_home') }}?tab=requests" class="almox-tab-link {{ 'is-active' if activeTab == 'requests' else '' }}" data-tab-link="requests">
+                Histórico
+            </a>
+        </nav>
+
+        <section class="almox-tab-panel {{ 'is-active' if activeTab == 'overview' else '' }}" data-tab-panel="overview">
+            <div class="almox-card-grid">
+                <article class="almox-stat-card">
+                    <span class="almox-stat-label">Usuários cadastrados</span>
+                    <strong>{{ dashboard.summary.user_count }}</strong>
+                    <small>Login único entre Atas e Almoxarifado</small>
+                </article>
+                <article class="almox-stat-card">
+                    <span class="almox-stat-label">Itens de estoque</span>
+                    <strong>{{ dashboard.summary.stock_item_count }}</strong>
+                    <small>Materiais consumíveis para retirada</small>
+                </article>
+                <article class="almox-stat-card">
+                    <span class="almox-stat-label">Itens patrimoniais</span>
+                    <strong>{{ dashboard.summary.patrimony_item_count }}</strong>
+                    <small>Materiais disponíveis para empréstimo</small>
+                </article>
+                <article class="almox-stat-card">
+                    <span class="almox-stat-label">Empréstimos ativos</span>
+                    <strong>{{ dashboard.summary.active_loan_count }}</strong>
+                    <small>{{ dashboard.summary.overdue_loan_count }} com prazo vencido</small>
+                </article>
+                <article class="almox-stat-card">
+                    <span class="almox-stat-label">Unidades em estoque</span>
+                    <strong>{{ dashboard.summary.stock_units }}</strong>
+                    <small>Disponíveis para retirada imediata</small>
+                </article>
+                <article class="almox-stat-card">
+                    <span class="almox-stat-label">Patrimônio disponível</span>
+                    <strong>{{ dashboard.summary.patrimony_units }}</strong>
+                    <small>Unidades livres para novo empréstimo</small>
+                </article>
+                <article class="almox-stat-card">
+                    <span class="almox-stat-label">Categorias</span>
+                    <strong>{{ dashboard.summary.category_count }}</strong>
+                    <small>Classificação dos materiais</small>
+                </article>
+                <article class="almox-stat-card">
+                    <span class="almox-stat-label">Locais</span>
+                    <strong>{{ dashboard.summary.location_count }}</strong>
+                    <small>Distribuição física do acervo</small>
+                </article>
+            </div>
+
+            <div class="almox-two-column">
+                <article class="almox-panel">
+                    <div class="almox-panel-header">
+                        <div>
+                            <h2>Retiradas recentes</h2>
+                            <p>Somente materiais do tipo estoque aparecem aqui.</p>
+                        </div>
+                        <a href="{{ urlFor('almox_home') }}?tab=requests" class="almox-panel-link">Abrir histórico</a>
+                    </div>
+
+                    {% if dashboard.recent_requests.length %}
+                        <div class="table-wrap">
+                            <table class="almox-table">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Usuário</th>
+                                        <th>Produto</th>
+                                        <th>Qtd.</th>
+                                        <th>Data</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for request in dashboard.recent_requests %}
+                                        <tr>
+                                            <td>#{{ request.pedido_id }}</td>
+                                            <td>{{ request.nome_usuario }}</td>
+                                            <td>{{ request.nome_item_estoque }}</td>
+                                            <td>{{ request.qtd_retirada }}</td>
+                                            <td>{{ request.data_pedido | formatDateTime }}</td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="empty-state">Nenhuma retirada foi registrada ainda.</p>
+                    {% endif %}
+                </article>
+
+                <article class="almox-panel">
+                    <div class="almox-panel-header">
+                        <div>
+                            <h2>Empréstimos em aberto</h2>
+                            <p>Patrimônios que ainda aguardam devolução.</p>
+                        </div>
+                        <a href="{{ urlFor('almox_home') }}?tab=borrowed" class="almox-panel-link">Abrir materiais emprestados</a>
+                    </div>
+
+                    {% if dashboard.recent_loans.length %}
+                        <ul class="simple-list">
+                            {% for loan in dashboard.recent_loans %}
+                                <li>
+                                    <div>
+                                        <strong>{{ loan.item_name }}</strong>
+                                        <span>{{ loan.user_name }} · {{ loan.quantity }} un. · devolução {{ loan.due_at | formatDateTime }}</span>
+                                    </div>
+                                    <span class="loan-status-badge {{ 'loan-status-overdue' if loan.is_overdue else 'loan-status-active' }}">
+                                        {{ 'Atrasado' if loan.is_overdue else 'Em aberto' }}
+                                    </span>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="empty-state">Nenhum patrimônio está emprestado no momento.</p>
+                    {% endif %}
+                </article>
+            </div>
+
+            <div class="almox-two-column">
+                <article class="almox-panel">
+                    <div class="almox-panel-header">
+                        <div>
+                            <h2>Usuários recentes</h2>
+                            <p>Últimos acessos cadastrados no banco compartilhado.</p>
+                        </div>
+                        <a href="{{ urlFor('almox_home') }}?tab=users" class="almox-panel-link">Abrir usuários</a>
+                    </div>
+
+                    {% if dashboard.recent_users.length %}
+                        <ul class="simple-list">
+                            {% for user in dashboard.recent_users %}
+                                <li>
+                                    <div>
+                                        <strong>{{ user.name }}</strong>
+                                        <span>@{{ user.username }}</span>
+                                    </div>
+                                    <span class="role-chip {{ 'role-chip-admin' if user.is_admin else 'role-chip-common' }}">
+                                        {{ 'Admin' if user.is_admin else 'Comum' }}
+                                    </span>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="empty-state">Nenhum usuário encontrado.</p>
+                    {% endif %}
+                </article>
+
+                <article class="almox-panel almox-note-panel">
+                    <div class="almox-panel-header">
+                        <div>
+                            <h2>Regras do módulo</h2>
+                            <p>Resumo rápido do fluxo operacional.</p>
+                        </div>
+                    </div>
+
+                    <ul class="summary-list">
+                        <li>
+                            <strong>Estoque</strong>
+                            <span>Sai por retirada e entra no histórico de consumo.</span>
+                        </li>
+                        <li>
+                            <strong>Patrimônio</strong>
+                            <span>Sai por empréstimo com devolução prevista em 7 dias.</span>
+                        </li>
+                        <li>
+                            <strong>Prorrogação</strong>
+                            <span>Apenas administradores podem estender o prazo do empréstimo.</span>
+                        </li>
+                    </ul>
+                </article>
+            </div>
+        </section>
+
+        <section class="almox-tab-panel {{ 'is-active' if activeTab == 'users' else '' }}" data-tab-panel="users">
+            <div class="almox-two-column">
+                <article class="almox-panel">
+                    <div class="almox-panel-header">
+                        <div>
+                            <h2>Usuários do portal</h2>
+                            <p>Todos compartilham o mesmo login entre Atas e Almoxarifado.</p>
+                        </div>
+                    </div>
+
+                    {% if users.length %}
+                        <div class="table-wrap">
+                            <table class="almox-table">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Nome</th>
+                                        <th>Usuário</th>
+                                        <th>Perfil</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for user in users %}
+                                        <tr>
+                                            <td>#{{ user.id }}</td>
+                                            <td>{{ user.name }}</td>
+                                            <td>@{{ user.username }}</td>
+                                            <td>
+                                                <span class="role-chip {{ 'role-chip-admin' if user.is_admin else 'role-chip-common' }}">
+                                                    {{ 'Administrador' if user.is_admin else 'Comum' }}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="empty-state">Nenhum usuário cadastrado.</p>
+                    {% endif %}
+                </article>
+
+                <article class="almox-panel">
+                    <div class="almox-panel-header">
+                        <div>
+                            <h2>Novo usuário</h2>
+                            <p>A criação de usuários fica disponível apenas para administradores.</p>
+                        </div>
+                    </div>
+
+                    {% if currentUser.is_admin %}
+                        <form action="/almoxarifado/users/create" method="post" class="stacked-form">
+                            <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+                            <input type="hidden" name="tab" value="users">
+
+                            <label>
+                                <span>Nome completo</span>
+                                <input type="text" name="name" value="{{ userFormData.name }}">
+                                {% if userErrors.name %}<small class="field-error">{{ userErrors.name[0] }}</small>{% endif %}
+                            </label>
+
+                            <label>
+                                <span>Usuário</span>
+                                <input type="text" name="username" value="{{ userFormData.username }}">
+                                {% if userErrors.username %}<small class="field-error">{{ userErrors.username[0] }}</small>{% endif %}
+                            </label>
+
+                            <label>
+                                <span>Senha</span>
+                                <input type="password" name="password">
+                                {% if userErrors.password %}<small class="field-error">{{ userErrors.password[0] }}</small>{% endif %}
+                            </label>
+
+                            <label>
+                                <span>Perfil</span>
+                                <select name="role">
+                                    <option value="common" {% if userFormData.role == 'common' %}selected{% endif %}>Comum</option>
+                                    <option value="admin" {% if userFormData.role == 'admin' %}selected{% endif %}>Administrador</option>
+                                </select>
+                            </label>
+
+                            <button type="submit" class="primary-button">Criar usuário</button>
+                        </form>
+                    {% else %}
+                        <p class="readonly-box">
+                            Seu perfil pode consultar os usuários do portal, mas não criar novos acessos.
+                        </p>
+                    {% endif %}
+                </article>
+            </div>
+        </section>
+
+        <section class="almox-tab-panel {{ 'is-active' if activeTab == 'stock' else '' }}" data-tab-panel="stock">
+            <article class="almox-panel">
+                <div class="almox-panel-header">
+                    <div>
+                        <h2>Materiais de estoque</h2>
+                        <p>Itens consumíveis que saem por retirada. Patrimônio fica no fluxo de empréstimo.</p>
+                    </div>
+                    <input
+                        type="search"
+                        id="stock-filter-input"
+                        class="table-filter-input"
+                        placeholder="Filtrar materiais de estoque..."
+                        data-filter-target="stock-table"
+                    >
+                </div>
+
+                {% if stockItems.length %}
+                    <div class="table-wrap">
+                        <table class="almox-table" id="stock-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Produto</th>
+                                    <th>Categoria</th>
+                                    <th>Local</th>
+                                    <th>Qtd.</th>
+                                    <th>Descrição</th>
+                                    {% if currentUser.is_admin %}
+                                        <th>Ações</th>
+                                    {% endif %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in stockItems %}
+                                    <tr>
+                                        <td>#{{ item.id }}</td>
+                                        <td>
+                                            <div class="table-meta">
+                                                <strong>{{ item.name }}</strong>
+                                                <span class="item-type-badge item-type-stock">Estoque</span>
+                                            </div>
+                                        </td>
+                                        <td>{{ item.category }}</td>
+                                        <td>{{ item.location if item.location else 'Não informado' }}</td>
+                                        <td>
+                                            <span class="stock-badge {{ 'stock-badge-empty' if item.amount <= 0 else 'stock-badge-available' }}">
+                                                {{ item.amount }}
+                                            </span>
+                                        </td>
+                                        <td>{{ item.description }}</td>
+                                        {% if currentUser.is_admin %}
+                                            <td>
+                                                <form action="/almoxarifado/inventory/delete/{{ item.id }}" method="post" onsubmit="return confirm('Deseja remover o produto {{ item.name }} do estoque?');">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+                                                    <input type="hidden" name="tab" value="stock">
+                                                    <button type="submit" class="danger-button">Excluir</button>
+                                                </form>
+                                            </td>
+                                        {% endif %}
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="empty-state">Nenhum item de estoque cadastrado.</p>
+                {% endif %}
+            </article>
+        </section>
+
+        <section class="almox-tab-panel {{ 'is-active' if activeTab == 'manage' else '' }}" data-tab-panel="manage">
+            <div class="almox-two-column">
+                <article class="almox-panel">
+                    <div class="almox-panel-header">
+                        <div>
+                            <h2>Cadastro de material</h2>
+                            <p>Cadastre o item já indicando se ele sai por retirada ou por empréstimo.</p>
+                        </div>
+                    </div>
+
+                    {% if currentUser.is_admin %}
+                        <form action="/almoxarifado/inventory/create" method="post" class="stacked-form">
+                            <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+                            <input type="hidden" name="tab" value="manage">
+
+                            <label>
+                                <span>Nome do material</span>
+                                <input type="text" name="name" value="{{ itemFormData.name }}">
+                                {% if itemErrors.name %}<small class="field-error">{{ itemErrors.name[0] }}</small>{% endif %}
+                            </label>
+
+                            <label>
+                                <span>Tipo do material</span>
+                                <select name="item_type">
+                                    <option value="stock" {% if itemFormData.itemType == 'stock' %}selected{% endif %}>Estoque</option>
+                                    <option value="patrimony" {% if itemFormData.itemType == 'patrimony' %}selected{% endif %}>Patrimônio</option>
+                                </select>
+                                {% if itemErrors.itemType %}<small class="field-error">{{ itemErrors.itemType[0] }}</small>{% endif %}
+                            </label>
+
+                            <label>
+                                <span>Categoria existente</span>
+                                <select name="category_id">
+                                    <option value="">Selecione uma categoria</option>
+                                    {% for category in categories %}
+                                        <option value="{{ category.id }}" {% if itemFormData.categoryId == category.id or itemFormData.categoryId == (category.id ~ '') %}selected{% endif %}>
+                                            {{ category.name }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                                {% if itemErrors.category %}<small class="field-error">{{ itemErrors.category[0] }}</small>{% endif %}
+                            </label>
+
+                            <label>
+                                <span>Nova categoria</span>
+                                <input type="text" name="category_name" value="{{ itemFormData.categoryName }}" placeholder="Ex.: Eletrônicos, Papelaria, Laboratório">
+                            </label>
+
+                            <label>
+                                <span>Local existente</span>
+                                <select name="location_id">
+                                    <option value="">Selecione um local</option>
+                                    {% for location in locations %}
+                                        <option value="{{ location.id }}" {% if itemFormData.locationId == location.id or itemFormData.locationId == (location.id ~ '') %}selected{% endif %}>
+                                            {{ location.name }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                                {% if itemErrors.location %}<small class="field-error">{{ itemErrors.location[0] }}</small>{% endif %}
+                            </label>
+
+                            <label>
+                                <span>Novo local</span>
+                                <input type="text" name="location_name" value="{{ itemFormData.locationName }}" placeholder="Ex.: Laboratório 2, Sala do PET, Armário A">
+                            </label>
+
+                            <label>
+                                <span>Quantidade disponível</span>
+                                <input type="number" name="quantity" min="0" step="1" value="{{ itemFormData.quantity }}">
+                                {% if itemErrors.quantity %}<small class="field-error">{{ itemErrors.quantity[0] }}</small>{% endif %}
+                            </label>
+
+                            <label>
+                                <span>Descrição</span>
+                                <textarea name="description" rows="4">{{ itemFormData.description }}</textarea>
+                                {% if itemErrors.description %}<small class="field-error">{{ itemErrors.description[0] }}</small>{% endif %}
+                            </label>
+
+                            <button type="submit" class="primary-button">Adicionar material</button>
+                        </form>
+                    {% else %}
+                        <p class="readonly-box">
+                            Seu perfil pode consultar o almoxarifado, mas não cadastrar ou excluir materiais, categorias ou locais.
+                        </p>
+                    {% endif %}
+                </article>
+
+                <article class="almox-panel">
+                    <div class="almox-panel-header">
+                        <div>
+                            <h2>Resumo rápido</h2>
+                            <p>Visão geral para equilibrar estoque, patrimônio e empréstimos.</p>
+                        </div>
+                    </div>
+
+                    <ul class="summary-list">
+                        <li>
+                            <strong>{{ dashboard.summary.stock_item_count }}</strong>
+                            <span>itens cadastrados como estoque</span>
+                        </li>
+                        <li>
+                            <strong>{{ dashboard.summary.patrimony_item_count }}</strong>
+                            <span>itens cadastrados como patrimônio</span>
+                        </li>
+                        <li>
+                            <strong>{{ dashboard.summary.request_count }}</strong>
+                            <span>retiradas registradas</span>
+                        </li>
+                        <li>
+                            <strong>{{ dashboard.summary.active_loan_count }}</strong>
+                            <span>empréstimos em aberto</span>
+                        </li>
+                        <li>
+                            <strong>{{ dashboard.summary.overdue_loan_count }}</strong>
+                            <span>empréstimos com prazo vencido</span>
+                        </li>
+                    </ul>
+                </article>
+            </div>
+
+            <div class="almox-catalog-grid">
+                <article class="almox-panel">
+                    <div class="almox-panel-header">
+                        <div>
+                            <h2>Categorias</h2>
+                            <p>Classifique materiais de estoque e patrimônio com a mesma base.</p>
+                        </div>
+                    </div>
+
+                    {% if currentUser.is_admin %}
+                        <form action="/almoxarifado/categories/create" method="post" class="stacked-form compact-form">
+                            <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+                            <label>
+                                <span>Nova categoria</span>
+                                <input type="text" name="name" value="{{ categoryFormData.name }}" placeholder="Ex.: Escritório">
+                                {% if categoryErrors.name %}<small class="field-error">{{ categoryErrors.name[0] }}</small>{% endif %}
+                            </label>
+                            <button type="submit" class="primary-button">Adicionar categoria</button>
+                        </form>
+                    {% endif %}
+
+                    {% if categories.length %}
+                        <ul class="catalog-list">
+                            {% for category in categories %}
+                                <li>
+                                    <span>{{ category.name }}</span>
+                                    {% if currentUser.is_admin %}
+                                        <form action="/almoxarifado/categories/delete/{{ category.id }}" method="post" onsubmit="return confirm('Deseja remover a categoria {{ category.name }}?');">
+                                            <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+                                            <button type="submit" class="ghost-danger-button">Excluir</button>
+                                        </form>
+                                    {% endif %}
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="empty-state">Nenhuma categoria cadastrada.</p>
+                    {% endif %}
+                </article>
+
+                <article class="almox-panel">
+                    <div class="almox-panel-header">
+                        <div>
+                            <h2>Locais</h2>
+                            <p>Organize o que é consumível e o que é patrimonial no mesmo mapa físico.</p>
+                        </div>
+                    </div>
+
+                    {% if currentUser.is_admin %}
+                        <form action="/almoxarifado/locations/create" method="post" class="stacked-form compact-form">
+                            <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+                            <label>
+                                <span>Novo local</span>
+                                <input type="text" name="name" value="{{ locationFormData.name }}" placeholder="Ex.: Sala 12">
+                                {% if locationErrors.name %}<small class="field-error">{{ locationErrors.name[0] }}</small>{% endif %}
+                            </label>
+                            <button type="submit" class="primary-button">Adicionar local</button>
+                        </form>
+                    {% endif %}
+
+                    {% if locations.length %}
+                        <ul class="catalog-list">
+                            {% for location in locations %}
+                                <li>
+                                    <span>{{ location.name }}</span>
+                                    {% if currentUser.is_admin %}
+                                        <form action="/almoxarifado/locations/delete/{{ location.id }}" method="post" onsubmit="return confirm('Deseja remover o local {{ location.name }}?');">
+                                            <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+                                            <button type="submit" class="ghost-danger-button">Excluir</button>
+                                        </form>
+                                    {% endif %}
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="empty-state">Nenhum local cadastrado.</p>
+                    {% endif %}
+                </article>
+            </div>
+        </section>
+
+        <section class="almox-tab-panel {{ 'is-active' if activeTab == 'withdraw' else '' }}" data-tab-panel="withdraw">
+            <div class="almox-two-column">
+                <article class="almox-panel">
+                    <div class="almox-panel-header">
+                        <div>
+                            <h2>Registrar retirada</h2>
+                            <p>Use apenas para materiais de estoque. Patrimônio deve sair pelo fluxo de empréstimo.</p>
+                        </div>
+                    </div>
+
+                    <form action="/almoxarifado/inventory/withdraw" method="post" class="stacked-form">
+                        <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+                        <input type="hidden" name="tab" value="withdraw">
+
+                        {% if withdrawErrors.form %}
+                            <div class="inline-message inline-message-error">{{ withdrawErrors.form[0] }}</div>
+                        {% endif %}
+
+                        <label>
+                            <span>Nome exato ou ID do material</span>
+                            <input type="text" name="name_or_code" list="stock-items-list" value="{{ withdrawFormData.nameOrCode }}">
+                            {% if withdrawErrors.nameOrCode %}<small class="field-error">{{ withdrawErrors.nameOrCode[0] }}</small>{% endif %}
+                        </label>
+
+                        <datalist id="stock-items-list">
+                            {% for item in stockItems %}
+                                <option value="{{ item.id }}">#{{ item.id }} - {{ item.name }}</option>
+                                <option value="{{ item.name }}">{{ item.name }} ({{ item.category }})</option>
+                            {% endfor %}
+                        </datalist>
+
+                        <label>
+                            <span>Quantidade</span>
+                            <input type="number" name="quantity" min="1" step="1" value="{{ withdrawFormData.quantity }}">
+                            {% if withdrawErrors.quantity %}<small class="field-error">{{ withdrawErrors.quantity[0] }}</small>{% endif %}
+                        </label>
+
+                        <button type="submit" class="primary-button">Registrar retirada</button>
+                    </form>
+                </article>
+
+                <article class="almox-panel">
+                    <div class="almox-panel-header">
+                        <div>
+                            <h2>Estoque disponível</h2>
+                            <p>Referência rápida antes da retirada.</p>
+                        </div>
+                    </div>
+
+                    {% if stockItems.length %}
+                        <ul class="simple-list">
+                            {% for item in stockItems %}
+                                <li>
+                                    <div>
+                                        <strong>#{{ item.id }} · {{ item.name }}</strong>
+                                        <span>{{ item.category }} · {{ item.location if item.location else 'Sem local' }} · {{ item.description }}</span>
+                                    </div>
+                                    <span class="stock-badge {{ 'stock-badge-empty' if item.amount <= 0 else 'stock-badge-available' }}">
+                                        {{ item.amount }}
+                                    </span>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="empty-state">Nenhum item de estoque cadastrado para retirada.</p>
+                    {% endif %}
+                </article>
+            </div>
+        </section>
+
+        <section class="almox-tab-panel {{ 'is-active' if activeTab == 'borrow' else '' }}" data-tab-panel="borrow">
+            <div class="almox-two-column">
+                <article class="almox-panel">
+                    <div class="almox-panel-header">
+                        <div>
+                            <h2>Registrar empréstimo</h2>
+                            <p>Use apenas para materiais patrimoniais. O prazo inicial de devolução é de 7 dias.</p>
+                        </div>
+                    </div>
+
+                    <form action="/almoxarifado/inventory/borrow" method="post" class="stacked-form">
+                        <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+                        <input type="hidden" name="tab" value="borrow">
+
+                        {% if loanErrors.form %}
+                            <div class="inline-message inline-message-error">{{ loanErrors.form[0] }}</div>
+                        {% endif %}
+
+                        <label>
+                            <span>Nome exato ou ID do patrimônio</span>
+                            <input type="text" name="name_or_code" list="patrimony-items-list" value="{{ loanFormData.nameOrCode }}">
+                            {% if loanErrors.nameOrCode %}<small class="field-error">{{ loanErrors.nameOrCode[0] }}</small>{% endif %}
+                        </label>
+
+                        <datalist id="patrimony-items-list">
+                            {% for item in patrimonyItems %}
+                                <option value="{{ item.id }}">#{{ item.id }} - {{ item.name }}</option>
+                                <option value="{{ item.name }}">{{ item.name }} ({{ item.category }})</option>
+                            {% endfor %}
+                        </datalist>
+
+                        <label>
+                            <span>Quantidade</span>
+                            <input type="number" name="quantity" min="1" step="1" value="{{ loanFormData.quantity }}">
+                            {% if loanErrors.quantity %}<small class="field-error">{{ loanErrors.quantity[0] }}</small>{% endif %}
+                        </label>
+
+                        <div class="inline-message almox-note-box">
+                            A devolução prevista será registrada automaticamente para 7 dias após o empréstimo.
+                        </div>
+
+                        <button type="submit" class="primary-button">Registrar empréstimo</button>
+                    </form>
+                </article>
+
+                <article class="almox-panel">
+                    <div class="almox-panel-header">
+                        <div>
+                            <h2>Patrimônio disponível</h2>
+                            <p>Somente materiais patrimoniais entram neste fluxo.</p>
+                        </div>
+                    </div>
+
+                    {% if patrimonyItems.length %}
+                        <ul class="simple-list">
+                            {% for item in patrimonyItems %}
+                                <li>
+                                    <div>
+                                        <strong>#{{ item.id }} · {{ item.name }}</strong>
+                                        <span>{{ item.category }} · {{ item.location if item.location else 'Sem local' }} · {{ item.description }}</span>
+                                    </div>
+                                    <span class="stock-badge {{ 'stock-badge-empty' if item.amount <= 0 else 'stock-badge-available' }}">
+                                        {{ item.amount }}
+                                    </span>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="empty-state">Nenhum patrimônio cadastrado para empréstimo.</p>
+                    {% endif %}
+                </article>
+            </div>
+        </section>
+
+        <section class="almox-tab-panel {{ 'is-active' if activeTab == 'borrowed' else '' }}" data-tab-panel="borrowed">
+            <article class="almox-panel">
+                <div class="almox-panel-header">
+                    <div>
+                        <h2>Materiais emprestados</h2>
+                        <p>Acompanhe devoluções previstas, atrasos e prorrogações.</p>
+                    </div>
+                    <input
+                        type="search"
+                        id="borrowed-filter-input"
+                        class="table-filter-input"
+                        placeholder="Filtrar empréstimos..."
+                        data-filter-target="borrowed-table"
+                    >
+                </div>
+
+                {% if activeLoans.length %}
+                    <div class="table-wrap">
+                        <table class="almox-table" id="borrowed-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Material</th>
+                                    <th>Usuário</th>
+                                    <th>Qtd.</th>
+                                    <th>Emprestado em</th>
+                                    <th>Devolução prevista</th>
+                                    <th>Status</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for loan in activeLoans %}
+                                    <tr>
+                                        <td>#{{ loan.id }}</td>
+                                        <td>
+                                            <div class="table-meta">
+                                                <strong>{{ loan.item_name }}</strong>
+                                                <span class="item-type-badge item-type-patrimony">Patrimônio</span>
+                                            </div>
+                                        </td>
+                                        <td>{{ loan.user_name }}</td>
+                                        <td>{{ loan.quantity }}</td>
+                                        <td>{{ loan.borrowed_at | formatDateTime }}</td>
+                                        <td>{{ loan.due_at | formatDateTime }}</td>
+                                        <td>
+                                            <span class="loan-status-badge {{ 'loan-status-overdue' if loan.is_overdue else 'loan-status-active' }}">
+                                                {{ 'Atrasado' if loan.is_overdue else 'Em aberto' }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div class="action-stack">
+                                                {% if currentUser.is_admin %}
+                                                    <form action="/almoxarifado/loans/extend/{{ loan.id }}" method="post" class="inline-form">
+                                                        <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+                                                        <input type="hidden" name="tab" value="borrowed">
+                                                        <input type="number" name="extra_days" min="1" max="90" step="1" value="{{ loanExtendDefaults.extraDays }}" class="inline-number-input">
+                                                        <button type="submit" class="secondary-button">Prorrogar</button>
+                                                    </form>
+                                                {% endif %}
+
+                                                {% if currentUser.is_admin or currentUser.id == loan.user_id %}
+                                                    <form action="/almoxarifado/loans/return/{{ loan.id }}" method="post">
+                                                        <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+                                                        <input type="hidden" name="tab" value="borrowed">
+                                                        <button type="submit" class="primary-button">Registrar devolução</button>
+                                                    </form>
+                                                {% else %}
+                                                    <span class="muted-note">Somente o responsável ou um administrador pode devolver.</span>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="empty-state">Nenhum material patrimonial está emprestado no momento.</p>
+                {% endif %}
+            </article>
+
+            <article class="almox-panel">
+                <div class="almox-panel-header">
+                    <div>
+                        <h2>Devoluções recentes</h2>
+                        <p>Últimos empréstimos encerrados.</p>
+                    </div>
+                </div>
+
+                {% if returnedLoans.length %}
+                    <div class="table-wrap">
+                        <table class="almox-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Material</th>
+                                    <th>Usuário</th>
+                                    <th>Qtd.</th>
+                                    <th>Devolvido em</th>
+                                    <th>Registrado por</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for loan in returnedLoans %}
+                                    <tr>
+                                        <td>#{{ loan.id }}</td>
+                                        <td>{{ loan.item_name }}</td>
+                                        <td>{{ loan.user_name }}</td>
+                                        <td>{{ loan.quantity }}</td>
+                                        <td>{{ loan.returned_at | formatDateTime }}</td>
+                                        <td>{{ loan.returned_by_name if loan.returned_by_name else 'Não informado' }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="empty-state">Nenhuma devolução registrada ainda.</p>
+                {% endif %}
+            </article>
+        </section>
+
+        <section class="almox-tab-panel {{ 'is-active' if activeTab == 'requests' else '' }}" data-tab-panel="requests">
+            <article class="almox-panel">
+                <div class="almox-panel-header">
+                    <div>
+                        <h2>Histórico de retiradas</h2>
+                        <p>Este histórico registra apenas saídas de materiais de estoque.</p>
+                    </div>
+                    <input
+                        type="search"
+                        id="requests-filter-input"
+                        class="table-filter-input"
+                        placeholder="Filtrar histórico..."
+                        data-filter-target="requests-table"
+                    >
+                </div>
+
+                {% if requests.length %}
+                    <div class="table-wrap">
+                        <table class="almox-table" id="requests-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Usuário</th>
+                                    <th>Perfil</th>
+                                    <th>Produto</th>
+                                    <th>Qtd.</th>
+                                    <th>Data</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for request in requests %}
+                                    <tr>
+                                        <td>#{{ request.pedido_id }}</td>
+                                        <td>{{ request.nome_usuario }}</td>
+                                        <td>{{ 'Administrador' if request.role_usuario == 'admin' else 'Comum' }}</td>
+                                        <td>{{ request.nome_item_estoque }}</td>
+                                        <td>{{ request.qtd_retirada }}</td>
+                                        <td>{{ request.data_pedido | formatDateTime }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="empty-state">Nenhuma retirada foi registrada até o momento.</p>
+                {% endif %}
+            </article>
+        </section>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+    <script src="{{ urlFor('static', { filename: 'js/almoxarifado.js' }) }}"></script>
+{% endblock %}

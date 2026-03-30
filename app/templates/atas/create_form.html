@@ -1,76 +1,110 @@
 {% extends "base.html" %}
-
-{% block title %}{{ title if title else "Criar Nova Ata" }}{% endblock %}
+{% set activeAtaTab = 'create' %}
 
 {% block content %}
-    <div class="page-header">
+    {% include "partials/atas_tabs.html" %}
+
+    <div class="page-header page-header-split">
+        <div>
         <h1>{{ title if title else "Criar Nova Ata" }}</h1>
-        {% if selected_project %}
-            <p class="lead">Criando ata para o projeto: <strong>{{ selected_project.name }}</strong></p>
+        {% if selectedProject %}
+            <p class="lead">Criando ata para o projeto: <strong>{{ selectedProject.name }}</strong></p>
         {% endif %}
+        </div>
+        <span class="page-badge">Registro Formal</span>
     </div>
 
-    <div class="content-panel"> {# Envolvendo o formulário em um painel #}
+    <div class="content-panel portal-form-card">
         <div class="panel-body">
-            <form action="{{ url_for('create_ata', project_id=selected_project.id if selected_project else None) }}" method="post" novalidate>
-                {{ form.hidden_tag() }} {# CSRF #}
+            <form action="{{ urlFor('create_ata') }}" method="post" novalidate class="portal-form-grid">
+                <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
 
-                {# Campo Projeto (Dropdown) #}
                 <div class="form-group">
-                    {{ form.project.label(class="form-label") }}
-                    {{ form.project(id="project-select", class="form-control") }} {# ID é importante para o JS #}
-                    {% if form.project.errors %}
+                    <label class="form-label" for="project-select">Projeto da Reunião</label>
+                    <select id="project-select" name="project" class="form-control" required>
+                        <option value="">Selecione um projeto</option>
+                        {% for project in projects %}
+                            <option value="{{ project.id }}" {% if formData.projectId == project.id %}selected{% endif %}>
+                                {{ project.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                    {% if errors.project %}
                         <div class="form-error">
-                            {% for error in form.project.errors %}<span>{{ error }}</span>{% endfor %}
+                            {% for error in errors.project %}<span>{{ error }}</span>{% endfor %}
                         </div>
                     {% endif %}
                 </div>
 
-
-                {# Campo Data/Hora (datetime-local) #}
                 <div class="form-group">
-                    {{ form.meeting_datetime.label(class="form-label") }}
-                    <input type="datetime-local"
-                           name="{{ form.meeting_datetime.name }}"
-                           id="{{ form.meeting_datetime.id }}"
-                           class="form-control"
-                           value="{{ form.meeting_datetime.data.strftime('%Y-%m-%dT%H:%M') if form.meeting_datetime.data else '' }}"
-                           required>
-                    {% if form.meeting_datetime.errors %}
+                    <label class="form-label" for="meeting_datetime">Data e Hora da Reunião</label>
+                    <input
+                        type="datetime-local"
+                        name="meeting_datetime"
+                        id="meeting_datetime"
+                        class="form-control"
+                        value="{{ formData.meetingDatetime or '' }}"
+                        required
+                    >
+                    {% if errors.meeting_datetime %}
                         <div class="form-error">
-                            {% for e in form.meeting_datetime.errors %}<span>{{e}}</span>{% endfor %}
+                            {% for error in errors.meeting_datetime %}<span>{{ error }}</span>{% endfor %}
                         </div>
                     {% endif %}
                 </div>
 
-                {# Campo Membros Presentes #}
                 <div id="present-members-container" class="form-group">
-                    {{ form.present_members.label(class="form-label") }}
+                    <label class="form-label">Membros Presentes na Reunião (Ativos)</label>
                     <div id="members-checkbox-list" class="checkbox-list-container">
-                        <p class="checkbox-list-placeholder">Selecione um projeto para carregar os membros.</p>
+                        {% if selectedProjectMembers.length %}
+                            <ul class="checkbox-list">
+                                {% for member in selectedProjectMembers %}
+                                    <li>
+                                        <input
+                                            type="checkbox"
+                                            name="present_members"
+                                            value="{{ member.id }}"
+                                            id="member-{{ member.id }}"
+                                            {% if member.id in formData.presentMemberIds %}checked{% endif %}
+                                        >
+                                        <label for="member-{{ member.id }}">{{ member.name }}</label>
+                                        <input
+                                            type="text"
+                                            name="justification_{{ member.id }}"
+                                            placeholder="Justificativa de Ausência (opcional)"
+                                            class="form-control justification-input"
+                                            value="{{ formData.justifications[member.id] or '' }}"
+                                            {% if member.id in formData.presentMemberIds %}disabled{% endif %}
+                                        >
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        {% elif selectedProject %}
+                            <p class="checkbox-list-placeholder">Este projeto não possui membros associados.</p>
+                        {% else %}
+                            <p class="checkbox-list-placeholder">Selecione um projeto para carregar os membros.</p>
+                        {% endif %}
                     </div>
-                    {% if form.present_members.errors %}
+                    {% if errors.present_members %}
                         <div class="form-error">
-                            {% for error in form.present_members.errors %}<span>{{ error }}</span>{% endfor %}
+                            {% for error in errors.present_members %}<span>{{ error }}</span>{% endfor %}
                         </div>
                     {% endif %}
                 </div>
 
-                {# Campo Notas / Assuntos Tratados #}
                 <div class="form-group">
-                    {{ form.notes.label(class="form-label") }}
-                    {{ form.notes(rows=10, class="form-control") }}
-                    {% if form.notes.errors %}
+                    <label class="form-label" for="notes">Assuntos Tratados / Deliberações</label>
+                    <textarea id="notes" name="notes" rows="10" class="form-control">{{ formData.notes or '' }}</textarea>
+                    {% if errors.notes %}
                         <div class="form-error">
-                            {% for e in form.notes.errors %}<span>{{e}}</span>{% endfor %}
+                            {% for error in errors.notes %}<span>{{ error }}</span>{% endfor %}
                         </div>
                     {% endif %}
                 </div>
 
-                {# Botões de Ação #}
                 <div class="form-actions">
-                    <a href="{{ url_for('home') }}" class="btn-cancel">Cancelar</a>
-                    {{ form.submit(class="btn-submit") }}
+                    <a href="{{ urlFor('home') }}" class="btn-cancel">Cancelar</a>
+                    <button type="submit" class="btn-submit">Salvar Ata</button>
                 </div>
             </form>
         </div>
@@ -85,93 +119,97 @@
             const placeholderText = '<p class="checkbox-list-placeholder">Selecione um projeto para carregar os membros.</p>';
             const loadingText = '<p class="checkbox-list-placeholder">Carregando membros...</p>';
 
-            function fetchAndRenderMembers(projectId) {
-                membersListDiv.innerHTML = loadingText;
+            function wireCheckboxBehaviour(scope) {
+                scope.querySelectorAll('input[type="checkbox"][name="present_members"]').forEach((checkbox) => {
+                    const justificationInput = scope.querySelector(`input[name="justification_${checkbox.value}"]`);
+                    if (!justificationInput) {
+                        return;
+                    }
+
+                    checkbox.addEventListener('change', function() {
+                        justificationInput.disabled = this.checked;
+                        if (this.checked) {
+                            justificationInput.value = '';
+                        }
+                    });
+                });
+            }
+
+            function renderMembers(members) {
+                membersListDiv.innerHTML = '';
+
+                if (!members.length) {
+                    membersListDiv.innerHTML = '<p class="checkbox-list-placeholder">Este projeto não possui membros associados.</p>';
+                    return;
+                }
+
+                const list = document.createElement('ul');
+                list.className = 'checkbox-list';
+
+                members.forEach((member) => {
+                    const item = document.createElement('li');
+
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.name = 'present_members';
+                    checkbox.value = member.id;
+                    checkbox.id = `member-${member.id}`;
+
+                    const label = document.createElement('label');
+                    label.htmlFor = `member-${member.id}`;
+                    label.textContent = member.name;
+
+                    const justification = document.createElement('input');
+                    justification.type = 'text';
+                    justification.name = `justification_${member.id}`;
+                    justification.placeholder = 'Justificativa de Ausência (opcional)';
+                    justification.className = 'form-control justification-input';
+
+                    checkbox.addEventListener('change', function() {
+                        justification.disabled = this.checked;
+                        if (this.checked) {
+                            justification.value = '';
+                        }
+                    });
+
+                    item.appendChild(checkbox);
+                    item.appendChild(label);
+                    item.appendChild(justification);
+                    list.appendChild(item);
+                });
+
+                membersListDiv.appendChild(list);
+            }
+
+            wireCheckboxBehaviour(document);
+
+            if (!projectSelect) {
+                return;
+            }
+
+            projectSelect.addEventListener('change', function() {
+                const projectId = this.value;
 
                 if (!projectId) {
                     membersListDiv.innerHTML = placeholderText;
                     return;
                 }
 
+                membersListDiv.innerHTML = loadingText;
+
                 fetch(`/api/project/${projectId}/members`)
-                    .then(response => {
+                    .then((response) => {
                         if (!response.ok) {
                             throw new Error(`Erro HTTP: ${response.status}`);
                         }
                         return response.json();
                     })
-                    .then(data => {
-                        membersListDiv.innerHTML = ''; 
-
-                        if (data.members && data.members.length > 0) {
-                            const list = document.createElement('ul');
-                            list.className = 'checkbox-list';
-
-                            data.members.forEach(member => {
-                                const listItem = document.createElement('li');
-                                
-                                // 1. Checkbox de Presença
-                                const checkbox = document.createElement('input');
-                                checkbox.type = 'checkbox';
-                                checkbox.name = 'present_members'; // Nome usado para salvar os presentes
-                                checkbox.value = member.id;
-                                checkbox.id = `member-${member.id}`;
-                                // Se houver dados de edição, você precisaria de lógica aqui para checar.
-                                // Por enquanto, vamos considerar apenas a criação.
-
-                                // 2. Rótulo do Membro
-                                const label = document.createElement('label');
-                                label.htmlFor = `member-${member.id}`;
-                                label.textContent = member.name;
-
-                                // 3. Campo de Justificativa (inicialmente desativado)
-                                const justificationInput = document.createElement('input');
-                                justificationInput.type = 'text';
-                                justificationInput.name = `justification_${member.id}`; // Nome único para cada membro
-                                justificationInput.placeholder = 'Justificativa de Ausência (opcional)';
-                                justificationInput.className = 'form-control justification-input';
-                                justificationInput.disabled = checkbox.checked; // Desativa se estiver presente
-
-                                // 4. Lógica de Ativação/Desativação da Justificativa
-                                // A justificativa SÓ deve ser preenchida se o membro estiver AUSENTE (checkbox desmarcada)
-                                checkbox.addEventListener('change', function() {
-                                    justificationInput.disabled = this.checked;
-                                    if (this.checked) {
-                                        justificationInput.value = ''; // Limpa se for marcado como presente
-                                    }
-                                });
-
-                                // Estrutura: [Checkbox] [Nome] [Campo Justificativa]
-                                listItem.appendChild(checkbox);
-                                listItem.appendChild(label);
-                                listItem.appendChild(justificationInput); // Adiciona o campo de texto
-                                
-                                list.appendChild(listItem);
-                            });
-                            membersListDiv.appendChild(list);
-                        } else {
-                            membersListDiv.innerHTML = '<p class="checkbox-list-placeholder">Este projeto não possui membros associados.</p>';
-                        }
-                    })
-                    .catch(error => {
+                    .then((data) => renderMembers(data.members || []))
+                    .catch((error) => {
                         console.error('Erro ao buscar membros:', error);
-                        membersListDiv.innerHTML = `<p class="form-error">Erro ao carregar membros. (${error.message}). Verifique o console.</p>`;
+                        membersListDiv.innerHTML = `<p class="form-error">Erro ao carregar membros. (${error.message}).</p>`;
                     });
-            }
-
-            if (projectSelect) {
-                 projectSelect.addEventListener('change', function() {
-                    fetchAndRenderMembers(this.value);
-                 });
-
-                if (projectSelect.value) {
-                    fetchAndRenderMembers(projectSelect.value);
-                } else {
-                     membersListDiv.innerHTML = placeholderText;
-                }
-            } else {
-                console.error("Elemento #project-select não encontrado!");
-            }
+            });
         });
     </script>
 {% endblock %}

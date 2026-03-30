@@ -1,49 +1,52 @@
 {% extends "base.html" %}
-
-{# Importa macros para renderizar campos de formulário (opcional, mas ajuda a organizar) #}
+{% set activeAtaTab = 'members' %}
 
 {% block content %}
-    <div class="page-header" style="margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid #ccc;">
-        {# O título e o texto do botão virão da view (Add ou Edit) #}
-        <h1>{{ title }}</h1>
+    {% include "partials/atas_tabs.html" %}
+
+    <div class="page-header page-header-split">
+        <div>
+            <h1>{{ title }}</h1>
+            <p class="lead">Use este formulário para manter o cadastro ativo e pronto para novas atas.</p>
+        </div>
+        <span class="page-badge">Membros</span>
     </div>
 
-    {# O action do formulário será a própria URL atual (add ou edit) #}
-    <form action="" method="post" novalidate>
-        {# Token CSRF - Obrigatório para segurança #}
-        {{ form.hidden_tag() }}
+    <form action="" method="post" novalidate class="content-panel portal-form-card portal-form-grid">
+        <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
 
-        {# Renderiza o campo 'name' usando um macro ou diretamente #}
-        {# Opção 1: Usando um macro (se você criar _form_helpers.html) #}
-
-        {# Opção 2: Renderizando diretamente (mais simples para começar) #}
-        <div class="form-group" style="margin-bottom: 20px;">
-            {{ form.name.label(class="form-label", style="display: block; margin-bottom: 5px; font-weight: bold;") }}
-            {{ form.name(class="form-control", size=50, style="width: 100%; max-width: 400px; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;") }}
-            {% if form.name.errors %}
-                <ul class="errors" style="color: #c0392b; font-size: 0.9em; list-style: none; padding-left: 0; margin-top: 5px;">
-                    {% for error in form.name.errors %}
+        <div class="form-group">
+            <label class="form-label" for="name">
+                Nome do Membro
+            </label>
+            <input
+                id="name"
+                name="name"
+                class="form-control"
+                value="{{ formData.name or '' }}"
+            >
+            {% if errors.name %}
+                <ul class="errors form-error-list">
+                    {% for error in errors.name %}
                         <li>{{ error }}</li>
                     {% endfor %}
                 </ul>
             {% endif %}
         </div>
 
-        {# Botão de Submissão - O texto 'action' virá da view ('Adicionar' ou 'Salvar Alterações') #}
         <div class="form-actions">
-            {{ form.submit(value=action, class="btn btn-primary", style="padding: 10px 20px; background-color: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 1em;") }}
-            <a href="{{ url_for('list_members') }}" class="btn btn-secondary" style="margin-left: 10px; color: #555; text-decoration: none;">Cancelar</a>
+            <button type="submit" class="btn-submit">
+                {{ actionLabel }}
+            </button>
+            <a href="{{ urlFor('list_members') }}" class="btn-cancel">Cancelar</a>
         </div>
     </form>
-
 {% endblock %}
 
-{# (Opcional) Bloco de scripts, se necessário #}
 {% block scripts %}
     <script>
-        // Foca no primeiro campo do formulário ao carregar a página
         document.addEventListener('DOMContentLoaded', function() {
-            var firstInput = document.querySelector('.form-control'); // Assume que o primeiro input tem essa classe
+            var firstInput = document.querySelector('.form-control');
             if (firstInput) {
                 firstInput.focus();
             }
