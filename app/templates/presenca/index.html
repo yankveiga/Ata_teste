@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% set title = "Controle de Presença" %}
+
+{% block content %}
+<section class="content-panel presence-panel">
+    <div class="panel-header">
+        <h2>Controle de Presença</h2>
+        <p>Escaneie o código de barras do crachá para registrar presença.</p>
+    </div>
+
+    <div class="panel-body">
+        <form id="presenca-form" method="post" action="{{ urlFor('registrar_presenca') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+
+            <div class="form-group">
+                <label for="evento">Selecionar Evento:</label>
+                <select name="evento" id="evento" class="form-control" required>
+                    <option value="">Escolha o evento</option>
+                    {% for i in range(1, 17) %}
+                    <option value="evento_{{ i }}">Evento {{ i }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="cracha">Código do Crachá:</label>
+                <input type="text" id="cracha" name="cracha" class="form-control" placeholder="Escaneie ou digite o código" required autofocus>
+            </div>
+
+            <button type="submit" class="btn-primary-action presence-submit">Registrar Presença</button>
+        </form>
+
+        <div id="resultado" class="presence-result" style="margin-top: 20px;"></div>
+    </div>
+</section>
+
+{% block scripts %}
+<script>
+const presencaForm = document.getElementById('presenca-form');
+const crachaInput = document.getElementById('cracha');
+const csrfInput = presencaForm.querySelector('input[name="csrf_token"]');
+const resultado = document.getElementById('resultado');
+
+function renderResultado(message, kind) {
+    resultado.className = 'presence-result';
+    if (kind) {
+        resultado.classList.add('presence-result-' + kind);
+    }
+    resultado.innerHTML = '<p>' + message + '</p>';
+}
+
+async function enviarPresenca(tentativa = 0) {
+    renderResultado('Registrando...', 'info');
+    try {
+        const formData = new URLSearchParams(new FormData(presencaForm));
+        const response = await fetch(presencaForm.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'x-csrf-token': csrfInput ? csrfInput.value : '',
+            },
+            credentials: 'same-origin',
+        });
+        const payloadText = await response.text();
+        const contentType = response.headers.get('content-type') || '';
+
+        if (response.redirected && response.url.includes("{{ urlFor('login') }}")) {
+            throw new Error('Sessão expirada. Faça login novamente e abra a página de presença.');
+        }
+
+        if (!contentType.includes('application/json')) {
+            console.error('Resposta inesperada do servidor (presença):', {
+                status: response.status,
+                url: response.url,
+                payload: payloadText.slice(0, 512),
+            });
+            throw new Error('Resposta inesperada do servidor. Abra o console para mais detalhes.');
+        }
+
+        let result;
+        try {
+            result = JSON.parse(payloadText);
+        } catch (parseError) {
+            console.error('Falha ao parsear JSON da presença:', parseError, payloadText);
+            throw new Error('Resposta inválida do servidor. Veja o console.');
+        }
+
+        if (!response.ok) {
+            if (response.status === 403 && result.csrfToken && tentativa < 1) {
+                if (csrfInput) {
+                    csrfInput.value = result.csrfToken;
+                }
+                return await enviarPresenca(tentativa + 1);
+            }
+            const errorMessage = result.error || result.message || 'Erro ao registrar presença.';
+            throw new Error(errorMessage);
+        }
+
+        renderResultado(result.message || 'Resposta recebida.', result.success ? 'success' : 'error');
+    } catch (error) {
+        renderResultado(error.message, 'error');
+    } finally {
+        crachaInput.value = '';
+        crachaInput.focus();
+    }
+}
+
+presencaForm.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    await enviarPresenca(0);
+});
+</script>
+{% endblock %}
+{% endblock %}

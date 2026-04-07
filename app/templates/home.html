@@ -1,10 +1,10 @@
 {% extends "base.html" %}
-{% set activeAtaTab = 'home' %}
+{% set activeAtaTab = activeAtaTab or 'home' %}
 
 {% block content %}
     {% include "partials/atas_tabs.html" %}
 
-    <section class="ata-hero">
+<section class="ata-hero">
         <div class="ata-hero-copy">
             <p class="ata-kicker">Gestor de Atas</p>
             <h1>Atas de {{ currentUser.name }}</h1>

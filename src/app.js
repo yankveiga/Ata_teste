@@ -6,6 +6,7 @@ const cookieSession = require("cookie-session");
 const express = require("express");
 const multer = require("multer");
 const nunjucks = require("nunjucks");
+const XLSX = require("xlsx");
 
 const { config } = require("./config");
 const database = require("./database");
@@ -513,10 +514,86 @@ function createApp() {
   });
 
   app.get("/home", requireAuth, (req, res) => {
+    const tab = req.query.tab || 'home';
     return render(res, "home.html", {
       title: "Atas",
       activeSection: "home",
+      activeAtaTab: tab,
       recentAtas: database.listRecentAtas(5),
+    });
+  });
+
+  app.get("/presenca", requireAuth, (req, res) => {
+    return render(res, "presenca/index.html", {
+      title: "Controle de Presença",
+      activeSection: "presenca",
+    });
+  });
+
+  app.post("/presenca/registrar", requireAuth, (req, res) => {
+    if (!verifyCsrf(req)) {
+      const nextToken = ensureCsrfToken(req);
+      return res.status(403).json({
+        success: false,
+        error: "CSRF token inválido ou expirado.",
+        csrfToken: nextToken,
+      });
+    }
+
+    const crachaValue = String(req.body.cracha || "").trim();
+    const eventoValue = String(req.body.evento || "").trim();
+
+    if (!crachaValue) {
+      return res.json({ success: false, message: 'Informe o número do crachá.', error: 'Crachá obrigatório.' });
+    }
+
+    if (!eventoValue) {
+      return res.json({ success: false, message: 'Selecione o evento.', error: 'Evento obrigatório.' });
+    }
+
+    const workbook = XLSX.readFile('planilha_presenca.xlsx');
+    const sheetName = workbook.SheetNames[0];
+    const sheet = workbook.Sheets[sheetName];
+    const rawData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+    const header = rawData[0];
+    const data = rawData.slice(1).map((row) => {
+      const obj = {};
+      header.forEach((col, i) => {
+        obj[col] = row[i] || '';
+      });
+      return obj;
+    });
+
+    const row = data.find((r) => String(r.CRACHA || '').trim() === crachaValue);
+    if (!row) {
+      return res.json({ success: false, message: 'Crachá não encontrado.' });
+    }
+
+    const nome = row.NOME || 'Participante';
+    const eventoCol = eventoValue.toUpperCase();
+    if (!header.includes(eventoCol)) {
+      return res.json({ success: false, message: 'Evento inválido.' });
+    }
+
+    const eventLabel = eventoValue.replace(/evento_/i, 'Evento ').replace(/_/g, ' ');
+
+    if (row[eventoCol]) {
+      return res.json({
+        success: false,
+        message: `${nome} já foi registrado para ${eventLabel}.`,
+      });
+    }
+
+    row[eventoCol] = 'X';
+
+    const updatedRaw = [header, ...data.map((obj) => header.map((col) => obj[col] || ''))];
+    const newSheet = XLSX.utils.aoa_to_sheet(updatedRaw);
+    workbook.Sheets[sheetName] = newSheet;
+    XLSX.writeFile(workbook, 'planilha_presenca.xlsx');
+
+    return res.json({
+      success: true,
+      message: `${nome} foi registrado para ${eventLabel}.`,
     });
   });
 

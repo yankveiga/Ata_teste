@@ -51,6 +51,13 @@
                     </a>
                 </li>
 
+                <li class="{{ 'hovered' if activeSection == 'presenca' else '' }}">
+                    <a href="{{ urlFor('presenca') }}">
+                        <span class="icon"><ion-icon name="barcode-outline"></ion-icon></span>
+                        <span class="title">Presença</span>
+                    </a>
+                </li>
+
                 <li class="{{ 'hovered' if activeSection == 'almox' else '' }}">
                     <a href="{{ urlFor('almox_home') }}">
                         <span class="icon"><ion-icon name="cube-outline"></ion-icon></span>

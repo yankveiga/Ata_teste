@@ -9,6 +9,8 @@ const ROUTES = Object.freeze({
   services: "/services",
   almox_home: "/almoxarifado",
   home: "/home",
+  presenca: "/presenca",
+  registrar_presenca: "/presenca/registrar",
   list_members: "/members",
   add_member: "/members/add",
   edit_member: "/members/edit/:id",
