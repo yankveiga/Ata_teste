@@ -1,3 +1,10 @@
+<!--
+  TEMPLATE: login.html
+  FUNCAO: pagina de autenticacao com formulario de login e animacao de fundo.
+  IMPACTO DE MUDANCAS:
+  - Alterar ids/classes usados pelo JS de particulas pode desativar o efeito visual.
+  - Alterar nomes de campos do formulario exige ajuste correspondente na rota de login.
+-->
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
@@ -9,6 +16,8 @@
     <link rel="stylesheet" href="{{ urlFor('static', { filename: 'css/custom_styles.css' }) }}">
     <link rel="icon" type="image/png" href="{{ urlFor('static', { filename: 'uploads/icone.png' }) }}">
 </head>
+
+<!-- SECAO: configuracao visual das particulas de fundo na tela de login. -->
 
 <script src="https://cdn.jsdelivr.net/npm/tsparticles@2/tsparticles.bundle.min.js"></script>
 <script>
@@ -57,6 +66,8 @@
     });
 </script>
 
+<!-- SECAO: estrutura da tela de autenticacao (fundo, card e formulario). -->
+
 <body class="login-page-body">
     <div id="particles-background"></div>
 
@@ -73,6 +84,8 @@
             {% endfor %}
             </ul>
         {% endif %}
+
+        <!-- SECAO: formulario de login com validacoes e renderizacao de erros por campo. -->
 
         <form method="POST" action="{{ urlFor('login') }}" novalidate class="login-form">
             <input type="hidden" name="csrf_token" value="{{ csrfToken }}">

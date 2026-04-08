@@ -1,3 +1,10 @@
+{#
+  TEMPLATE: projects/form.html
+  FUNCAO: formulario de cadastro/edicao de projetos, incluindo cor, logo e membros vinculados.
+  IMPACTO DE MUDANCAS:
+  - Alterar nome de inputs (upload, cor, membros) exige alinhamento com parser da rota correspondente.
+  - Alterar validacoes visuais deve acompanhar regras reais aplicadas no backend.
+#}
 {% extends "base.html" %}
 {% set activeAtaTab = 'projects' %}
 
@@ -12,7 +19,9 @@
         <span class="page-badge">Projetos</span>
     </div>
 
-    <form action="" method="post" novalidate enctype="multipart/form-data" class="content-panel portal-form-card portal-form-grid">
+    {# SECAO: formulario de projeto com nome, cor, logo e associacao de membros. #}
+
+    <form action="?csrf_token={{ csrfToken }}" method="post" novalidate enctype="multipart/form-data" class="content-panel portal-form-card portal-form-grid">
         <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
 
         <div class="form-group">
@@ -31,6 +40,23 @@
         </div>
 
         <div class="form-group">
+            <label class="form-label" for="primary_color">Cor Principal do Projeto</label>
+            <input
+                id="primary_color"
+                name="primary_color"
+                type="color"
+                class="form-control form-control-color"
+                value="{{ formData.primaryColor or '#0b6bcb' }}"
+            >
+            {% if errors.primaryColor %}
+                <ul class="errors form-error-list">
+                    {% for error in errors.primaryColor %}<li>{{ error }}</li>{% endfor %}
+                </ul>
+            {% endif %}
+            <small class="form-hint">Essa cor será usada como identidade visual principal do projeto.</small>
+        </div>
+
+        <div class="form-group">
             <label class="form-label" for="logo">Logo do Projeto (Opcional)</label>
             {% if project and project.logo %}
                 <div class="project-logo-preview">
@@ -41,26 +67,46 @@
                     </label>
                 </div>
             {% endif %}
-            <input id="logo" name="logo" type="file" class="form-control-file">
+            <input id="logo" name="logo" type="file" class="form-control-file" accept=".jpg,.jpeg,.png,.gif,.webp,.jfif,image/jpeg,image/png,image/gif,image/webp">
             {% if errors.logo %}
                 <ul class="errors form-error-list">
                     {% for error in errors.logo %}<li>{{ error }}</li>{% endfor %}
                 </ul>
             {% endif %}
-            <small class="form-hint">Envie um novo arquivo para substituir o logo atual. Tipos permitidos: jpg, png, jpeg, gif.</small>
+            <small class="form-hint">Envie um novo arquivo para substituir o logo atual. Tipos permitidos: jpg, jpeg, png, gif, webp, jfif.</small>
         </div>
 
         <div class="form-group">
             <label class="form-label">Membros Associados ao Projeto (Ativos)</label>
+            {# SECAO: vinculacao de membros e coordenadores para permissao de gestao. #}
+
             <div class="member-select-panel">
                 {% if activeMembers.length %}
                     <ul class="member-select-list">
                     {% for member in activeMembers %}
                         <li>
-                            <label class="checkbox-inline">
-                                <input type="checkbox" name="members" value="{{ member.id }}" {% if member.id in formData.memberIds %}checked{% endif %}>
-                                <span>{{ member.name }}</span>
-                            </label>
+                            <div class="member-role-row">
+                                <label class="checkbox-inline">
+                                    <input
+                                        type="checkbox"
+                                        name="members"
+                                        value="{{ member.id }}"
+                                        data-member-checkbox="{{ member.id }}"
+                                        {% if member.id in (formData.memberIds or []) %}checked{% endif %}
+                                    >
+                                    <span>{{ member.name }}</span>
+                                </label>
+                                <label class="checkbox-inline coordinator-inline">
+                                    <input
+                                        type="checkbox"
+                                        name="coordinators"
+                                        value="{{ member.id }}"
+                                        data-coordinator-checkbox="{{ member.id }}"
+                                        {% if member.id in (formData.coordinatorIds or []) %}checked{% endif %}
+                                    >
+                                    <span>Coordenador</span>
+                                </label>
+                            </div>
                         </li>
                     {% endfor %}
                     </ul>
@@ -71,6 +117,11 @@
              {% if errors.members %}
                 <ul class="errors form-error-list">
                     {% for error in errors.members %}<li>{{ error }}</li>{% endfor %}
+                </ul>
+            {% endif %}
+            {% if errors.coordinators %}
+                <ul class="errors form-error-list">
+                    {% for error in errors.coordinators %}<li>{{ error }}</li>{% endfor %}
                 </ul>
             {% endif %}
         </div>
@@ -84,6 +135,8 @@
     </form>
 {% endblock %}
 
+{# SECAO: script de apoio para ajustes de interface do formulario de projeto. #}
+
 {% block scripts %}
     <script>
         document.addEventListener('DOMContentLoaded', function() {
@@ -91,6 +144,25 @@
             if (nameInput) {
                 nameInput.focus();
             }
+
+            var memberChecks = document.querySelectorAll('[data-member-checkbox]');
+            memberChecks.forEach(function(memberCheck) {
+                var memberId = memberCheck.getAttribute('data-member-checkbox');
+                var coordinatorCheck = document.querySelector('[data-coordinator-checkbox="' + memberId + '"]');
+                if (!coordinatorCheck) {
+                    return;
+                }
+
+                var sync = function() {
+                    coordinatorCheck.disabled = !memberCheck.checked;
+                    if (!memberCheck.checked) {
+                        coordinatorCheck.checked = false;
+                    }
+                };
+
+                memberCheck.addEventListener('change', sync);
+                sync();
+            });
         });
     </script>
 {% endblock %}

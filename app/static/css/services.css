@@ -1,3 +1,12 @@
+/*
+ * ARQUIVO: services.css
+ * FUNCAO: layout e componentes da central de servicos (cards de acesso aos modulos).
+ * IMPACTO DE MUDANCAS:
+ * - Mudancas no grid ou breakpoints afetam distribuicao dos cards em desktop e celular.
+ * - Mudancas em destaque visual podem alterar hierarquia de leitura e navegacao do usuario.
+ */
+/* SECAO: layout da pagina de servicos (container e grid principal). */
+
 .services-page {
   display: grid;
   gap: 24px;
@@ -8,6 +17,9 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 24px;
 }
+
+/* SECAO: card-base reutilizado para cada modulo.
+   Mudar este bloco afeta todos os cards (atas, almoxarifado, presenca e relatorios). */
 
 .service-card {
   position: relative;
@@ -31,17 +43,25 @@
   pointer-events: none;
 }
 
+/* SECAO: assinatura visual por modulo (gradientes de destaque no pseudo-elemento). */
+
 .service-card-atas::after {
   background: radial-gradient(circle, #38bdf8, transparent 70%);
 }
 
 .service-card-almox::after {
-  background: radial-gradient(circle, #f97316, transparent 70%);
+  background: radial-gradient(circle, #ff9900, transparent 70%);
 }
 
 .service-card-presenca::after {
   background: radial-gradient(circle, #a855f7, transparent 70%);
 }
+
+.service-card-reports::after {
+  background: radial-gradient(circle, #434C1A, transparent 70%);
+}
+
+/* SECAO: icones de identificacao dos cards. */
 
 .service-card-icon {
   width: 64px;
@@ -61,12 +81,20 @@
 }
 
 .service-card-almox .service-card-icon {
-  background: linear-gradient(135deg, #7c2d12, #f97316);
+  background: linear-gradient(135deg, #ffd18a, #ff9900);
+  color: #5a3408;
+  box-shadow: 0 16px 24px rgba(193, 114, 0, 0.25);
 }
 
 .service-card-presenca .service-card-icon {
   background: linear-gradient(135deg, #5b21b6, #a855f7);
 }
+
+.service-card-reports .service-card-icon {
+  background: linear-gradient(135deg, #1f5130, #52a05c);
+}
+
+/* SECAO: tipografia e leitura de conteudo interno do card. */
 
 .service-card h2 {
   margin: 0 0 12px;
@@ -87,6 +115,8 @@
   line-height: 1.8;
 }
 
+/* SECAO: botao de acao principal de cada servico. */
+
 .service-card-link {
   display: inline-flex;
   align-items: center;
@@ -103,12 +133,61 @@
 }
 
 .service-card-almox .service-card-link {
-  background: linear-gradient(135deg, #7c2d12, #f97316);
+  background: linear-gradient(135deg, #c17200, #ff9900);
+}
+
+/* SECAO: variacao tematica do card Almoxarifado. */
+
+.service-card-almox {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 246, 230, 0.92),
+    rgba(255, 237, 204, 0.84)
+  );
+  border-color: rgba(255, 153, 0, 0.3);
+  box-shadow: 0 28px 40px rgba(193, 114, 0, 0.14);
+}
+
+.service-card-almox h2 {
+  color: #3a2611;
+}
+
+.service-card-almox p,
+.service-card-almox .service-feature-list {
+  color: #6e5136;
 }
 
 .service-card-presenca .service-card-link {
   background: linear-gradient(135deg, #6d28d9, #a855f7);
 }
+
+/* SECAO: variacao tematica do card Relatorios. */
+
+.service-card-reports {
+  background: linear-gradient(
+    180deg,
+    rgba(236, 252, 239, 0.92),
+    rgba(220, 244, 225, 0.82)
+  );
+  border-color: rgba(49, 112, 57, 0.34);
+  box-shadow: 0 28px 40px rgba(31, 81, 48, 0.16);
+}
+
+.service-card-reports h2 {
+  color: #1f5130;
+}
+
+.service-card-reports p,
+.service-card-reports .service-feature-list {
+  color: #325b3b;
+}
+
+.service-card-reports .service-card-link {
+  background: linear-gradient(135deg, #1f5130, #317039);
+}
+
+/* SECAO: responsividade da grade de servicos.
+   A partir deste breakpoint, cards passam a empilhar em uma unica coluna. */
 
 @media (max-width: 1100px) {
   .service-grid {

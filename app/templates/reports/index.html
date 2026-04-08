@@ -1,0 +1,315 @@
+{#
+  TEMPLATE: reports/index.html
+  FUNCAO: pagina de relatorios baseada em metas semanais por membro.
+  IMPACTO DE MUDANCAS:
+  - Alterar estrutura de metas afeta fluxo principal de acompanhamento semanal.
+  - Alterar campos do formulario exige alinhamento com validacao/persistencia no backend.
+#}
+{% extends "base.html" %}
+
+{% block content %}
+    <nav class="module-tab-nav report-tabs-nav" aria-label="Navegação de Relatórios">
+        <a href="#report-member-selector" class="module-tab-link is-active">
+            <ion-icon name="people-outline"></ion-icon>
+            Membros
+        </a>
+        <a href="#report-goals-panel" class="module-tab-link">
+            <ion-icon name="checkbox-outline"></ion-icon>
+            Metas da Semana
+        </a>
+    </nav>
+
+    <div class="page-header page-header-split">
+        <div>
+            <h1>Relatórios Semanais</h1>
+            <p class="lead">Selecione um membro e acompanhe as metas semanais por atividade e descrição.</p>
+        </div>
+    </div>
+
+    <section id="report-member-selector" class="content-panel report-members-hero-panel">
+        <div class="panel-header">
+            <div>
+                <h2>Membros</h2>
+                <p>Escolha um membro para abrir as metas da semana.</p>
+            </div>
+        </div>
+        <div class="panel-body">
+            {% if membersSummary.length %}
+                <ul class="report-member-photo-grid">
+                    {% for member in membersSummary %}
+                        <li>
+                            <a
+                                href="/relatorios?member_id={{ member.id }}{% if selectedProjectId %}&project_id={{ selectedProjectId }}{% endif %}"
+                                class="report-member-photo-card {{ 'is-active' if selectedMemberId == member.id else '' }}"
+                            >
+                                <span class="report-member-photo-avatar" aria-hidden="true">
+                                    {% if member.photo %}
+                                        <img src="{{ urlFor('static', { filename: 'uploads/' ~ member.photo }) }}" alt="">
+                                    {% else %}
+                                        <ion-icon name="person-outline"></ion-icon>
+                                    {% endif %}
+                                </span>
+                                <span class="report-member-photo-name">{{ member.name }}</span>
+                            </a>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="text-muted">Nenhum membro encontrado.</p>
+            {% endif %}
+        </div>
+    </section>
+
+    <section id="report-goals-panel" class="content-panel report-goals-panel">
+        <div class="panel-header">
+            <div>
+                <h2>Metas da Semana</h2>
+                <p>
+                    {% if selectedMember %}
+                        Atrasadas ficam no topo em vermelho. Prioridade automática pelos itens mais antigos não concluídos.
+                    {% else %}
+                        Selecione um membro para visualizar e organizar as metas da semana.
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+        <div class="panel-body">
+            {% if selectedMember and reportProjectOptions.length %}
+                <div class="report-member-projects">
+                    <strong>Projetos do membro</strong>
+                    <ul class="report-member-project-chip-list">
+                        {% for project in reportProjectOptions %}
+                            <li>
+                                <a
+                                    href="/relatorios?member_id={{ selectedMember.id }}&project_id={{ project.id }}#report-goals-panel"
+                                    class="report-member-project-chip {{ 'is-active' if selectedProjectId == project.id else '' }}"
+                                >
+                                    <span
+                                        class="report-member-project-chip-dot"
+                                        style="background-color: {{ project.primary_color }};"
+                                        aria-hidden="true"
+                                    ></span>
+                                    {{ project.name }}
+                                </a>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
+
+            {% if selectedMember %}
+                <div class="report-goal-section-header">
+                    <h3>Quadro Scrum da Semana</h3>
+                </div>
+                <div class="report-scrum-strip">
+                    <span class="report-scrum-chip">Sprint da semana: {{ currentWeekStart | formatDate }}</span>
+                </div>
+                <div class="report-kanban-board">
+                    <section class="report-kanban-column report-kanban-open">
+                        <header class="report-kanban-column-header">
+                            <h4>Em Execução</h4>
+                            <span>{{ openPendingGoals.length }}</span>
+                        </header>
+                        {% if openPendingGoals.length %}
+                            <ul class="report-goal-list">
+                                {% for goal in openPendingGoals %}
+                                    <li class="report-goal-item" style="--goal-project-color: {{ goal.project.primary_color }}; background-color: {{ goal.project.primary_color }}14; border-color: {{ goal.project.primary_color }}44;">
+                                        {% if goal.can_manage %}
+                                            <form action="/relatorios/goals/{{ goal.id }}/update#report-goals-panel" method="post" class="report-goal-row report-goal-row-kanban" novalidate>
+                                                <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+                                                <div class="report-goal-activity-col">
+                                                    <label class="report-goal-checkline">
+                                                        <input type="checkbox" name="is_completed" value="1" {% if goal.is_completed %}checked{% endif %}>
+                                                        <input type="text" name="activity" value="{{ goal.activity }}" class="form-control">
+                                                    </label>
+                                                    <small>
+                                                        <span class="report-goal-project-tag"><span class="report-goal-project-dot" aria-hidden="true"></span>{{ goal.project.name }}</span>
+                                                        <span>· Semana {{ goal.week_start | formatDate }}</span>
+                                                    </small>
+                                                </div>
+                                                <div class="report-goal-description-col">
+                                                    <textarea name="description" rows="3" class="form-control">{{ goal.description }}</textarea>
+                                                    <div class="form-actions">
+                                                        <button type="submit" class="btn-submit report-goal-save-button">Salvar</button>
+                                                    </div>
+                                                </div>
+                                            </form>
+                                        {% else %}
+                                            <div class="report-goal-row report-goal-row-readonly report-goal-row-kanban">
+                                                <div class="report-goal-activity-col">
+                                                    <div class="report-goal-checkline">
+                                                        <input type="checkbox" disabled {% if goal.is_completed %}checked{% endif %}>
+                                                        <strong>{{ goal.activity }}</strong>
+                                                    </div>
+                                                    <small>
+                                                        <span class="report-goal-project-tag"><span class="report-goal-project-dot" aria-hidden="true"></span>{{ goal.project.name }}</span>
+                                                        <span>· Semana {{ goal.week_start | formatDate }}</span>
+                                                    </small>
+                                                </div>
+                                                <div class="report-goal-description-col">
+                                                    <p>{{ goal.description if goal.description else 'Sem descrição registrada.' }}</p>
+                                                </div>
+                                            </div>
+                                        {% endif %}
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        {% else %}
+                            <p class="report-kanban-empty">Nenhuma em andamento.</p>
+                        {% endif %}
+                    </section>
+
+                    <section class="report-kanban-column report-kanban-completed">
+                        <header class="report-kanban-column-header">
+                            <h4>Realizados</h4>
+                            <span>{{ completedGoals.length }}</span>
+                        </header>
+                        {% if completedGoals.length %}
+                            <ul class="report-goal-list report-goal-list-completed">
+                                {% for goal in completedGoals %}
+                                    <li class="report-goal-item report-goal-item-completed" style="--goal-project-color: {{ goal.project.primary_color }}; background-color: {{ goal.project.primary_color }}12; border-color: {{ goal.project.primary_color }}3f;">
+                                        <div class="report-goal-row report-goal-row-readonly report-goal-row-kanban">
+                                            <div class="report-goal-activity-col">
+                                                <div class="report-goal-checkline">
+                                                    <input type="checkbox" checked disabled>
+                                                    <strong>{{ goal.activity }}</strong>
+                                                </div>
+                                                <small>
+                                                    <span class="report-goal-project-tag"><span class="report-goal-project-dot" aria-hidden="true"></span>{{ goal.project.name }}</span>
+                                                    <span>· Semana {{ goal.week_start | formatDate }}</span>
+                                                    {% if goal.completed_at %}<span class="report-goal-done-at">Concluída em {{ goal.completed_at | formatDateTime }}</span>{% endif %}
+                                                </small>
+                                            </div>
+                                            <div class="report-goal-description-col">
+                                                <p>{{ goal.description if goal.description else 'Sem descrição registrada.' }}</p>
+                                            </div>
+                                        </div>
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        {% else %}
+                            <p class="report-kanban-empty">Nenhuma encerrada ainda.</p>
+                        {% endif %}
+                    </section>
+
+                    <section class="report-kanban-column report-kanban-overdue">
+                        <header class="report-kanban-column-header">
+                            <h4>Atrasadas:</h4>
+                            <span>{{ overduePendingGoals.length }}</span>
+                        </header>
+                        {% if overduePendingGoals.length %}
+                            <ul class="report-goal-list">
+                                {% for goal in overduePendingGoals %}
+                                    <li class="report-goal-item is-overdue" style="--goal-project-color: {{ goal.project.primary_color }};">
+                                        {% if goal.can_manage %}
+                                            <form action="/relatorios/goals/{{ goal.id }}/update#report-goals-panel" method="post" class="report-goal-row report-goal-row-kanban" novalidate>
+                                                <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+                                                <div class="report-goal-activity-col">
+                                                    <label class="report-goal-checkline">
+                                                        <input type="checkbox" name="is_completed" value="1" {% if goal.is_completed %}checked{% endif %}>
+                                                        <input type="text" name="activity" value="{{ goal.activity }}" class="form-control">
+                                                    </label>
+                                                    <small>
+                                                        <span class="report-goal-project-tag"><span class="report-goal-project-dot" aria-hidden="true"></span>{{ goal.project.name }}</span>
+                                                        <span>· Semana {{ goal.week_start | formatDate }}</span>
+                                                        <span class="report-goal-flag">Atrasada</span>
+                                                    </small>
+                                                </div>
+                                                <div class="report-goal-description-col">
+                                                    <textarea name="description" rows="3" class="form-control">{{ goal.description }}</textarea>
+                                                    <div class="form-actions">
+                                                        <button type="submit" class="btn-submit report-goal-save-button">Salvar</button>
+                                                    </div>
+                                                </div>
+                                            </form>
+                                        {% else %}
+                                            <div class="report-goal-row report-goal-row-readonly report-goal-row-kanban">
+                                                <div class="report-goal-activity-col">
+                                                    <div class="report-goal-checkline">
+                                                        <input type="checkbox" disabled {% if goal.is_completed %}checked{% endif %}>
+                                                        <strong>{{ goal.activity }}</strong>
+                                                    </div>
+                                                    <small>
+                                                        <span class="report-goal-project-tag"><span class="report-goal-project-dot" aria-hidden="true"></span>{{ goal.project.name }}</span>
+                                                        <span>· Semana {{ goal.week_start | formatDate }}</span>
+                                                        <span class="report-goal-flag">Atrasada</span>
+                                                    </small>
+                                                </div>
+                                                <div class="report-goal-description-col">
+                                                    <p>{{ goal.description if goal.description else 'Sem descrição registrada.' }}</p>
+                                                </div>
+                                            </div>
+                                        {% endif %}
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        {% else %}
+                            <p class="report-kanban-empty">Nenhuma atrasada.</p>
+                        {% endif %}
+                    </section>
+                </div>
+
+                {% if canCreateGoalsForSelectedMember %}
+                    <details class="report-goal-create-details" {% if goalFormErrors.projectId or goalFormErrors.activity or goalFormErrors.description %}open{% endif %}>
+                        <summary>Adicionar Nova Meta Da Semana</summary>
+                        <form action="/relatorios/goals/create#report-goals-panel" method="post" class="portal-form-grid report-goal-create-form" novalidate>
+                            <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+                            <input type="hidden" name="member_id" value="{{ selectedMember.id }}">
+                            <div class="form-group form-group-full">
+                                <label class="form-label" for="goal_project_id">Projeto</label>
+                                <select id="goal_project_id" name="project_id" class="form-control">
+                                    <option value="">Selecione um projeto</option>
+                                    {% for project in reportProjectOptions %}
+                                        <option value="{{ project.id }}" {% if goalFormData.projectId == (project.id ~ '') or goalFormData.projectId == project.id %}selected{% endif %}>
+                                            {{ project.name }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                                {% if goalFormErrors.projectId %}
+                                    <ul class="errors form-error-list">
+                                        {% for error in goalFormErrors.projectId %}<li>{{ error }}</li>{% endfor %}
+                                    </ul>
+                                {% endif %}
+                            </div>
+
+                            <div class="report-goal-grid-header" role="presentation">
+                                <span>Atividades</span>
+                                <span>Descrição</span>
+                            </div>
+
+                            <div class="report-goal-create-row">
+                                <div class="report-goal-create-activity">
+                                    <label class="report-goal-checkline" for="goal_activity">
+                                        <input id="goal_is_completed" type="checkbox" name="is_completed" value="1" {% if goalFormData.isCompleted %}checked{% endif %}>
+                                        <input id="goal_activity" name="activity" class="form-control" value="{{ goalFormData.activity }}" placeholder="Ex.: Falar com o professor Fulano">
+                                    </label>
+                                    {% if goalFormErrors.activity %}
+                                        <ul class="errors form-error-list">
+                                            {% for error in goalFormErrors.activity %}<li>{{ error }}</li>{% endfor %}
+                                        </ul>
+                                    {% endif %}
+                                    <small class="form-hint">Marque o checkbox se já estiver concluída.</small>
+                                </div>
+                                <div class="report-goal-create-description">
+                                    <label class="form-label" for="goal_description">Descrição (Opcional)</label>
+                                    <textarea id="goal_description" name="description" rows="3" class="form-control" placeholder="Feita parcialmente, dificuldades, próximos passos...">{{ goalFormData.description }}</textarea>
+                                    {% if goalFormErrors.description %}
+                                        <ul class="errors form-error-list">
+                                            {% for error in goalFormErrors.description %}<li>{{ error }}</li>{% endfor %}
+                                        </ul>
+                                    {% endif %}
+                                    <small class="form-hint">Pode deixar em branco e completar depois.</small>
+                                </div>
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" class="btn-submit">Adicionar Meta</button>
+                            </div>
+                        </form>
+                    </details>
+                {% endif %}
+            {% else %}
+                <p class="text-muted">Selecione um membro para exibir as metas da semana.</p>
+            {% endif %}
+        </div>
+    </section>
+{% endblock %}

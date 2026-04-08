@@ -1,3 +1,12 @@
+/*
+ * ARQUIVO: custom_styles.css
+ * FUNCAO: estilos utilitarios e componentes compartilhados entre modulos (flash, tabelas, formularios e cards).
+ * IMPACTO DE MUDANCAS:
+ * - Ajustes aqui podem causar regressao visual em varias paginas ao mesmo tempo.
+ * - Antes de alterar classe reutilizada, verificar ocorrencias nos templates para evitar efeitos colaterais.
+ */
+/* SECAO: mensagens globais de feedback (flash success/error/info/warning). */
+
 .flash-messages {
   list-style: none;
   padding: 0;
@@ -39,6 +48,8 @@
   border-color: rgba(245, 158, 11, 0.14);
 }
 
+/* SECAO: indicadores de perfil de usuario exibidos na interface. */
+
 .role-chip {
   display: inline-flex;
   align-items: center;
@@ -64,6 +75,8 @@
   max-width: 1120px;
   margin: 0 auto;
 }
+
+/* SECAO: abas de navegacao do modulo de atas. */
 
 .module-tab-nav {
   display: flex;
@@ -97,6 +110,8 @@
   background: linear-gradient(135deg, #1540b8, #2f7df6);
   border-color: transparent;
 }
+
+/* SECAO: cabecalhos de pagina (titulo, subtitulo e badge lateral). */
 
 .page-header {
   margin-bottom: 20px;
@@ -135,6 +150,8 @@
   box-shadow: 0 14px 24px rgba(15, 23, 42, 0.05);
 }
 
+/* SECAO: containers principais de conteudo (cards/paineis reutilizaveis). */
+
 .content-panel {
   background: rgba(255, 253, 249, 0.8);
   border: 1px solid rgba(148, 163, 184, 0.16);
@@ -167,6 +184,110 @@ body.section-presenca .form-control:focus {
   border-color: rgba(109, 40, 217, 0.8);
   box-shadow: 0 0 0 4px rgba(196, 181, 253, 0.45);
 }
+
+/* SECAO: tema especifico do modulo Relatorios.
+   Estes overrides so valem quando o body estiver com classe section-reports. */
+
+body.section-reports .page-badge {
+  background: rgba(49, 112, 57, 0.14);
+  border-color: rgba(49, 112, 57, 0.32);
+  color: #1f5130;
+}
+
+body.section-reports .panel-header h2 {
+  color: #1f5130;
+}
+
+body.section-reports .panel-header p {
+  color: #2f6a3a;
+}
+
+body.section-reports .form-control {
+  background: rgba(49, 112, 57, 0.08);
+  border-color: rgba(49, 112, 57, 0.26);
+}
+
+body.section-reports .form-control:focus {
+  border-color: rgba(49, 112, 57, 0.74);
+  box-shadow: 0 0 0 4px rgba(49, 112, 57, 0.18);
+}
+
+body.section-reports .btn-submit {
+  background: linear-gradient(135deg, #317039, #3f8f48);
+  box-shadow: 0 18px 30px rgba(49, 112, 57, 0.28);
+}
+
+body.section-reports .module-tab-link.is-active {
+  color: #f8fbff;
+  background: linear-gradient(135deg, #1f5130, #317039);
+  border-color: transparent;
+  box-shadow: 0 16px 28px rgba(31, 81, 48, 0.26);
+}
+
+body.section-reports .report-member-list li.is-active a {
+  background: rgba(49, 112, 57, 0.12);
+  border-color: rgba(49, 112, 57, 0.38);
+  box-shadow: 0 10px 18px rgba(31, 81, 48, 0.14);
+}
+
+body.section-reports .report-status-in_progress {
+  color: #1f5130;
+  background: rgba(49, 112, 57, 0.14);
+  border-color: rgba(49, 112, 57, 0.32);
+}
+
+body.section-reports .report-status-completed {
+  color: #164226;
+  background: rgba(22, 66, 38, 0.16);
+  border-color: rgba(22, 66, 38, 0.3);
+}
+
+body.section-reports .content-panel {
+  background: linear-gradient(180deg, rgba(244, 252, 246, 0.88), rgba(255, 255, 255, 0.84));
+  border-color: rgba(49, 112, 57, 0.2);
+  box-shadow: 0 24px 40px rgba(31, 81, 48, 0.08);
+}
+
+body.section-reports .page-header h1 {
+  color: #1f5130;
+}
+
+body.section-reports .page-header .lead {
+  color: #3b6045;
+}
+
+body.section-reports .report-entry-item {
+  border-color: rgba(49, 112, 57, 0.2);
+  box-shadow: 0 14px 22px rgba(31, 81, 48, 0.08);
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+}
+
+body.section-reports .report-entry-item:hover {
+  transform: translateY(-2px);
+  border-color: rgba(49, 112, 57, 0.34);
+  box-shadow: 0 18px 30px rgba(31, 81, 48, 0.14);
+}
+
+body.section-reports .report-project-bar {
+  width: 12px;
+  border-radius: 999px;
+  box-shadow: 0 0 0 1px rgba(21, 38, 27, 0.18);
+}
+
+body.section-reports .report-entry-header strong {
+  color: #1f5130;
+}
+
+body.section-reports .report-entry-item p {
+  color: #2d4f34;
+}
+
+body.section-reports .report-members-panel .panel-header,
+body.section-reports .report-entries-panel .panel-header {
+  background: linear-gradient(180deg, rgba(49, 112, 57, 0.12), rgba(49, 112, 57, 0.03));
+}
+
+/* SECAO: componentes do modulo Presenca (botao e caixa de retorno). */
 
 .presence-submit {
   background: linear-gradient(135deg, #6d28d9, #a855f7);
@@ -218,6 +339,8 @@ body.section-almox .form-control:focus {
   border-color: rgba(202, 138, 4, 0.8);
   box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.22);
 }
+
+/* SECAO: estrutura padrao dos paineis (header/body) e acoes principais. */
 
 .portal-form-card {
   padding: 0;
@@ -283,6 +406,8 @@ body.section-almox .form-control:focus {
   color: #516074;
   border: 1px solid rgba(148, 163, 184, 0.18);
 }
+
+/* SECAO: tabelas padrao (listagens de membros, projetos e afins). */
 
 .styled-table {
   width: 100%;
@@ -382,6 +507,8 @@ body.section-almox .form-control:focus {
   line-height: 1.65;
 }
 
+/* SECAO: formularios compartilhados (inputs, hints, erros e acoes). */
+
 .portal-form-grid {
   display: grid;
   gap: 18px;
@@ -453,6 +580,8 @@ body.section-almox .form-control:focus {
   gap: 4px;
 }
 
+/* SECAO: selecao de membros e justificativas em listas com checkbox. */
+
 .checkbox-list-container,
 .member-select-panel {
   padding: 16px;
@@ -497,6 +626,8 @@ body.section-almox .form-control:focus {
   gap: 10px;
 }
 
+/* SECAO: ajustes especificos de cadastro de projetos (papel, cor e logo). */
+
 .member-select-list {
   list-style: none;
   padding: 0;
@@ -508,6 +639,35 @@ body.section-almox .form-control:focus {
 .member-select-list li {
   padding: 10px 0;
   border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.member-role-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.coordinator-inline {
+  font-size: 0.92rem;
+  color: #44546c;
+}
+
+.form-control-color {
+  min-height: 46px;
+  width: 78px;
+  padding: 4px;
+  border-radius: 12px;
+}
+
+.project-color-dot {
+  display: inline-block;
+  width: 0.85rem;
+  height: 0.85rem;
+  border-radius: 999px;
+  margin-right: 10px;
+  vertical-align: middle;
+  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.15);
 }
 
 .member-select-list li:last-child {
@@ -533,6 +693,674 @@ body.section-almox .form-control:focus {
   background: #fff;
   box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.12);
 }
+
+.member-photo-field {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 14px 16px;
+  border-radius: 20px;
+  background: rgba(248, 250, 252, 0.82);
+}
+
+.member-photo-preview {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  border: 1px solid rgba(148, 163, 184, 0.32);
+  color: #5a6b81;
+  font-size: 1.8rem;
+  overflow: hidden;
+}
+
+.member-photo-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.member-photo-inputs {
+  min-width: min(100%, 300px);
+  flex: 1;
+}
+
+.member-photo-clear-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  color: #3f4d61;
+  font-size: 0.9rem;
+}
+
+/* SECAO: layout e componentes da tela de relatorios semanais. */
+
+.report-layout {
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.report-tabs-nav {
+  margin-bottom: 16px;
+}
+
+.report-members-hero-panel {
+  margin-bottom: 20px;
+}
+
+.report-goals-panel {
+  margin-bottom: 20px;
+  overflow: hidden;
+}
+
+.report-member-photo-grid {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 14px;
+}
+
+.report-member-photo-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 8px;
+  border-radius: 14px;
+  text-decoration: none;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  background: rgba(255, 255, 255, 0.84);
+  transition: transform 140ms ease, border-color 140ms ease, box-shadow 140ms ease, background-color 140ms ease;
+}
+
+.report-member-photo-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(49, 112, 57, 0.36);
+  box-shadow: 0 10px 18px rgba(31, 81, 48, 0.14);
+}
+
+.report-member-photo-card.is-active {
+  border-color: rgba(49, 112, 57, 0.5);
+  background: rgba(49, 112, 57, 0.1);
+  box-shadow: 0 0 0 2px rgba(49, 112, 57, 0.12);
+}
+
+.report-member-photo-avatar {
+  width: 66px;
+  height: 66px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  color: #5a6b81;
+  font-size: 1.3rem;
+  overflow: hidden;
+}
+
+.report-member-photo-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.report-member-photo-name {
+  display: block;
+  max-width: 100%;
+  text-align: center;
+  font-size: 0.78rem;
+  line-height: 1.2;
+  color: #213047;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.report-member-projects {
+  margin-bottom: 16px;
+}
+
+.report-member-projects strong {
+  display: block;
+  margin-bottom: 8px;
+  color: #1f5130;
+  font-size: 0.92rem;
+}
+
+.report-member-project-chip-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.report-member-project-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(49, 112, 57, 0.25);
+  background: rgba(255, 255, 255, 0.85);
+  color: #1f5130;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.report-member-project-chip.is-active {
+  background: rgba(49, 112, 57, 0.14);
+  border-color: rgba(49, 112, 57, 0.45);
+}
+
+.report-member-project-chip-dot {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.2);
+}
+
+.report-goal-create-form {
+  margin-bottom: 16px;
+}
+
+.report-goal-create-row {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.95fr) minmax(0, 1.05fr);
+  gap: 12px;
+}
+
+.report-kanban-board {
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.82fr) minmax(0, 0.66fr);
+  gap: 14px;
+  margin-top: 12px;
+}
+
+.report-kanban-column {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(49, 112, 57, 0.18);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.5));
+  padding: 12px;
+  min-height: 520px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+  backdrop-filter: blur(6px);
+}
+
+.report-kanban-column::before {
+  content: "";
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  top: 0;
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(49, 112, 57, 0.35);
+}
+
+.report-kanban-open::before {
+  background: rgba(41, 112, 165, 0.55);
+}
+
+.report-kanban-completed::before {
+  background: rgba(22, 101, 52, 0.55);
+}
+
+.report-kanban-overdue {
+  max-width: 360px;
+  border-color: rgba(220, 38, 38, 0.32);
+  background: linear-gradient(180deg, rgba(254, 242, 242, 0.75), rgba(254, 242, 242, 0.5));
+}
+
+.report-kanban-overdue::before {
+  background: rgba(220, 38, 38, 0.6);
+}
+
+.report-kanban-column-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.report-kanban-column-header h4 {
+  margin: 0;
+  font-size: 0.95rem;
+  color: #183f27;
+}
+
+.report-kanban-column-header span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  border: 1px solid rgba(49, 112, 57, 0.22);
+  background: rgba(49, 112, 57, 0.08);
+  color: #1f5130;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.report-kanban-empty {
+  margin: 0;
+  color: #5b697c;
+  font-size: 0.88rem;
+}
+
+.report-goal-create-activity,
+.report-goal-create-description {
+  padding: 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(49, 112, 57, 0.16);
+  background: rgba(49, 112, 57, 0.05);
+}
+
+.report-goal-grid-header {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.95fr) minmax(0, 1.05fr);
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: rgba(49, 112, 57, 0.08);
+  border: 1px solid rgba(49, 112, 57, 0.16);
+  color: #2a5832;
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 10px;
+}
+
+.report-goal-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.report-goal-item {
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-left: 6px solid var(--goal-project-color, rgba(49, 112, 57, 0.35));
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 11px;
+  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.06);
+  transition: transform 140ms ease, box-shadow 140ms ease;
+}
+
+.report-goal-item:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 18px rgba(15, 23, 42, 0.08);
+}
+
+.report-goal-item.is-overdue {
+  border-color: rgba(220, 38, 38, 0.42);
+  background: rgba(254, 226, 226, 0.82);
+  box-shadow: 0 8px 16px rgba(220, 38, 38, 0.09);
+}
+
+.report-goal-row {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.95fr) minmax(0, 1.05fr);
+  gap: 12px;
+}
+
+.report-goal-row-kanban {
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.report-goal-checkline {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.report-goal-checkline input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+}
+
+.report-goal-activity-col small {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: #526176;
+}
+
+.report-goal-project-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(49, 112, 57, 0.28);
+  background: rgba(49, 112, 57, 0.12);
+  color: #1f5130;
+  font-weight: 700;
+}
+
+.report-goal-project-dot {
+  width: 0.62rem;
+  height: 0.62rem;
+  border-radius: 999px;
+  background: var(--goal-project-color, #317039);
+  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.2);
+}
+
+.report-goal-flag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  color: #b91c1c;
+  border: 1px solid rgba(220, 38, 38, 0.34);
+  background: rgba(254, 226, 226, 0.86);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.report-goal-description-col p {
+  margin: 0;
+  color: #334155;
+  line-height: 1.55;
+}
+
+.report-goal-save-button {
+  min-height: 36px;
+  padding: 0.5rem 0.9rem;
+  font-size: 0.84rem;
+}
+
+.report-goal-list-completed .report-goal-item {
+  opacity: 0.95;
+}
+
+.report-goal-item-completed .report-goal-checkline strong {
+  text-decoration: line-through;
+  color: #334155;
+}
+
+.report-goal-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 16px;
+  margin-bottom: 8px;
+}
+
+.report-goal-section-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  color: #1f5130;
+}
+
+.report-goal-section-count {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid rgba(49, 112, 57, 0.25);
+  background: rgba(49, 112, 57, 0.08);
+  color: #1f5130;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.report-scrum-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0 14px;
+}
+
+.report-scrum-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 11px;
+  border-radius: 999px;
+  border: 1px solid rgba(49, 112, 57, 0.3);
+  background: rgba(49, 112, 57, 0.11);
+  color: #1f5130;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.report-goal-completed-details,
+.report-goal-create-details {
+  margin-top: 10px;
+}
+
+.report-goal-completed-details > summary,
+.report-goal-create-details > summary {
+  cursor: pointer;
+  list-style: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(49, 112, 57, 0.22);
+  background: rgba(49, 112, 57, 0.1);
+  color: #1f5130;
+  font-weight: 700;
+}
+
+.report-goal-completed-details > summary::-webkit-details-marker,
+.report-goal-create-details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.report-goal-completed-details[open] > summary,
+.report-goal-create-details[open] > summary {
+  margin-bottom: 10px;
+}
+
+.report-goal-create-details[open] {
+  padding-top: 2px;
+}
+
+.report-goal-done-at {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(22, 101, 52, 0.28);
+  background: rgba(220, 252, 231, 0.72);
+  color: #166534;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.report-kanban-column .report-goal-list {
+  flex: 1;
+  min-height: 0;
+  max-height: 460px;
+  overflow: auto;
+  padding-right: 6px;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%);
+}
+
+.report-kanban-overdue .report-goal-list {
+  max-height: 360px;
+}
+
+.report-kanban-completed .report-goal-list::-webkit-scrollbar,
+.report-kanban-overdue .report-goal-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.report-kanban-completed .report-goal-list::-webkit-scrollbar-thumb,
+.report-kanban-overdue .report-goal-list::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(90, 107, 129, 0.42);
+}
+
+.report-member-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.report-member-list li a {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  text-decoration: none;
+  color: #162032;
+  background: rgba(248, 250, 252, 0.84);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+}
+
+.report-member-list li.is-active a {
+  background: rgba(37, 99, 235, 0.1);
+  border-color: rgba(37, 99, 235, 0.36);
+}
+
+.report-member-main {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.report-member-main strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.report-member-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  color: #5a6b81;
+  font-size: 1rem;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.report-member-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.report-entry-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 14px;
+}
+
+.report-entry-item {
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 18px;
+  padding: 14px;
+  background: #fff;
+}
+
+.report-entry-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.report-entry-item p {
+  margin: 8px 0 10px;
+  line-height: 1.6;
+  color: #314156;
+}
+
+.report-entry-content {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr);
+  gap: 12px;
+  align-items: stretch;
+}
+
+.report-project-bar {
+  border-radius: 999px;
+  min-height: 100%;
+  display: block;
+}
+
+.report-entry-main {
+  min-width: 0;
+}
+
+.report-edit-form {
+  margin-top: 12px;
+}
+
+.report-status-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 3px 10px;
+  margin-left: 10px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border: 1px solid transparent;
+}
+
+.report-status-completed {
+  color: #176534;
+  background: rgba(34, 197, 94, 0.12);
+  border-color: rgba(34, 197, 94, 0.26);
+}
+
+.report-status-in_progress {
+  color: #1d4ed8;
+  background: rgba(59, 130, 246, 0.12);
+  border-color: rgba(59, 130, 246, 0.26);
+}
+
+.report-status-blocked {
+  color: #9a3412;
+  background: rgba(249, 115, 22, 0.14);
+  border-color: rgba(249, 115, 22, 0.28);
+}
+
+/* SECAO: home do Gestor de Atas (hero, resumo e lista recente). */
 
 .ata-hero {
   display: grid;
@@ -663,6 +1491,8 @@ body.section-almox .form-control:focus {
   color: #fff;
 }
 
+/* SECAO: cartoes de mensagem e estados de erro/aviso. */
+
 .message-card {
   padding: 20px 22px;
   border-radius: 24px;
@@ -698,6 +1528,8 @@ body.section-almox .form-control:focus {
   color: #991b1b;
 }
 
+/* SECAO: responsividade dos componentes compartilhados. */
+
 @media (max-width: 980px) {
   .ata-hero {
     grid-template-columns: 1fr;
@@ -705,6 +1537,25 @@ body.section-almox .form-control:focus {
 
   .checkbox-list li {
     grid-template-columns: 1fr;
+  }
+
+  .report-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .report-goal-grid-header,
+  .report-goal-row,
+  .report-goal-create-row {
+    grid-template-columns: 1fr;
+  }
+
+  .report-kanban-board {
+    grid-template-columns: 1fr;
+  }
+
+  .report-goal-section-header {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
 
@@ -720,6 +1571,11 @@ body.section-almox .form-control:focus {
 
   .actions-cell {
     justify-content: flex-start;
+  }
+
+  .member-role-row {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
   .panel-header,

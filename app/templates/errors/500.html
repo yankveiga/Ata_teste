@@ -1,9 +1,19 @@
+{#
+  TEMPLATE: errors/500.html
+  FUNCAO: mensagem padrao de falha interna para o usuario.
+  IMPACTO DE MUDANCAS:
+  - Alterar conteudo deve manter clareza sem expor detalhes sensiveis de infraestrutura.
+#}
 {% extends "base.html" %}
 
 {% block content %}
+    {# SECAO: titulo da falha interna para informar indisponibilidade temporaria. #}
+
     <div class="page-header">
         <h1>Erro Interno do Servidor (500)</h1>
     </div>
+    {# SECAO: mensagem de contingencia sem expor detalhes internos do servidor. #}
+
     <div class="message-card message-card-danger">
         <p>Ocorreu um erro inesperado no servidor ao processar sua solicitação.</p>
         <p>Por favor, tente novamente mais tarde ou volte para a <a href="{{ urlFor('services') }}">central de serviços</a>.</p>

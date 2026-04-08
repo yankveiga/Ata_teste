@@ -1,17 +1,28 @@
+/*
+ * ARQUIVO: almoxarifado.css
+ * FUNCAO: estilos especificos do modulo Almoxarifado (cabecalho, abas, tabelas e formularios).
+ * IMPACTO DE MUDANCAS:
+ * - Alterar classes de estado (ex.: is-active) afeta troca de abas e visibilidade dos paineis.
+ * - Mudancas de contraste e cores impactam leitura de dados operacionais no dia a dia.
+ */
+/* SECAO: tokens e estrutura global do modulo Almoxarifado. */
+
 .almox-page {
   --almox-accent: #ff9900;
-  --almox-accent-dark: #b26f00;
-  --almox-accent-strong: #cc7f00;
-  --almox-accent-soft: #fff4d8;
-  --almox-accent-border: rgba(255, 153, 0, 0.18);
+  --almox-accent-dark: #c17200;
+  --almox-accent-strong: #e28700;
+  --almox-accent-soft: #fff0cc;
+  --almox-accent-border: rgba(255, 153, 0, 0.24);
   --almox-surface: rgba(255, 250, 247, 0.84);
   --almox-surface-alt: #fff6f1;
-  --almox-text: #261710;
-  --almox-muted: #77645d;
+  --almox-text: #3a2611;
+  --almox-muted: #7a6148;
   --almox-line: rgba(138, 47, 22, 0.12);
   display: grid;
   gap: 24px;
 }
+
+/* SECAO: cabecalho da interface (titulo, resumo e acoes de acesso rapido). */
 
 .almox-header {
   display: flex;
@@ -21,10 +32,10 @@
   padding: 30px;
   border-radius: 28px;
   background:
-    radial-gradient(circle at top right, rgba(255, 188, 153, 0.22), transparent 34%),
-    linear-gradient(135deg, #1a1725 0%, #523d16 44%, #ff9900 100%);
-  color: #fffaf3;
-  box-shadow: 0 20px 40px rgba(33, 21, 15, 0.18);
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.45), transparent 36%),
+    linear-gradient(135deg, #fff7e8 0%, #ffdca6 46%, #ff9900 100%);
+  color: #3a2611;
+  box-shadow: 0 20px 40px rgba(193, 114, 0, 0.22);
 }
 
 .almox-eyebrow {
@@ -33,7 +44,7 @@
   letter-spacing: 0.08em;
   font-size: 0.78rem;
   font-weight: 700;
-  color: rgba(255, 250, 243, 0.7);
+  color: rgba(73, 43, 18, 0.72);
 }
 
 .almox-header h1 {
@@ -45,7 +56,7 @@
   margin: 0;
   max-width: 62ch;
   line-height: 1.75;
-  color: rgba(255, 250, 243, 0.92);
+  color: rgba(58, 38, 17, 0.9);
 }
 
 .almox-header-side {
@@ -60,12 +71,14 @@
   justify-content: center;
   padding: 0.85rem 1.05rem;
   border-radius: 999px;
-  background: rgba(255, 250, 243, 0.12);
-  color: #fffaf3;
+  background: rgba(255, 255, 255, 0.65);
+  color: #5a3408;
   text-decoration: none;
   font-weight: 700;
-  border: 1px solid rgba(255, 250, 243, 0.16);
+  border: 1px solid rgba(193, 114, 0, 0.24);
 }
+
+/* SECAO: navegacao por abas (estado ativo controlado tambem por JS). */
 
 .almox-tab-nav {
   display: flex;
@@ -88,10 +101,12 @@
 }
 
 .almox-tab-link.is-active {
-  color: #fffaf3;
+  color: #fffef9;
   background: linear-gradient(135deg, var(--almox-accent-dark), var(--almox-accent));
   border-color: transparent;
 }
+
+/* SECAO: controle de visibilidade dos paineis por aba. */
 
 .almox-tab-panel {
   display: none;
@@ -101,6 +116,8 @@
   display: grid;
   gap: 24px;
 }
+
+/* SECAO: cards de resumo e composicao de paineis. */
 
 .almox-card-grid {
   display: grid;
@@ -182,6 +199,8 @@
     var(--almox-surface);
 }
 
+/* SECAO: tabela e listas de dados operacionais. */
+
 .table-wrap {
   overflow-x: auto;
 }
@@ -254,6 +273,8 @@
   color: var(--almox-accent-dark);
 }
 
+/* SECAO: formularios de cadastro, retirada e movimentacao. */
+
 .stacked-form {
   display: grid;
   gap: 16px;
@@ -286,6 +307,8 @@
 .stacked-form textarea {
   resize: vertical;
 }
+
+/* SECAO: botoes de acao (primaria, secundaria e acoes destrutivas). */
 
 .primary-button,
 .secondary-button,
@@ -322,6 +345,8 @@
   background: #fde8e7;
   color: #9f2a21;
 }
+
+/* SECAO: feedback visual (erros, avisos e campos somente leitura). */
 
 .field-error {
   color: #b42318;
@@ -362,6 +387,9 @@
   margin: 0;
   color: var(--almox-muted);
 }
+
+/* SECAO: badges de status de estoque, tipo e emprestimo.
+   Alterar estas cores impacta interpretacao rapida do estado dos itens. */
 
 .stock-badge,
 .item-type-badge,
@@ -418,6 +446,8 @@
   color: #9f2a21;
 }
 
+/* SECAO: acoes inline em tabela (formularios compactos e pilha de botoes). */
+
 .compact-form {
   margin-bottom: 18px;
 }
@@ -445,6 +475,9 @@
   padding: 0.75rem 0.9rem;
   font-size: 0.92rem;
 }
+
+/* SECAO: responsividade geral do modulo.
+   Ajusta grade de cards, colunas e alinhamentos para telas menores. */
 
 @media (max-width: 1280px) {
   .almox-card-grid {

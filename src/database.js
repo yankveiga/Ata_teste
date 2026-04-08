@@ -1,3 +1,11 @@
+/*
+ * ARQUIVO: src/database.js
+ * FUNCAO: camada de persistencia SQLite (schema, consultas, insercoes e atualizacoes de dados de dominio).
+ * IMPACTO DE MUDANCAS:
+ * - Qualquer ajuste de schema exige compatibilidade com dados existentes e consultas ja usadas no app.
+ * - Mudancas em regras de normalizacao/validacao podem alterar dados gravados e relatorios gerados.
+ * - Mudancas em nomes de colunas/joins afetam telas, filtros e exportacoes.
+ */
 const fs = require("node:fs");
 const path = require("node:path");
 const { DatabaseSync } = require("node:sqlite");
@@ -6,11 +14,28 @@ const { config } = require("./config");
 const { firstNamesSummary } = require("./utils");
 
 let database;
+// SECAO: constantes de dominio e restricoes de valores aceitos no banco.
+
 const USER_ROLES = new Set(["admin", "common"]);
 const INVENTORY_TYPES = new Set(["stock", "patrimony"]);
+const DEFAULT_PROJECT_COLOR = "#0b6bcb";
+const REPORT_STATUSES = new Set(["completed", "in_progress", "blocked"]);
+
+// SECAO: normalizadores e utilitarios basicos usados antes de persistir dados.
 
 function normalizeInventoryType(value) {
   return INVENTORY_TYPES.has(value) ? value : "stock";
+}
+
+function normalizeProjectColor(value) {
+  const normalized = String(value || "").trim();
+  return /^#[0-9a-fA-F]{6}$/.test(normalized)
+    ? normalized.toLowerCase()
+    : DEFAULT_PROJECT_COLOR;
+}
+
+function normalizeReportStatus(value) {
+  return REPORT_STATUSES.has(value) ? value : "in_progress";
 }
 
 function toSqlDateTime(value) {
@@ -27,6 +52,8 @@ function addDaysToNow(days) {
   date.setDate(date.getDate() + days);
   return toSqlDateTime(date);
 }
+
+// SECAO: conexao SQLite e garantia incremental de schema.
 
 function getDb() {
   if (!database) {
@@ -60,19 +87,23 @@ function ensureSchema() {
       username TEXT NOT NULL UNIQUE,
       password_hash TEXT NOT NULL,
       name TEXT,
-      role TEXT NOT NULL DEFAULT 'admin'
+      role TEXT NOT NULL DEFAULT 'admin',
+      member_id INTEGER,
+      FOREIGN KEY (member_id) REFERENCES member(id)
     );
 
     CREATE TABLE IF NOT EXISTS member (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL UNIQUE,
+      photo TEXT,
       is_active INTEGER NOT NULL DEFAULT 1
     );
 
     CREATE TABLE IF NOT EXISTS project (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL UNIQUE,
-      logo TEXT
+      logo TEXT,
+      primary_color TEXT NOT NULL DEFAULT '${DEFAULT_PROJECT_COLOR}'
     );
 
     CREATE TABLE IF NOT EXISTS ata (
@@ -89,6 +120,7 @@ function ensureSchema() {
     CREATE TABLE IF NOT EXISTS project_members (
       project_id INTEGER NOT NULL,
       member_id INTEGER NOT NULL,
+      is_coordinator INTEGER NOT NULL DEFAULT 0,
       PRIMARY KEY (project_id, member_id),
       FOREIGN KEY (project_id) REFERENCES project(id),
       FOREIGN KEY (member_id) REFERENCES member(id)
@@ -109,6 +141,38 @@ function ensureSchema() {
       PRIMARY KEY (ata_id, member_id),
       FOREIGN KEY (ata_id) REFERENCES ata(id),
       FOREIGN KEY (member_id) REFERENCES member(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS report_entry (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      project_id INTEGER NOT NULL,
+      member_id INTEGER NOT NULL,
+      created_by_user_id INTEGER,
+      week_start TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'in_progress',
+      content TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT,
+      FOREIGN KEY (project_id) REFERENCES project(id),
+      FOREIGN KEY (member_id) REFERENCES member(id),
+      FOREIGN KEY (created_by_user_id) REFERENCES user(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS report_week_goal (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      member_id INTEGER NOT NULL,
+      project_id INTEGER NOT NULL,
+      created_by_user_id INTEGER,
+      week_start TEXT NOT NULL,
+      activity TEXT NOT NULL,
+      description TEXT NOT NULL DEFAULT '',
+      is_completed INTEGER NOT NULL DEFAULT 0,
+      completed_at TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT,
+      FOREIGN KEY (member_id) REFERENCES member(id),
+      FOREIGN KEY (project_id) REFERENCES project(id),
+      FOREIGN KEY (created_by_user_id) REFERENCES user(id)
     );
 
     CREATE TABLE IF NOT EXISTS estoque (
@@ -166,6 +230,14 @@ function ensureSchema() {
     CREATE INDEX IF NOT EXISTS ix_project_name ON project(name);
     CREATE INDEX IF NOT EXISTS ix_user_username ON user(username);
     CREATE INDEX IF NOT EXISTS ix_ata_meeting_datetime ON ata(meeting_datetime);
+    CREATE INDEX IF NOT EXISTS ix_report_entry_project_id ON report_entry(project_id);
+    CREATE INDEX IF NOT EXISTS ix_report_entry_member_id ON report_entry(member_id);
+    CREATE INDEX IF NOT EXISTS ix_report_entry_week_start ON report_entry(week_start);
+    CREATE INDEX IF NOT EXISTS ix_report_entry_created_at ON report_entry(created_at);
+    CREATE INDEX IF NOT EXISTS ix_report_week_goal_member_id ON report_week_goal(member_id);
+    CREATE INDEX IF NOT EXISTS ix_report_week_goal_project_id ON report_week_goal(project_id);
+    CREATE INDEX IF NOT EXISTS ix_report_week_goal_week_start ON report_week_goal(week_start);
+    CREATE INDEX IF NOT EXISTS ix_report_week_goal_completed ON report_week_goal(is_completed);
     CREATE INDEX IF NOT EXISTS ix_estoque_name ON estoque(name);
     CREATE INDEX IF NOT EXISTS ix_estoque_item_type ON estoque(item_type);
     CREATE INDEX IF NOT EXISTS ix_estoque_category_id ON estoque(category_id);
@@ -184,10 +256,18 @@ function ensureSchema() {
   ensureColumn("ata", "location_details", "TEXT");
   ensureColumn("user", "name", "TEXT");
   ensureColumn("user", "role", "TEXT NOT NULL DEFAULT 'admin'");
+  ensureColumn("user", "member_id", "INTEGER");
+  ensureColumn("member", "photo", "TEXT");
+  ensureColumn("report_entry", "status", "TEXT NOT NULL DEFAULT 'in_progress'");
   ensureColumn("estoque", "location", "TEXT");
   ensureColumn("estoque", "category_id", "INTEGER");
   ensureColumn("estoque", "location_id", "INTEGER");
   ensureColumn("estoque", "item_type", "TEXT NOT NULL DEFAULT 'stock'");
+  ensureColumn("project", "primary_color", `TEXT NOT NULL DEFAULT '${DEFAULT_PROJECT_COLOR}'`);
+  ensureColumn("project_members", "is_coordinator", "INTEGER NOT NULL DEFAULT 0");
+  getDb().exec(
+    "CREATE INDEX IF NOT EXISTS ix_project_members_project_coordinator ON project_members(project_id, is_coordinator)",
+  );
 
   db.prepare(
     `
@@ -252,7 +332,29 @@ function ensureSchema() {
       AND TRIM(location) <> ''
   `,
   ).run();
+
+  db.prepare(
+    `
+    UPDATE project
+    SET primary_color = CASE
+      WHEN primary_color GLOB '#[0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f]' THEN LOWER(primary_color)
+      ELSE ?
+    END
+  `,
+  ).run(DEFAULT_PROJECT_COLOR);
+
+  db.prepare(
+    `
+    UPDATE report_entry
+    SET status = CASE
+      WHEN status IN ('completed', 'in_progress', 'blocked') THEN status
+      ELSE 'in_progress'
+    END
+  `,
+  ).run();
 }
+
+// SECAO: transacoes e mapeadores de linhas (SQL -> objetos de dominio).
 
 function withTransaction(callback) {
   const db = getDb();
@@ -279,7 +381,9 @@ function mapMember(row) {
   return {
     id: row.id,
     name: row.name,
+    photo: row.photo || null,
     is_active: Boolean(row.is_active),
+    is_coordinator: Boolean(row.is_coordinator),
   };
 }
 
@@ -294,6 +398,8 @@ function mapUser(row) {
     username: row.username,
     password_hash: row.password_hash,
     name: row.name || row.username,
+    member_id: row.member_id || null,
+    member_name: row.member_name || null,
     role,
     is_admin: role === "admin",
   };
@@ -307,6 +413,7 @@ function mapProject(row) {
     id: row.id,
     name: row.name,
     logo: row.logo || null,
+    primary_color: normalizeProjectColor(row.primary_color),
   };
 }
 
@@ -322,6 +429,82 @@ function mapAta(row) {
     notes: row.notes || "",
     created_at: row.created_at || null,
     project_id: row.project_id,
+  };
+}
+
+function mapReportEntry(row) {
+  if (!row) {
+    return null;
+  }
+
+  return {
+    id: row.id,
+    project_id: row.project_id,
+    member_id: row.member_id,
+    created_by_user_id: row.created_by_user_id || null,
+    week_start: row.week_start,
+    status: normalizeReportStatus(row.status),
+    content: row.content || "",
+    created_at: row.created_at || null,
+    updated_at: row.updated_at || null,
+    project: {
+      id: row.project_id,
+      name: row.project_name,
+      logo: row.project_logo || null,
+      primary_color: normalizeProjectColor(row.project_primary_color),
+    },
+    member: {
+      id: row.member_id,
+      name: row.member_name,
+      photo: row.member_photo || null,
+      is_active: Boolean(row.member_is_active),
+    },
+    created_by_user: row.created_by_user_id
+      ? {
+          id: row.created_by_user_id,
+          username: row.created_by_username,
+          name: row.created_by_name || row.created_by_username,
+        }
+      : null,
+  };
+}
+
+function mapReportWeekGoal(row) {
+  if (!row) {
+    return null;
+  }
+
+  return {
+    id: row.id,
+    member_id: row.member_id,
+    project_id: row.project_id,
+    created_by_user_id: row.created_by_user_id || null,
+    week_start: row.week_start,
+    activity: row.activity || "",
+    description: row.description || "",
+    is_completed: Boolean(row.is_completed),
+    completed_at: row.completed_at || null,
+    created_at: row.created_at || null,
+    updated_at: row.updated_at || null,
+    project: {
+      id: row.project_id,
+      name: row.project_name,
+      logo: row.project_logo || null,
+      primary_color: normalizeProjectColor(row.project_primary_color),
+    },
+    member: {
+      id: row.member_id,
+      name: row.member_name,
+      photo: row.member_photo || null,
+      is_active: Boolean(row.member_is_active),
+    },
+    created_by_user: row.created_by_user_id
+      ? {
+          id: row.created_by_user_id,
+          username: row.created_by_username,
+          name: row.created_by_name || row.created_by_username,
+        }
+      : null,
   };
 }
 
@@ -391,9 +574,25 @@ function mapInventoryLoan(row) {
   };
 }
 
+// SECAO: operacoes de usuarios e vinculacao com membros.
+
 function getUserById(id) {
   const row = getDb()
-    .prepare("SELECT id, username, password_hash, name, role FROM user WHERE id = ?")
+    .prepare(
+      `
+      SELECT
+        u.id,
+        u.username,
+        u.password_hash,
+        u.name,
+        u.role,
+        u.member_id,
+        m.name AS member_name
+      FROM user u
+      LEFT JOIN member m ON m.id = u.member_id
+      WHERE u.id = ?
+    `,
+    )
     .get(id);
 
   return mapUser(row);
@@ -402,7 +601,19 @@ function getUserById(id) {
 function getUserByUsername(username) {
   const row = getDb()
     .prepare(
-      "SELECT id, username, password_hash, name, role FROM user WHERE username = ?",
+      `
+      SELECT
+        u.id,
+        u.username,
+        u.password_hash,
+        u.name,
+        u.role,
+        u.member_id,
+        m.name AS member_name
+      FROM user u
+      LEFT JOIN member m ON m.id = u.member_id
+      WHERE u.username = ?
+    `,
     )
     .get(username);
 
@@ -413,29 +624,52 @@ function listUsers() {
   return getDb()
     .prepare(
       `
-      SELECT id, username, name, role
-      FROM user
-      ORDER BY LOWER(COALESCE(name, username)), LOWER(username)
+      SELECT
+        u.id,
+        u.username,
+        u.name,
+        u.role,
+        u.member_id,
+        m.name AS member_name
+      FROM user u
+      LEFT JOIN member m ON m.id = u.member_id
+      ORDER BY LOWER(COALESCE(u.name, u.username)), LOWER(u.username)
     `,
     )
     .all()
     .map(mapUser);
 }
 
-function createUser(username, passwordHash, { name = null, role = "admin" } = {}) {
+function createUser(
+  username,
+  passwordHash,
+  { name = null, role = "admin", memberId = null } = {},
+) {
   const db = getDb();
   const normalizedRole = USER_ROLES.has(role) ? role : "common";
   const result = db
     .prepare(
       `
-      INSERT INTO user (username, password_hash, name, role)
-      VALUES (?, ?, ?, ?)
+      INSERT INTO user (username, password_hash, name, role, member_id)
+      VALUES (?, ?, ?, ?, ?)
     `,
-    )
-    .run(username, passwordHash, name || username, normalizedRole);
+    ).run(username, passwordHash, name || username, normalizedRole, memberId);
 
   return getUserById(result.lastInsertRowid);
 }
+
+function setUserMemberLink(userId, memberId = null) {
+  const db = getDb();
+  const current = getUserById(userId);
+  if (!current) {
+    return null;
+  }
+
+  db.prepare("UPDATE user SET member_id = ? WHERE id = ?").run(memberId, userId);
+  return getUserById(userId);
+}
+
+// SECAO: tabelas auxiliares do almoxarifado (categorias e locais).
 
 function listInventoryCategories() {
   return getDb()
@@ -683,10 +917,12 @@ function trimCatalogValue(value) {
   return String(value).trim();
 }
 
+// SECAO: operacoes de membros (cadastro, busca e desativacao).
+
 function listActiveMembers() {
   return getDb()
     .prepare(
-      "SELECT id, name, is_active FROM member WHERE is_active = 1 ORDER BY LOWER(name)",
+      "SELECT id, name, photo, is_active FROM member WHERE is_active = 1 ORDER BY LOWER(name)",
     )
     .all()
     .map(mapMember);
@@ -694,23 +930,43 @@ function listActiveMembers() {
 
 function getMemberById(id) {
   const row = getDb()
-    .prepare("SELECT id, name, is_active FROM member WHERE id = ?")
+    .prepare("SELECT id, name, photo, is_active FROM member WHERE id = ?")
     .get(id);
 
   return row ? mapMember(row) : null;
 }
 
-function createMember(name) {
+function getMemberByName(name) {
+  const normalized = String(name || "").trim();
+  if (!normalized) {
+    return null;
+  }
+
+  const row = getDb()
+    .prepare(
+      `
+      SELECT id, name, photo, is_active
+      FROM member
+      WHERE LOWER(name) = LOWER(?)
+      LIMIT 1
+    `,
+    )
+    .get(normalized);
+
+  return mapMember(row);
+}
+
+function createMember(name, photo = null) {
   const db = getDb();
   const result = db
-    .prepare("INSERT INTO member (name, is_active) VALUES (?, 1)")
-    .run(name);
+    .prepare("INSERT INTO member (name, photo, is_active) VALUES (?, ?, 1)")
+    .run(name, photo);
 
   return getMemberById(result.lastInsertRowid);
 }
 
-function updateMember(id, name) {
-  getDb().prepare("UPDATE member SET name = ? WHERE id = ?").run(name, id);
+function updateMember(id, { name, photo }) {
+  getDb().prepare("UPDATE member SET name = ?, photo = ? WHERE id = ?").run(name, photo, id);
   return getMemberById(id);
 }
 
@@ -722,9 +978,11 @@ function deactivateMember(id) {
   });
 }
 
+// SECAO: operacoes de projetos e relacoes projeto-membro.
+
 function listProjectsBasic() {
   return getDb()
-    .prepare("SELECT id, name, logo FROM project ORDER BY LOWER(name)")
+    .prepare("SELECT id, name, logo, primary_color FROM project ORDER BY LOWER(name)")
     .all()
     .map(mapProject);
 }
@@ -735,7 +993,8 @@ function getProjectMembers(projectId, { activeOnly = false } = {}) {
   return getDb()
     .prepare(
       `
-      SELECT m.id, m.name, m.is_active
+      SELECT m.id, m.name, m.photo, m.is_active
+      , pm.is_coordinator
       FROM member m
       INNER JOIN project_members pm ON pm.member_id = m.id
       WHERE pm.project_id = ?
@@ -749,7 +1008,7 @@ function getProjectMembers(projectId, { activeOnly = false } = {}) {
 
 function getProjectById(id) {
   const projectRow = getDb()
-    .prepare("SELECT id, name, logo FROM project WHERE id = ?")
+    .prepare("SELECT id, name, logo, primary_color FROM project WHERE id = ?")
     .get(id);
 
   if (!projectRow) {
@@ -760,7 +1019,15 @@ function getProjectById(id) {
   project.members = getProjectMembers(project.id);
   project.active_members = project.members.filter((member) => member.is_active);
   project.active_member_ids = project.active_members.map((member) => member.id);
+  project.coordinator_member_ids = project.members
+    .filter((member) => member.is_coordinator)
+    .map((member) => member.id);
+  project.coordinators = project.members.filter((member) => member.is_coordinator);
+  project.active_coordinators = project.active_members.filter(
+    (member) => member.is_coordinator,
+  );
   project.member_name_preview = firstNamesSummary(project.members);
+  project.coordinator_name_preview = firstNamesSummary(project.coordinators);
   return project;
 }
 
@@ -768,44 +1035,105 @@ function listProjectsWithMembers() {
   return listProjectsBasic().map((project) => getProjectById(project.id));
 }
 
-function createProject({ name, logo, memberIds }) {
+function createProject({ name, logo, primaryColor, memberIds, coordinatorIds = null }) {
   return withTransaction((db) => {
+    const uniqueMemberIds = [...new Set(memberIds)];
+    const normalizedCoordinatorIds = Array.isArray(coordinatorIds)
+      ? coordinatorIds.filter((memberId) => uniqueMemberIds.includes(memberId))
+      : uniqueMemberIds.slice(0, 1);
+    const coordinatorIdSet = new Set(normalizedCoordinatorIds);
+
     const result = db
-      .prepare("INSERT INTO project (name, logo) VALUES (?, ?)")
-      .run(name, logo || null);
+      .prepare("INSERT INTO project (name, logo, primary_color) VALUES (?, ?, ?)")
+      .run(name, logo || null, normalizeProjectColor(primaryColor));
 
     const projectId = Number(result.lastInsertRowid);
     const insertMembership = db.prepare(
-      "INSERT INTO project_members (project_id, member_id) VALUES (?, ?)",
+      "INSERT INTO project_members (project_id, member_id, is_coordinator) VALUES (?, ?, ?)",
     );
 
-    memberIds.forEach((memberId) => {
-      insertMembership.run(projectId, memberId);
+    uniqueMemberIds.forEach((memberId) => {
+      insertMembership.run(projectId, memberId, coordinatorIdSet.has(memberId) ? 1 : 0);
     });
 
     return getProjectById(projectId);
   });
 }
 
-function updateProject(id, { name, logo, memberIds }) {
+function updateProject(
+  id,
+  { name, logo, primaryColor, memberIds, coordinatorIds = null },
+) {
   return withTransaction((db) => {
-    db.prepare("UPDATE project SET name = ?, logo = ? WHERE id = ?").run(
+    const uniqueMemberIds = [...new Set(memberIds)];
+    const normalizedCoordinatorIds = Array.isArray(coordinatorIds)
+      ? coordinatorIds.filter((memberId) => uniqueMemberIds.includes(memberId))
+      : uniqueMemberIds.slice(0, 1);
+    const coordinatorIdSet = new Set(normalizedCoordinatorIds);
+
+    db.prepare("UPDATE project SET name = ?, logo = ?, primary_color = ? WHERE id = ?").run(
       name,
       logo || null,
+      normalizeProjectColor(primaryColor),
       id,
     );
     db.prepare("DELETE FROM project_members WHERE project_id = ?").run(id);
 
     const insertMembership = db.prepare(
-      "INSERT INTO project_members (project_id, member_id) VALUES (?, ?)",
+      "INSERT INTO project_members (project_id, member_id, is_coordinator) VALUES (?, ?, ?)",
     );
 
-    memberIds.forEach((memberId) => {
-      insertMembership.run(id, memberId);
+    uniqueMemberIds.forEach((memberId) => {
+      insertMembership.run(id, memberId, coordinatorIdSet.has(memberId) ? 1 : 0);
     });
 
     return getProjectById(id);
   });
+}
+
+function listProjectsForMember(memberId) {
+  return getDb()
+    .prepare(
+      `
+      SELECT p.id, p.name, p.logo, p.primary_color
+      FROM project p
+      INNER JOIN project_members pm ON pm.project_id = p.id
+      WHERE pm.member_id = ?
+      ORDER BY LOWER(p.name)
+    `,
+    )
+    .all(memberId)
+    .map(mapProject);
+}
+
+function isProjectMember(projectId, memberId) {
+  const row = getDb()
+    .prepare(
+      `
+      SELECT 1 AS ok
+      FROM project_members
+      WHERE project_id = ? AND member_id = ?
+      LIMIT 1
+    `,
+    )
+    .get(projectId, memberId);
+
+  return Boolean(row?.ok);
+}
+
+function isProjectCoordinator(projectId, memberId) {
+  const row = getDb()
+    .prepare(
+      `
+      SELECT 1 AS ok
+      FROM project_members
+      WHERE project_id = ? AND member_id = ? AND is_coordinator = 1
+      LIMIT 1
+    `,
+    )
+    .get(projectId, memberId);
+
+  return Boolean(row?.ok);
 }
 
 function deleteProject(id) {
@@ -822,6 +1150,8 @@ function deleteProject(id) {
   });
 }
 
+// SECAO: operacoes de atas (consulta completa, criacao e exclusao).
+
 function listRecentAtas(limit = 5) {
   return getDb()
     .prepare(
@@ -831,7 +1161,8 @@ function listRecentAtas(limit = 5) {
         a.meeting_datetime,
         a.project_id,
         p.name AS project_name,
-        p.logo AS project_logo
+        p.logo AS project_logo,
+        p.primary_color AS project_primary_color
       FROM ata a
       INNER JOIN project p ON p.id = a.project_id
       ORDER BY a.meeting_datetime DESC
@@ -847,6 +1178,7 @@ function listRecentAtas(limit = 5) {
         id: row.project_id,
         name: row.project_name,
         logo: row.project_logo || null,
+        primary_color: normalizeProjectColor(row.project_primary_color),
       },
     }));
 }
@@ -864,7 +1196,8 @@ function getAtaBaseById(id) {
         a.created_at,
         a.project_id,
         p.name AS project_name,
-        p.logo AS project_logo
+        p.logo AS project_logo,
+        p.primary_color AS project_primary_color
       FROM ata a
       INNER JOIN project p ON p.id = a.project_id
       WHERE a.id = ?
@@ -881,6 +1214,7 @@ function getAtaBaseById(id) {
     id: row.project_id,
     name: row.project_name,
     logo: row.project_logo || null,
+    primary_color: normalizeProjectColor(row.project_primary_color),
   };
   return ata;
 }
@@ -889,7 +1223,7 @@ function getAtaPresentMembers(ataId) {
   return getDb()
     .prepare(
       `
-      SELECT m.id, m.name, m.is_active
+      SELECT m.id, m.name, m.photo, m.is_active
       FROM member m
       INNER JOIN ata_present_members apm ON apm.member_id = m.id
       WHERE apm.ata_id = ?
@@ -985,6 +1319,420 @@ function deleteAta(id) {
     db.prepare("DELETE FROM ata WHERE id = ?").run(id);
   });
 }
+
+// SECAO: operacoes de relatorios semanais.
+
+function createReportEntry({
+  projectId,
+  memberId,
+  createdByUserId = null,
+  weekStart,
+  status = "in_progress",
+  content,
+}) {
+  const result = getDb()
+    .prepare(
+      `
+      INSERT INTO report_entry (
+        project_id,
+        member_id,
+        created_by_user_id,
+        week_start,
+        status,
+        content
+      )
+      VALUES (?, ?, ?, ?, ?, ?)
+    `,
+    )
+    .run(
+      projectId,
+      memberId,
+      createdByUserId,
+      weekStart,
+      normalizeReportStatus(status),
+      content,
+    );
+
+  return getReportEntryById(result.lastInsertRowid);
+}
+
+function updateReportEntry(id, { content, status = "in_progress" }) {
+  const db = getDb();
+  const existing = getReportEntryById(id);
+  if (!existing) {
+    return null;
+  }
+
+  db.prepare(
+    `
+    UPDATE report_entry
+    SET
+      week_start = ?,
+      status = ?,
+      content = ?,
+      updated_at = CURRENT_TIMESTAMP
+    WHERE id = ?
+  `,
+  ).run(existing.week_start, normalizeReportStatus(status), content, id);
+
+  return getReportEntryById(id);
+}
+
+function deleteReportEntry(id) {
+  const existing = getReportEntryById(id);
+  if (!existing) {
+    return null;
+  }
+
+  getDb().prepare("DELETE FROM report_entry WHERE id = ?").run(id);
+  return existing;
+}
+
+function getReportEntryById(id) {
+  const row = getDb()
+    .prepare(
+      `
+      SELECT
+        r.id,
+        r.project_id,
+        r.member_id,
+        r.created_by_user_id,
+        r.week_start,
+        r.status,
+        r.content,
+        r.created_at,
+        r.updated_at,
+        p.name AS project_name,
+        p.logo AS project_logo,
+        p.primary_color AS project_primary_color,
+        m.name AS member_name,
+        m.photo AS member_photo,
+        m.is_active AS member_is_active,
+        u.username AS created_by_username,
+        u.name AS created_by_name
+      FROM report_entry r
+      INNER JOIN project p ON p.id = r.project_id
+      INNER JOIN member m ON m.id = r.member_id
+      LEFT JOIN user u ON u.id = r.created_by_user_id
+      WHERE r.id = ?
+    `,
+    )
+    .get(id);
+
+  return mapReportEntry(row);
+}
+
+function listReportEntries({
+  memberId = null,
+  projectId = null,
+  weekStart = null,
+  status = null,
+  limit = 200,
+} = {}) {
+  const where = [];
+  const params = [];
+
+  if (memberId) {
+    where.push("r.member_id = ?");
+    params.push(memberId);
+  }
+
+  if (projectId) {
+    where.push("r.project_id = ?");
+    params.push(projectId);
+  }
+
+  if (weekStart) {
+    where.push("r.week_start = ?");
+    params.push(weekStart);
+  }
+
+  if (REPORT_STATUSES.has(status)) {
+    where.push("r.status = ?");
+    params.push(status);
+  }
+
+  const whereClause = where.length ? `WHERE ${where.join(" AND ")}` : "";
+
+  return getDb()
+    .prepare(
+      `
+      SELECT
+        r.id,
+        r.project_id,
+        r.member_id,
+        r.created_by_user_id,
+        r.week_start,
+        r.status,
+        r.content,
+        r.created_at,
+        r.updated_at,
+        p.name AS project_name,
+        p.logo AS project_logo,
+        p.primary_color AS project_primary_color,
+        m.name AS member_name,
+        m.photo AS member_photo,
+        m.is_active AS member_is_active,
+        u.username AS created_by_username,
+        u.name AS created_by_name
+      FROM report_entry r
+      INNER JOIN project p ON p.id = r.project_id
+      INNER JOIN member m ON m.id = r.member_id
+      LEFT JOIN user u ON u.id = r.created_by_user_id
+      ${whereClause}
+      ORDER BY r.created_at DESC, r.id DESC
+      LIMIT ?
+    `,
+    )
+    .all(...params, limit)
+    .map(mapReportEntry);
+}
+
+function listReportProjectsForMember(memberId, { weekStart = null, status = null } = {}) {
+  const where = ["r.member_id = ?"];
+  const params = [memberId];
+  if (weekStart) {
+    where.push("r.week_start = ?");
+    params.push(weekStart);
+  }
+  if (REPORT_STATUSES.has(status)) {
+    where.push("r.status = ?");
+    params.push(status);
+  }
+
+  return getDb()
+    .prepare(
+      `
+      SELECT DISTINCT p.id, p.name, p.logo, p.primary_color
+      FROM report_entry r
+      INNER JOIN project p ON p.id = r.project_id
+      WHERE ${where.join(" AND ")}
+      ORDER BY LOWER(p.name)
+    `,
+    )
+    .all(...params)
+    .map(mapProject);
+}
+
+function listReportWeeksForMember(memberId, { projectId = null, status = null } = {}) {
+  const where = ["member_id = ?"];
+  const params = [memberId];
+  if (projectId) {
+    where.push("project_id = ?");
+    params.push(projectId);
+  }
+  if (REPORT_STATUSES.has(status)) {
+    where.push("status = ?");
+    params.push(status);
+  }
+
+  return getDb()
+    .prepare(
+      `
+      SELECT DISTINCT week_start
+      FROM report_entry
+      WHERE ${where.join(" AND ")}
+      ORDER BY week_start DESC
+    `,
+    )
+    .all(...params)
+    .map((row) => row.week_start);
+}
+
+function listReportMembersSummary() {
+  return getDb()
+    .prepare(
+      `
+      SELECT
+        m.id,
+        m.name,
+        m.photo,
+        m.is_active,
+        COUNT(r.id) AS total_entries,
+        MAX(r.created_at) AS last_created_at
+      FROM member m
+      LEFT JOIN report_entry r ON r.member_id = m.id
+      GROUP BY m.id, m.name, m.photo, m.is_active
+      ORDER BY
+        CASE WHEN COUNT(r.id) > 0 THEN 0 ELSE 1 END,
+        LOWER(m.name)
+    `,
+    )
+    .all()
+    .map((row) => ({
+      id: row.id,
+      name: row.name,
+      photo: row.photo || null,
+      is_active: Boolean(row.is_active),
+      total_entries: row.total_entries || 0,
+      last_created_at: row.last_created_at || null,
+    }));
+}
+
+function createReportWeekGoal({
+  memberId,
+  projectId,
+  createdByUserId = null,
+  weekStart,
+  activity,
+  description = "",
+  isCompleted = false,
+}) {
+  const result = getDb()
+    .prepare(
+      `
+      INSERT INTO report_week_goal (
+        member_id,
+        project_id,
+        created_by_user_id,
+        week_start,
+        activity,
+        description,
+        is_completed,
+        completed_at
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, CASE WHEN ? = 1 THEN CURRENT_TIMESTAMP ELSE NULL END)
+    `,
+    )
+    .run(
+      memberId,
+      projectId,
+      createdByUserId,
+      weekStart,
+      activity,
+      description,
+      isCompleted ? 1 : 0,
+      isCompleted ? 1 : 0,
+    );
+
+  return getReportWeekGoalById(result.lastInsertRowid);
+}
+
+function getReportWeekGoalById(id) {
+  const row = getDb()
+    .prepare(
+      `
+      SELECT
+        g.id,
+        g.member_id,
+        g.project_id,
+        g.created_by_user_id,
+        g.week_start,
+        g.activity,
+        g.description,
+        g.is_completed,
+        g.completed_at,
+        g.created_at,
+        g.updated_at,
+        p.name AS project_name,
+        p.logo AS project_logo,
+        p.primary_color AS project_primary_color,
+        m.name AS member_name,
+        m.photo AS member_photo,
+        m.is_active AS member_is_active,
+        u.username AS created_by_username,
+        u.name AS created_by_name
+      FROM report_week_goal g
+      INNER JOIN project p ON p.id = g.project_id
+      INNER JOIN member m ON m.id = g.member_id
+      LEFT JOIN user u ON u.id = g.created_by_user_id
+      WHERE g.id = ?
+      LIMIT 1
+    `,
+    )
+    .get(id);
+
+  return mapReportWeekGoal(row);
+}
+
+function updateReportWeekGoal(id, { activity, description, isCompleted = false }) {
+  const existing = getReportWeekGoalById(id);
+  if (!existing) {
+    return null;
+  }
+
+  getDb()
+    .prepare(
+      `
+      UPDATE report_week_goal
+      SET
+        activity = ?,
+        description = ?,
+        is_completed = ?,
+        completed_at = CASE WHEN ? = 1 THEN CURRENT_TIMESTAMP ELSE NULL END,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `,
+    )
+    .run(activity, description, isCompleted ? 1 : 0, isCompleted ? 1 : 0, id);
+
+  return getReportWeekGoalById(id);
+}
+
+function listReportWeekGoalsForMember(
+  memberId,
+  { projectId = null, currentWeekStart = null, limit = 200 } = {},
+) {
+  const where = ["g.member_id = ?"];
+  const params = [memberId];
+
+  if (projectId) {
+    where.push("g.project_id = ?");
+    params.push(projectId);
+  }
+
+  const overdueReferenceWeek = currentWeekStart || "9999-12-31";
+
+  return getDb()
+    .prepare(
+      `
+      SELECT
+        g.id,
+        g.member_id,
+        g.project_id,
+        g.created_by_user_id,
+        g.week_start,
+        g.activity,
+        g.description,
+        g.is_completed,
+        g.completed_at,
+        g.created_at,
+        g.updated_at,
+        p.name AS project_name,
+        p.logo AS project_logo,
+        p.primary_color AS project_primary_color,
+        m.name AS member_name,
+        m.photo AS member_photo,
+        m.is_active AS member_is_active,
+        u.username AS created_by_username,
+        u.name AS created_by_name
+      FROM report_week_goal g
+      INNER JOIN project p ON p.id = g.project_id
+      INNER JOIN member m ON m.id = g.member_id
+      LEFT JOIN user u ON u.id = g.created_by_user_id
+      WHERE ${where.join(" AND ")}
+      ORDER BY
+        CASE
+          WHEN g.is_completed = 0 AND g.week_start < ? THEN 0
+          WHEN g.is_completed = 0 THEN 1
+          ELSE 2
+        END,
+        g.week_start ASC,
+        g.id ASC
+      LIMIT ?
+    `,
+    )
+    .all(...params, overdueReferenceWeek, limit)
+    .map((row) => {
+      const mapped = mapReportWeekGoal(row);
+      return {
+        ...mapped,
+        is_overdue: !mapped.is_completed && mapped.week_start < overdueReferenceWeek,
+      };
+    });
+}
+
+// SECAO: inventario e movimentacoes (retirada, emprestimo, prorrogacao e devolucao).
 
 function listInventoryItems({ type = null } = {}) {
   const normalizedType = type ? normalizeInventoryType(type) : null;
@@ -1515,6 +2263,8 @@ function listInventoryLoans({ status = null, limit = null } = {}) {
   return rows.map(mapInventoryLoan);
 }
 
+// SECAO: agregacoes para dashboard do almoxarifado.
+
 function getInventoryDashboardData() {
   const db = getDb();
   const summary = {
@@ -1573,6 +2323,8 @@ function getInventoryDashboardData() {
   };
 }
 
+// SECAO: interface publica deste modulo para o restante da aplicacao.
+
 module.exports = {
   createAta,
   createMember,
@@ -1584,6 +2336,7 @@ module.exports = {
   borrowInventoryItem,
   deactivateMember,
   deleteAta,
+  deleteReportEntry,
   deleteInventoryItem,
   deleteInventoryCategory,
   deleteInventoryLocation,
@@ -1597,8 +2350,11 @@ module.exports = {
   getInventoryLoanById,
   getInventoryLocationById,
   getMemberById,
+  getMemberByName,
   getProjectById,
   getProjectMembers,
+  getReportEntryById,
+  getReportWeekGoalById,
   getUserById,
   getUserByUsername,
   listInventoryCategories,
@@ -1609,14 +2365,27 @@ module.exports = {
   listUsers,
   listActiveMembers,
   listProjectsBasic,
+  listProjectsForMember,
   listProjectsWithMembers,
+  listReportEntries,
+  listReportMembersSummary,
+  listReportProjectsForMember,
+  listReportWeekGoalsForMember,
+  listReportWeeksForMember,
   listRecentAtas,
+  createReportEntry,
+  createReportWeekGoal,
   extendInventoryLoan,
   returnInventoryLoan,
+  setUserMemberLink,
   updateInventoryCategory,
   updateInventoryItem,
   updateInventoryLocation,
   updateMember,
   updateProject,
+  updateReportEntry,
+  updateReportWeekGoal,
+  isProjectMember,
+  isProjectCoordinator,
   withdrawInventoryItem,
 };

@@ -1,8 +1,17 @@
+{#
+  TEMPLATE: atas/create_form.html
+  FUNCAO: formulario de criacao de ata, com selecao de projeto, data e participantes.
+  IMPACTO DE MUDANCAS:
+  - Alterar nomes dos campos afeta validacao e persistencia na rota de criacao de ata.
+  - Alterar exibicao de erros precisa manter chaves de erro retornadas pelo backend.
+#}
 {% extends "base.html" %}
 {% set activeAtaTab = 'create' %}
 
 {% block content %}
     {% include "partials/atas_tabs.html" %}
+
+    {# SECAO: cabecalho da tela de criacao de ata com contexto do projeto selecionado. #}
 
     <div class="page-header page-header-split">
         <div>
@@ -16,6 +25,8 @@
 
     <div class="content-panel portal-form-card">
         <div class="panel-body">
+            {# SECAO: formulario principal da ata (projeto, data, presenca e observacoes). #}
+
             <form action="{{ urlFor('create_ata') }}" method="post" novalidate class="portal-form-grid">
                 <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
 
@@ -52,6 +63,8 @@
                         </div>
                     {% endif %}
                 </div>
+
+                {# SECAO: presenca/justificativa por membro com campos habilitados dinamicamente. #}
 
                 <div id="present-members-container" class="form-group">
                     <label class="form-label">Membros Presentes na Reunião (Ativos)</label>
@@ -111,6 +124,8 @@
     </div>
 {% endblock %}
 
+{# SECAO: script de carregamento dinamico dos membros conforme projeto escolhido. #}
+
 {% block scripts %}
     <script>
         document.addEventListener('DOMContentLoaded', function() {
@@ -118,6 +133,8 @@
             const membersListDiv = document.getElementById('members-checkbox-list');
             const placeholderText = '<p class="checkbox-list-placeholder">Selecione um projeto para carregar os membros.</p>';
             const loadingText = '<p class="checkbox-list-placeholder">Carregando membros...</p>';
+
+            // SECAO: sincroniza checkbox de presenca com campo de justificativa de ausencia.
 
             function wireCheckboxBehaviour(scope) {
                 scope.querySelectorAll('input[type="checkbox"][name="present_members"]').forEach((checkbox) => {
@@ -134,6 +151,8 @@
                     });
                 });
             }
+
+            // SECAO: renderiza lista de membros recebida da API para o projeto atual.
 
             function renderMembers(members) {
                 membersListDiv.innerHTML = '';

@@ -1,7 +1,16 @@
+{#
+  TEMPLATE: presenca/index.html
+  FUNCAO: tela de registro de presenca por evento e codigo de cracha, com retorno visual imediato.
+  IMPACTO DE MUDANCAS:
+  - Alterar ids usados no script inline pode quebrar envio dinamico e exibicao de resultado.
+  - Alterar nomes de campos exige ajuste na rota que processa os registros de presenca.
+#}
 {% extends "base.html" %}
 {% set title = "Controle de Presença" %}
 
 {% block content %}
+{# SECAO: painel de registro de presenca por evento e codigo de cracha. #}
+
 <section class="content-panel presence-panel">
     <div class="panel-header">
         <h2>Controle de Presença</h2>
@@ -34,12 +43,16 @@
     </div>
 </section>
 
+{# SECAO: script de envio assincrono e feedback imediato ao usuario. #}
+
 {% block scripts %}
 <script>
 const presencaForm = document.getElementById('presenca-form');
 const crachaInput = document.getElementById('cracha');
 const csrfInput = presencaForm.querySelector('input[name="csrf_token"]');
 const resultado = document.getElementById('resultado');
+
+// SECAO: normaliza exibicao visual de sucesso/erro/info no resultado.
 
 function renderResultado(message, kind) {
     resultado.className = 'presence-result';
@@ -48,6 +61,8 @@ function renderResultado(message, kind) {
     }
     resultado.innerHTML = '<p>' + message + '</p>';
 }
+
+// SECAO: envio de formulario via fetch com tratamento de CSRF e respostas invalidadas.
 
 async function enviarPresenca(tentativa = 0) {
     renderResultado('Registrando...', 'info');

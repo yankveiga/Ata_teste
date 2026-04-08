@@ -1,9 +1,19 @@
+{#
+  TEMPLATE: errors/404.html
+  FUNCAO: resposta amigavel para recursos nao encontrados.
+  IMPACTO DE MUDANCAS:
+  - Alterar links de retorno afeta recuperacao de navegacao apos erro.
+#}
 {% extends "base.html" %}
 
 {% block content %}
+    {# SECAO: titulo e orientacao principal para erro de pagina nao encontrada. #}
+
     <div class="page-header">
         <h1>Página Não Encontrada (404)</h1>
     </div>
+    {# SECAO: mensagem orientativa com atalho de retorno seguro para o usuario. #}
+
     <div class="message-card message-card-warning">
         <p>Oops! A página que você está procurando não existe.</p>
         <p>Verifique se o endereço foi digitado corretamente ou volte para a <a href="{{ urlFor('services') }}">central de serviços</a>.</p>

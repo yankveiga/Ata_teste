@@ -1,3 +1,10 @@
+/*
+ * ARQUIVO: admin_dashboard_style.css
+ * FUNCAO: estilos base do shell autenticado (sidebar, estrutura principal, tipografia e componentes globais).
+ * IMPACTO DE MUDANCAS:
+ * - Alteracoes em variaveis CSS de :root propagam para quase toda a interface autenticada.
+ * - Mudancas estruturais de layout podem afetar responsividade de todas as telas internas.
+ */
 @import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@500;600;700&display=swap");
 
 * {
@@ -5,6 +12,9 @@
   margin: 0;
   padding: 0;
 }
+
+/* SECAO: tokens globais de tema e superficie do shell.
+   Alterar aqui muda cor, contraste e identidade visual de todo o portal autenticado. */
 
 :root {
   --primary-accent: #2563eb;
@@ -53,10 +63,15 @@ a {
   color: inherit;
 }
 
+/* SECAO: estrutura base do shell (container principal da aplicacao). */
+
 .container {
   position: relative;
   width: 100%;
 }
+
+/* SECAO: sidebar de navegacao (logo, itens, estados hover e menu recolhido).
+   Mudancas de largura/posicionamento impactam navegacao e responsividade. */
 
 .navigation {
   position: fixed;
@@ -162,6 +177,9 @@ a {
   pointer-events: none;
 }
 
+/* SECAO: area principal de conteudo.
+   Ajustes de left/width precisam acompanhar os estados da sidebar (.navigation.active). */
+
 .main {
   position: relative;
   width: calc(100% - 328px);
@@ -174,6 +192,8 @@ a {
   width: calc(100% - 132px);
   left: 132px;
 }
+
+/* SECAO: barra superior com toggle e informacoes do usuario. */
 
 .topbar {
   position: sticky;
@@ -227,6 +247,9 @@ a {
   min-height: 100vh;
 }
 
+/* SECAO: responsividade tablet.
+   Nesta faixa a sidebar vira painel deslocado para preservar espaco de conteudo. */
+
 @media (max-width: 1100px) {
   .navigation {
     transform: translateX(calc(-100% - 24px));
@@ -253,6 +276,9 @@ a {
     padding-left: 18px;
   }
 }
+
+/* SECAO: responsividade mobile.
+   Ajustes finais de espacamento e distribuicao dos blocos da topbar. */
 
 @media (max-width: 720px) {
   .navigation,

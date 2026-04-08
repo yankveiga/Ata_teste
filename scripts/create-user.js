@@ -1,9 +1,18 @@
+/*
+ * ARQUIVO: scripts/create-user.js
+ * FUNCAO: utilitario de linha de comando para criar usuarios no banco local (admin/comum).
+ * IMPACTO DE MUDANCAS:
+ * - Alterar validacoes de entrada impacta a seguranca e qualidade dos dados cadastrados.
+ * - Alterar argumentos CLI exige atualizar documentacao e processo operacional da equipe.
+ */
 const readline = require("node:readline/promises");
 const { stdin: input, stdout: output } = require("node:process");
 
 const bcrypt = require("bcryptjs");
 
 const database = require("../src/database");
+
+// SECAO: parse simples de argumentos CLI (--username, --password, etc.).
 
 function parseArgument(flag) {
   const index = process.argv.indexOf(flag);
@@ -12,6 +21,8 @@ function parseArgument(flag) {
   }
   return process.argv[index + 1] || null;
 }
+
+// SECAO: fluxo principal interativo para criacao de usuario no banco local.
 
 async function main() {
   database.ensureSchema();

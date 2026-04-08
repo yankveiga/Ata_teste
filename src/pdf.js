@@ -1,9 +1,18 @@
+/*
+ * ARQUIVO: src/pdf.js
+ * FUNCAO: gera o PDF de atas (cabecalho, texto e layout final com PDFKit).
+ * IMPACTO DE MUDANCAS:
+ * - Ajustes de layout podem cortar conteudo, quebrar paginacao ou desalinhamento visual no documento final.
+ * - Mudancas em campos exibidos devem manter consistencia com dados persistidos em banco.
+ */
 const fs = require("node:fs");
 const path = require("node:path");
 const PDFDocument = require("pdfkit");
 
 const { config } = require("./config");
 const { extractDateParts, formatDateExtenso } = require("./utils");
+
+// SECAO: composicao visual do cabecalho institucional do PDF de ata.
 
 function drawHeader(doc, ata) {
   const logoPath = path.join(config.uploadDir, "FURG.png");
@@ -36,6 +45,8 @@ function drawHeader(doc, ata) {
 
   doc.moveDown(2);
 }
+
+// SECAO: utilitarios de texto para titulo e descricoes de presenca/ausencia.
 
 function formatDateForTitle(value) {
   const parts = extractDateParts(value);
@@ -88,6 +99,8 @@ function buildAbsentText(ata) {
 
   return text.trim() || "Nenhum membro ausente.";
 }
+
+// SECAO: montagem completa do documento PDF (layout, conteudo e stream de saida).
 
 function generateAtaPdf(ata) {
   return new Promise((resolve, reject) => {
@@ -156,5 +169,7 @@ function generateAtaPdf(ata) {
     doc.end();
   });
 }
+
+// SECAO: exportacao publica do gerador de PDF para uso nas rotas.
 
 module.exports = { generateAtaPdf };

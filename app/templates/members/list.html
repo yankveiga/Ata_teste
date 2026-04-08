@@ -1,3 +1,10 @@
+{#
+  TEMPLATE: members/list.html
+  FUNCAO: listagem de membros com acoes administrativas de manutencao de cadastro.
+  IMPACTO DE MUDANCAS:
+  - Alterar condicoes de permissao pode expor acoes restritas a perfis indevidos.
+  - Alterar colunas/rotas de acao afeta manutencao e navegacao do modulo.
+#}
 {% extends "base.html" %}
 {% set activeAtaTab = 'members' %}
 
@@ -12,6 +19,8 @@
         <span class="page-badge">{{ members.length }} cadastrados</span>
     </div>
 
+    {# SECAO: acoes administrativas disponiveis somente para perfil admin. #}
+
     {% if currentUser.is_admin %}
         <div class="page-actions">
             <a href="{{ urlFor('add_member') }}" class="btn-primary-action">
@@ -19,6 +28,8 @@
             </a>
         </div>
     {% endif %}
+
+    {# SECAO: tabela de membros cadastrados com manutencao de registros. #}
 
     <div class="content-panel">
         <div class="panel-header">

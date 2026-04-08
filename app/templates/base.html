@@ -1,5 +1,14 @@
+{#
+  TEMPLATE: base.html
+  FUNCAO: estrutura principal das paginas autenticadas (head, assets globais, sidebar, area de conteudo e scripts).
+  IMPACTO DE MUDANCAS:
+  - Alterar blocos, includes ou classes-base afeta todas as telas que estendem este template.
+  - Alterar itens de navegacao exige manter rotas e permissao coerentes com backend.
+#}
 <!DOCTYPE html>
 <html lang="pt-br">
+{# SECAO: cabecalho global (meta, titulo dinamico e assets compartilhados). #}
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -19,9 +28,13 @@
     <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
     <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
 </head>
+{# SECAO: estrutura principal da pagina e escolha entre shell autenticado e modo visitante. #}
+
 <body class="{% if currentUser %}portal-shell section-{{ activeSection or 'services' }}{% else %}guest-shell{% endif %}">
     {% if currentUser %}
     <div class="container">
+        {# SECAO: navegacao lateral com atalhos por modulo e controle de perfil. #}
+
         <div class="navigation">
             <ul>
                 <li>
@@ -44,6 +57,13 @@
                     </a>
                 </li>
 
+                <li class="{{ 'hovered' if activeSection == 'almox' else '' }}">
+                    <a href="{{ urlFor('almox_home') }}">
+                        <span class="icon"><ion-icon name="cube-outline"></ion-icon></span>
+                        <span class="title">Almoxarifado</span>
+                    </a>
+                </li>
+
                 <li class="{{ 'hovered' if activeSection in ['home', 'atas', 'members', 'projects'] else '' }}">
                     <a href="{{ urlFor('home') }}">
                         <span class="icon"><ion-icon name="document-text-outline"></ion-icon></span>
@@ -58,10 +78,10 @@
                     </a>
                 </li>
 
-                <li class="{{ 'hovered' if activeSection == 'almox' else '' }}">
-                    <a href="{{ urlFor('almox_home') }}">
-                        <span class="icon"><ion-icon name="cube-outline"></ion-icon></span>
-                        <span class="title">Almoxarifado</span>
+                <li class="{{ 'hovered' if activeSection == 'reports' else '' }}">
+                    <a href="/relatorios">
+                        <span class="icon"><ion-icon name="clipboard-outline"></ion-icon></span>
+                        <span class="title">Relatórios</span>
                     </a>
                 </li>
 
@@ -73,6 +93,8 @@
                 </li>
             </ul>
         </div>
+
+        {# SECAO: conteudo principal (topbar, flashes e bloco de conteudo da tela atual). #}
 
         <div class="main">
             <div class="topbar">
@@ -105,6 +127,8 @@
 
     <script src="{{ urlFor('static', { filename: 'js/admin_dashboard_script.js' }) }}"></script>
     {% endif %}
+
+    {# SECAO: scripts de infraestrutura e scripts especificos injetados por pagina. #}
 
     {% block scripts %}{% endblock %}
 </body>

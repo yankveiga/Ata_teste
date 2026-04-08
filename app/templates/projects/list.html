@@ -1,3 +1,10 @@
+{#
+  TEMPLATE: projects/list.html
+  FUNCAO: listagem de projetos com indicadores e atalhos de edicao/exclusao/criacao de ata.
+  IMPACTO DE MUDANCAS:
+  - Alterar a coluna de acoes muda fluxo administrativo do modulo.
+  - Alterar dados exibidos exige manter consistencia com o payload entregue pela rota.
+#}
 {% extends "base.html" %}
 {% set activeAtaTab = 'projects' %}
 
@@ -12,6 +19,8 @@
         <span class="page-badge">{{ projects.length }} cadastrados</span>
     </div>
 
+    {# SECAO: CTA de criacao de projeto restrita a administradores. #}
+
     {% if currentUser.is_admin %}
         <div class="page-actions">
             <a href="{{ urlFor('add_project') }}" class="btn-primary-action">
@@ -19,6 +28,8 @@
             </a>
         </div>
     {% endif %}
+
+    {# SECAO: tabela de projetos com logo, membros, coordenacao e acoes. #}
 
     <div class="content-panel">
         <div class="panel-header">
@@ -35,6 +46,7 @@
                             <th class="logo-col">Logo</th>
                             <th>Nome do Projeto</th>
                             <th>Membros</th>
+                            <th>Coordenação</th>
                             <th class="actions-col actions-col-wide">Ações</th>
                         </tr>
                     </thead>
@@ -48,7 +60,10 @@
                                         <span class="no-logo-placeholder">-</span>
                                     {% endif %}
                                 </td>
-                                <td>{{ project.name }}</td>
+                                <td>
+                                    <span class="project-color-dot" style="background-color: {{ project.primary_color or '#0b6bcb' }};" title="Cor principal"></span>
+                                    {{ project.name }}
+                                </td>
                                 <td class="member-text-cell">
                                     {% if project.members.length %}
                                         <span class="member-list-cell">{{ project.member_name_preview }}</span>
@@ -56,11 +71,18 @@
                                         <span class="text-muted">Nenhum membro</span>
                                     {% endif %}
                                 </td>
+                                <td class="member-text-cell">
+                                    {% if project.coordinators.length %}
+                                        <span class="member-list-cell">{{ project.coordinator_name_preview }}</span>
+                                    {% else %}
+                                        <span class="text-muted">Sem coordenação definida</span>
+                                    {% endif %}
+                                </td>
                                 <td class="actions-cell">
                                     <a href="{{ urlFor('create_ata', { project_id: project.id }) }}" class="btn-icon btn-add-ata" title="Criar Ata para {{ project.name }}">
                                         <ion-icon name="document-text-outline"></ion-icon>
                                     </a>
-                                    {% if currentUser.is_admin %}
+                                    {% if project.can_manage %}
                                         <a href="{{ urlFor('edit_project', { id: project.id }) }}" class="btn-icon btn-edit" title="Editar Projeto">
                                             <ion-icon name="create-outline"></ion-icon>
                                         </a>

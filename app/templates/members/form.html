@@ -1,3 +1,10 @@
+{#
+  TEMPLATE: members/form.html
+  FUNCAO: formulario de cadastro/edicao de membro utilizado no modulo de atas.
+  IMPACTO DE MUDANCAS:
+  - Alterar campos e ids afeta validacao, submit e mensagens de erro no backend.
+  - Alterar estrutura de acoes deve manter experiencia coerente de salvar/cancelar.
+#}
 {% extends "base.html" %}
 {% set activeAtaTab = 'members' %}
 
@@ -12,7 +19,9 @@
         <span class="page-badge">Membros</span>
     </div>
 
-    <form action="" method="post" novalidate class="content-panel portal-form-card portal-form-grid">
+    {# SECAO: formulario de criacao/edicao de membro com validacao de nome. #}
+
+    <form action="?csrf_token={{ csrfToken }}" method="post" enctype="multipart/form-data" novalidate class="content-panel portal-form-card portal-form-grid">
         <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
 
         <div class="form-group">
@@ -34,6 +43,51 @@
             {% endif %}
         </div>
 
+        <div class="form-group form-group-full">
+            <label class="form-label" for="photo">
+                Foto do Membro (Opcional)
+            </label>
+
+            <div class="member-photo-field">
+                <div class="member-photo-preview" aria-hidden="true">
+                    {% if member and member.photo %}
+                        <img src="{{ urlFor('static', { filename: 'uploads/' ~ member.photo }) }}" alt="Foto atual de {{ member.name }}">
+                    {% else %}
+                        <ion-icon name="person-outline"></ion-icon>
+                    {% endif %}
+                </div>
+                <div class="member-photo-inputs">
+                    <input
+                        id="photo"
+                        name="photo"
+                        type="file"
+                        class="form-control"
+                        accept=".jpg,.jpeg,.png,.gif,.webp,.jfif,image/jpeg,image/png,image/gif,image/webp"
+                    >
+                    <small class="form-hint">Formatos aceitos: JPG, JPEG, PNG, GIF, WEBP e JFIF.</small>
+                    {% if member and member.photo %}
+                        <label class="member-photo-clear-option" for="photo-clear">
+                            <input
+                                id="photo-clear"
+                                type="checkbox"
+                                name="photo-clear"
+                                value="1"
+                                {% if formData.photoClear %}checked{% endif %}
+                            >
+                            Remover foto atual
+                        </label>
+                    {% endif %}
+                </div>
+            </div>
+            {% if errors.photo %}
+                <ul class="errors form-error-list">
+                    {% for error in errors.photo %}
+                        <li>{{ error }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        </div>
+
         <div class="form-actions">
             <button type="submit" class="btn-submit">
                 {{ actionLabel }}
@@ -42,6 +96,8 @@
         </div>
     </form>
 {% endblock %}
+
+{# SECAO: foco automatico no primeiro campo para agilizar cadastro. #}
 
 {% block scripts %}
     <script>

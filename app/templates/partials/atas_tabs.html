@@ -1,3 +1,11 @@
+{#
+  TEMPLATE PARCIAL: partials/atas_tabs.html
+  FUNCAO: navegacao secundaria compartilhada do modulo Gestor de Atas.
+  IMPACTO DE MUDANCAS:
+  - Alterar rotas ou estado ativo afeta orientacao do usuario em todas as telas que incluem esta parcial.
+#}
+{# SECAO: links de navegacao secundaria do modulo de atas. #}
+
 <nav class="module-tab-nav" aria-label="Seções do Gestor de Atas">
     <a href="{{ urlFor('home') }}" class="module-tab-link {{ 'is-active' if activeAtaTab == 'home' else '' }}">
         <ion-icon name="sparkles-outline"></ion-icon>

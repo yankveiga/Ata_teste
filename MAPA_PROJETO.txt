@@ -1,0 +1,56 @@
+MAPA RÁPIDO DO PROJETO (onde editar cada coisa)
+===============================================
+
+1) RELATÓRIOS (TELA)
+- Conteúdo/layout principal: app/templates/reports/index.html
+- Estilos visuais da tela de relatórios: app/static/css/custom_styles.css
+- Rotas e regras de relatórios/metas: src/app.js
+- Persistência e consultas de metas/relatórios: src/database.js
+
+2) BASE / NAVEGAÇÃO GERAL
+- Estrutura base da página (menu lateral, includes, scripts): app/templates/base.html
+- Navegação por abas do módulo Atas: app/templates/partials/atas_tabs.html
+
+3) MÓDULO MEMBROS
+- Lista de membros: app/templates/members/list.html
+- Formulário de membro: app/templates/members/form.html
+- Rotas e validações de membro: src/app.js
+- Tabela/CRUD de membro: src/database.js
+
+4) MÓDULO PROJETOS
+- Lista de projetos: app/templates/projects/list.html
+- Formulário de projetos: app/templates/projects/form.html
+- Rotas e validações de projetos: src/app.js
+- Tabela/CRUD de projetos e vínculo projeto-membro: src/database.js
+
+5) MÓDULO ATAS
+- Home do módulo Atas: app/templates/home.html
+- Criar ata: app/templates/atas/create_form.html
+- Geração de PDF: src/pdf.js
+- Rotas de atas: src/app.js
+- Persistência de atas/presença/justificativas: src/database.js
+
+6) AUTENTICAÇÃO E UTILITÁRIOS
+- Login (template): app/templates/login.html
+- Login/logout e middlewares de acesso: src/app.js
+- Funções utilitárias (csrf, formatos, uploads, rotas nomeadas): src/utils.js
+- Configurações gerais (paths, porta, banco): src/config.js
+
+7) CSS (VISUAL)
+- CSS principal do portal (customizações e módulos): app/static/css/custom_styles.css
+- Estrutura base do dashboard: app/static/css/admin_dashboard_style.css
+- Página de serviços: app/static/css/services.css
+- Login: app/static/css/login.css
+- Almoxarifado: app/static/css/almoxarifado.css
+
+8) ARQUIVOS-CHAVE PARA AJUSTES RÁPIDOS
+- "Quero mudar a cor/estilo do relatório": app/static/css/custom_styles.css
+- "Quero mudar o HTML do relatório": app/templates/reports/index.html
+- "Quero mudar regra de permissão no relatório": src/app.js
+- "Quero mudar lógica de atraso/prioridade": src/database.js
+
+9) DICA DE FLUXO
+- Mudanças de interface: template + CSS
+- Mudanças de regra de negócio: app.js + database.js
+- Mudanças de persistência/ordenação: database.js
+

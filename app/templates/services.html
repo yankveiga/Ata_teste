@@ -1,4 +1,13 @@
+{#
+  TEMPLATE: services.html
+  FUNCAO: pagina inicial de servicos apos autenticacao, exibindo atalhos para cada modulo.
+  IMPACTO DE MUDANCAS:
+  - Alterar links dos cards muda o fluxo de navegacao principal do usuario.
+  - Alterar condicoes por perfil (admin/comum) afeta visibilidade de capacidades na interface.
+#}
 {% extends "base.html" %}
+
+{# SECAO: import de estilo especifico da central de servicos. #}
 
 {% block styles %}
     <link rel="stylesheet" href="{{ urlFor('static', { filename: 'css/services.css' }) }}">
@@ -6,7 +15,11 @@
 
 {% block content %}
     <div class="services-page">
+        {# SECAO: grade de cards de acesso aos modulos disponiveis para o usuario. #}
+
         <section class="service-grid">
+            {# SECAO: card do modulo Gestor de Atas. #}
+
             <article class="service-card service-card-atas">
                 <div class="service-card-icon">
                     <ion-icon name="document-text-outline"></ion-icon>
@@ -24,6 +37,8 @@
                     Abrir Gestor de Atas
                 </a>
             </article>
+
+            {# SECAO: card do modulo Almoxarifado. #}
 
             <article class="service-card service-card-almox">
                 <div class="service-card-icon">
@@ -43,6 +58,8 @@
                 </a>
             </article>
 
+            {# SECAO: card do modulo Presenca. #}
+
             <article class="service-card service-card-presenca">
                 <div class="service-card-icon">
                     <ion-icon name="checkmark-circle-outline"></ion-icon>
@@ -58,6 +75,26 @@
                 </ul>
                 <a href="{{ urlFor('presenca') }}" class="service-card-link">
                     Abrir Controle de Presença
+                </a>
+            </article>
+
+            {# SECAO: card do modulo Relatorios Semanais. #}
+
+            <article class="service-card service-card-reports">
+                <div class="service-card-icon">
+                    <ion-icon name="clipboard-outline"></ion-icon>
+                </div>
+                <h2>Relatórios Semanais</h2>
+                <p>
+                    Registre o que foi feito em cada projeto e acompanhe a evolução dos membros ao longo das semanas.
+                </p>
+                <ul class="service-feature-list">
+                    <li>Registro por semana e por projeto</li>
+                    <li>Visualização pública por membro</li>
+                    <li>Edição e exclusão liberadas para coordenadores</li>
+                </ul>
+                <a href="/relatorios" class="service-card-link">
+                    Abrir Relatórios
                 </a>
             </article>
         </section>

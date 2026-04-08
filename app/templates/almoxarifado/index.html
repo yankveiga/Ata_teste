@@ -1,3 +1,10 @@
+{#
+  TEMPLATE: almoxarifado/index.html
+  FUNCAO: tela principal do almoxarifado com abas, tabelas, filtros e formularios de movimentacao.
+  IMPACTO DE MUDANCAS:
+  - Alterar data-tab-link/data-tab-panel impacta script de troca de abas no frontend.
+  - Alterar nomes de campos/formularios exige ajuste nas rotas de processamento no backend.
+#}
 {% extends "base.html" %}
 
 {% block styles %}
@@ -6,6 +13,8 @@
 
 {% block content %}
     <div class="almox-page" id="almox-page" data-active-tab="{{ activeTab }}">
+        {# SECAO: cabecalho do modulo com contexto operacional e perfil do usuario. #}
+
         <section class="almox-header">
             <div>
                 <p class="almox-eyebrow">Controle de materiais</p>
@@ -22,6 +31,8 @@
                 <a href="{{ urlFor('services') }}" class="almox-secondary-link">Voltar aos Serviços</a>
             </div>
         </section>
+
+        {# SECAO: navegacao por abas; controla quais paineis ficam visiveis. #}
 
         <nav class="almox-tab-nav" aria-label="Seções do Almoxarifado">
             <a href="{{ urlFor('almox_home') }}?tab=overview" class="almox-tab-link {{ 'is-active' if activeTab == 'overview' else '' }}" data-tab-link="overview">
@@ -50,7 +61,9 @@
             </a>
         </nav>
 
-        <section class="almox-tab-panel {{ 'is-active' if activeTab == 'overview' else '' }}" data-tab-panel="overview">
+        <section class="almox-tab-panel {{ 'is-active' if activeTab == 'overview' else '' }}"         {# SECAO: aba Visao Geral com indicadores e ultimas movimentacoes. #}
+
+data-tab-panel="overview">
             <div class="almox-card-grid">
                 <article class="almox-stat-card">
                     <span class="almox-stat-label">Usuários cadastrados</span>
@@ -218,7 +231,9 @@
             </div>
         </section>
 
-        <section class="almox-tab-panel {{ 'is-active' if activeTab == 'users' else '' }}" data-tab-panel="users">
+        <section class="almox-tab-panel {{ 'is-active' if activeTab == 'users' else '' }}"         {# SECAO: aba Usuarios para vinculos de acesso e historico de uso. #}
+
+data-tab-panel="users">
             <div class="almox-two-column">
                 <article class="almox-panel">
                     <div class="almox-panel-header">
@@ -236,7 +251,11 @@
                                         <th>ID</th>
                                         <th>Nome</th>
                                         <th>Usuário</th>
+                                        <th>Membro Vinculado</th>
                                         <th>Perfil</th>
+                                        {% if currentUser.is_admin %}
+                                            <th>Ações</th>
+                                        {% endif %}
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -245,11 +264,32 @@
                                             <td>#{{ user.id }}</td>
                                             <td>{{ user.name }}</td>
                                             <td>@{{ user.username }}</td>
+                                            <td>{{ user.member_name if user.member_name else 'Não vinculado' }}</td>
                                             <td>
                                                 <span class="role-chip {{ 'role-chip-admin' if user.is_admin else 'role-chip-common' }}">
                                                     {{ 'Administrador' if user.is_admin else 'Comum' }}
                                                 </span>
                                             </td>
+                                            {% if currentUser.is_admin %}
+                                                <td>
+                                                    <form action="{{ urlFor('almox_home') }}/users/link/{{ user.id }}" method="post" class="inline-form">
+                                                        <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+                                                        <input type="hidden" name="tab" value="users">
+                                                        <select name="member_id">
+                                                            <option value="">Sem vínculo</option>
+                                                            {% for member in members %}
+                                                                <option
+                                                                    value="{{ member.id }}"
+                                                                    {% if user.member_id == member.id or user.member_id == (member.id ~ '') %}selected{% endif %}
+                                                                >
+                                                                    {{ member.name }}
+                                                                </option>
+                                                            {% endfor %}
+                                                        </select>
+                                                        <button type="submit" class="secondary-button">Vincular</button>
+                                                    </form>
+                                                </td>
+                                            {% endif %}
                                         </tr>
                                     {% endfor %}
                                 </tbody>
@@ -269,7 +309,7 @@
                     </div>
 
                     {% if currentUser.is_admin %}
-                        <form action="/almoxarifado/users/create" method="post" class="stacked-form">
+                        <form action="{{ urlFor('almox_home') }}/users/create" method="post" class="stacked-form">
                             <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
                             <input type="hidden" name="tab" value="users">
 
@@ -299,6 +339,19 @@
                                 </select>
                             </label>
 
+                            <label>
+                                <span>Membro vinculado (opcional)</span>
+                                <select name="member_id">
+                                    <option value="">Sem vínculo</option>
+                                    {% for member in members %}
+                                        <option value="{{ member.id }}" {% if userFormData.memberId == member.id or userFormData.memberId == (member.id ~ '') %}selected{% endif %}>
+                                            {{ member.name }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                                {% if userErrors.memberId %}<small class="field-error">{{ userErrors.memberId[0] }}</small>{% endif %}
+                            </label>
+
                             <button type="submit" class="primary-button">Criar usuário</button>
                         </form>
                     {% else %}
@@ -310,7 +363,9 @@
             </div>
         </section>
 
-        <section class="almox-tab-panel {{ 'is-active' if activeTab == 'stock' else '' }}" data-tab-panel="stock">
+        <section class="almox-tab-panel {{ 'is-active' if activeTab == 'stock' else '' }}"         {# SECAO: aba Estoque com catalogo, quantidades e filtros. #}
+
+data-tab-panel="stock">
             <article class="almox-panel">
                 <div class="almox-panel-header">
                     <div>
@@ -380,7 +435,9 @@
             </article>
         </section>
 
-        <section class="almox-tab-panel {{ 'is-active' if activeTab == 'manage' else '' }}" data-tab-panel="manage">
+        <section class="almox-tab-panel {{ 'is-active' if activeTab == 'manage' else '' }}"         {# SECAO: aba Cadastro para criacao/edicao de itens, categorias e locais. #}
+
+data-tab-panel="manage">
             <div class="almox-two-column">
                 <article class="almox-panel">
                     <div class="almox-panel-header">
@@ -581,7 +638,9 @@
             </div>
         </section>
 
-        <section class="almox-tab-panel {{ 'is-active' if activeTab == 'withdraw' else '' }}" data-tab-panel="withdraw">
+        <section class="almox-tab-panel {{ 'is-active' if activeTab == 'withdraw' else '' }}"         {# SECAO: aba Retiradas para consumo imediato de itens de estoque. #}
+
+data-tab-panel="withdraw">
             <div class="almox-two-column">
                 <article class="almox-panel">
                     <div class="almox-panel-header">
@@ -651,7 +710,9 @@
             </div>
         </section>
 
-        <section class="almox-tab-panel {{ 'is-active' if activeTab == 'borrow' else '' }}" data-tab-panel="borrow">
+        <section class="almox-tab-panel {{ 'is-active' if activeTab == 'borrow' else '' }}"         {# SECAO: aba Emprestimos com previsao de devolucao e controle de quantidade. #}
+
+data-tab-panel="borrow">
             <div class="almox-two-column">
                 <article class="almox-panel">
                     <div class="almox-panel-header">
@@ -725,7 +786,9 @@
             </div>
         </section>
 
-        <section class="almox-tab-panel {{ 'is-active' if activeTab == 'borrowed' else '' }}" data-tab-panel="borrowed">
+        <section class="almox-tab-panel {{ 'is-active' if activeTab == 'borrowed' else '' }}"         {# SECAO: aba Itens Emprestados para acompanhamento e devolucao/prorrogacao. #}
+
+data-tab-panel="borrowed">
             <article class="almox-panel">
                 <div class="almox-panel-header">
                     <div>
@@ -848,7 +911,9 @@
             </article>
         </section>
 
-        <section class="almox-tab-panel {{ 'is-active' if activeTab == 'requests' else '' }}" data-tab-panel="requests">
+        <section class="almox-tab-panel {{ 'is-active' if activeTab == 'requests' else '' }}"         {# SECAO: aba Solicitacoes e historico consolidado de movimentacoes. #}
+
+data-tab-panel="requests">
             <article class="almox-panel">
                 <div class="almox-panel-header">
                     <div>

@@ -1,6 +1,15 @@
+/*
+ * ARQUIVO: src/utils.js
+ * FUNCAO: utilitarios compartilhados (rotas nomeadas, formatacao, seguranca de arquivos/CSRF, parsers e helpers).
+ * IMPACTO DE MUDANCAS:
+ * - Alterar helpers comuns afeta varios modulos ao mesmo tempo; revisar chamadas cruzadas e testes de regressao.
+ * - Alterar mapeamento de rotas nomeadas impacta links e redirecionamentos em templates e controllers.
+ */
 const crypto = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
+
+// SECAO: mapeamento central das rotas nomeadas usadas por controllers/templates.
 
 const ROUTES = Object.freeze({
   static: "/static/:filename",
@@ -11,6 +20,10 @@ const ROUTES = Object.freeze({
   home: "/home",
   presenca: "/presenca",
   registrar_presenca: "/presenca/registrar",
+  relatorios: "/relatorios",
+  create_report: "/relatorios/create",
+  edit_report: "/relatorios/edit/:id",
+  delete_report: "/relatorios/delete/:id",
   list_members: "/members",
   add_member: "/members/add",
   edit_member: "/members/edit/:id",
@@ -25,6 +38,8 @@ const ROUTES = Object.freeze({
   delete_ata: "/atas/delete/:id",
   api_get_project_members: "/api/project/:project_id/members",
 });
+
+// SECAO: tabelas de localizacao em portugues para datas e texto por extenso.
 
 const MONTHS_PT = [
   "janeiro",
@@ -74,6 +89,8 @@ const DAYS_EXTENSO = {
   30: "trinta",
   31: "trinta e um",
 };
+
+// SECAO: helpers de rotas, flash e CSRF (estado de sessao e seguranca de formulario).
 
 function urlFor(name, params = {}) {
   if (name === "create_ata" && params.project_id) {
@@ -138,6 +155,8 @@ function verifyCsrf(req) {
   return Boolean(token && req.session && token === req.session.csrfToken);
 }
 
+// SECAO: utilitarios de arquivos e seguranca de I/O.
+
 function sanitizeFilename(filename) {
   const base = path.basename(filename || "");
   const ascii = base.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -163,6 +182,8 @@ function safeUnlink(filePath) {
   }
 }
 
+// SECAO: parsers e normalizacao de entrada (ids, listas e tipos basicos).
+
 function trimToNull(value) {
   if (value === undefined || value === null) {
     return null;
@@ -183,6 +204,8 @@ function parseIdArray(value) {
   const parsed = parseId(value);
   return parsed ? [parsed] : [];
 }
+
+// SECAO: formatacao de data/hora para SQL, UI e campos datetime-local.
 
 function extractDateParts(value) {
   if (!value) {
@@ -277,7 +300,7 @@ function firstNamesSummary(members) {
 }
 
 function isAllowedImage(filename) {
-  return /\.(jpg|jpeg|png|gif)$/i.test(filename || "");
+  return /\.(jpg|jpeg|png|gif|webp|jfif)$/i.test(filename || "");
 }
 
 function isUniqueConstraintError(error) {
@@ -295,6 +318,8 @@ function safeRedirectPath(nextPath, fallback) {
   }
   return nextPath;
 }
+
+// SECAO: escrita de numeros por extenso para documentos formais (atas/PDF).
 
 function numberToPortuguese(value) {
   const number = Number(value);
@@ -400,6 +425,8 @@ function formatDateExtenso(value) {
 
   return `${day} dias do mês de ${month} de ${year}`;
 }
+
+// SECAO: exportacao de utilitarios compartilhados.
 
 module.exports = {
   ROUTES,

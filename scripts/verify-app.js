@@ -1,3 +1,10 @@
+/*
+ * ARQUIVO: scripts/verify-app.js
+ * FUNCAO: script de verificacao automatizada para validar fluxos principais do sistema em banco temporario.
+ * IMPACTO DE MUDANCAS:
+ * - Alterar assercoes pode ocultar regressao real ou gerar falso positivo no processo de validacao.
+ * - Alterar preparo de banco temporario pode contaminar dados locais ou invalidar resultado do teste.
+ */
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const os = require("node:os");
@@ -7,6 +14,8 @@ const { promisify } = require("node:util");
 const bcrypt = require("bcryptjs");
 
 const { urlFor } = require("../src/utils");
+
+// SECAO: rotina de verificacao ponta a ponta com banco temporario isolado.
 
 async function main() {
   const originalDb = path.resolve(__dirname, "..", "instance", "ata.sqlite3");

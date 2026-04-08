@@ -1,3 +1,10 @@
+/*
+ * ARQUIVO: login.css
+ * FUNCAO: estilo da tela de autenticacao (fundo, card, campos, botao e estados de erro).
+ * IMPACTO DE MUDANCAS:
+ * - Alterar variaveis de cor/tipografia muda identidade visual e contraste da experiencia de login.
+ * - Alterar espacamentos e dimensoes pode prejudicar usabilidade em mobile.
+ */
 /* static/css/login.css - Com Fundo Gradiente, Novo Botão e Partículas */
 
 /* =============== Variáveis Globais =============== */
@@ -78,6 +85,8 @@ body.login-page-body {
     left: 0;
     z-index: -1; /* Atrás de tudo, exceto talvez um fundo de body ainda mais básico */
 }
+/* SECAO: cabecalho visual com logo e titulo da tela de login. */
+
 .titulo-com-logo {
     display: flex;
     align-items: flex-end; /* Se você quiser que eles fiquem alinhados pela base */
@@ -95,7 +104,7 @@ body.login-page-body {
     width: auto;
     position: absolute; /* Agora podemos mover a logo onde quisermos */
     top: -20%; /* Ajuste vertical da logo */
-    left: 15%; /* Ajuste horizontal da logo */
+    left: 5%; /* Ajuste horizontal da logo */
     /* Se quiser "sobrepor" a logo ao texto, você pode usar valores negativos aqui */
     transform: translateY(-10px); /* Exemplo de sobreposição, movendo a logo para cima */
 }
@@ -107,6 +116,8 @@ body.login-page-body {
     font-size: 1.5em; /* Ajuste o tamanho do título se necessário */
     margin: 0; /* Remove margens extras */
 }
+/* SECAO: card principal de autenticacao (glassmorphism). */
+
 .login-container {
     background: var(--card-bg);
     backdrop-filter: blur(12px);
@@ -132,12 +143,6 @@ body.login-page-body {
     }
 }
 
-/* Se você tinha um slideshow de IMAGENS antes e quer remover, apague estas regras: */
-/*
-.login-background-slideshow { ... }
-.login-background-slideshow .slide { ... }
-.login-background-slideshow .slide.active { ... }
-*/
 
 .login-logo {
     max-width: 120px;
@@ -157,6 +162,8 @@ body.login-page-body {
     font-size: 1em;
 }
 
+
+/* SECAO: campos de formulario, foco e feedback de validacao. */
 
 .form-group {
     margin-bottom: 25px;
@@ -227,6 +234,8 @@ body.login-page-body {
 }
 
 
+/* SECAO: botao de acesso (estado normal, hover e active). */
+
 .login-form .btn-submit {
     width: 100%;
     padding: 14px 20px;
@@ -255,6 +264,8 @@ body.login-page-body {
 }
 
 
+
+/* SECAO: links auxiliares exibidos abaixo do formulario. */
 
 .login-links {
     margin-top: 30px;
@@ -295,6 +306,8 @@ body.login-page-body {
 
 
 /* Checkbox (se usar) */
+/* SECAO: checkbox customizado (lembrar sessao / opcoes adicionais). */
+
 .form-check {
     display: flex;
     align-items: center;
@@ -329,4 +342,20 @@ body.login-page-body {
     0% { background-position: 0% 50%; }
     50% { background-position: 100% 50%; }
     100% { background-position: 0% 50%; }
+}
+
+/* SECAO: responsividade da tela de login em telas pequenas. */
+
+@media (max-width: 520px) {
+    .titulo-com-logo {
+        padding-left: 38px;
+        font-size: 1.8em;
+    }
+
+    .logo-pet {
+        height: 1.7em;
+        top: -12%;
+        left: -2%;
+        transform: translateY(-8px);
+    }
 }

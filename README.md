@@ -83,6 +83,26 @@ SECRET_KEY=sua-chave-secreta
 DATABASE_PATH=instance/ata.sqlite3
 ```
 
+## Presença
+
+O sistema registra presença diretamente na planilha local `planilha_presenca.xlsx`.
+
+Modelo de dados da presença:
+
+- `user`: usuários do sistema (login/senha/role `admin` ou `common`)
+- `planilha_presenca.xlsx`: participantes por crachá e marcações por evento (`EVENTO_1` a `EVENTO_16`)
+
+## Deploy rápido (Render)
+
+1. No Render, crie um Web Service apontando para este repositório.
+2. Configure:
+   - Build Command: `npm install`
+   - Start Command: `npm start`
+3. Em **Environment Variables** no Render, defina:
+   - `SECRET_KEY`
+   - `NODE_ENV=production`
+4. Faça deploy.
+
 ## Estrutura principal
 
 - `server.js`: ponto de entrada da aplicação
@@ -94,6 +114,19 @@ DATABASE_PATH=instance/ata.sqlite3
 - `scripts/verify-app.js`: verificação automatizada do sistema
 - `app/templates/`: templates Nunjucks
 - `app/static/`: CSS, JS e imagens
+
+## Mapa rápido (10 linhas)
+
+- Alterar tela de Relatórios: `app/templates/reports/index.html`
+- Alterar estilo de Relatórios: `app/static/css/custom_styles.css`
+- Alterar lógica/permissão de Relatórios: `src/app.js`
+- Alterar persistência/ordenação de metas: `src/database.js`
+- Alterar base visual global (sidebar/layout): `app/static/css/admin_dashboard_style.css`
+- Alterar página de serviços: `app/templates/services.html` e `app/static/css/services.css`
+- Alterar base de todas as páginas (head/nav/shell): `app/templates/base.html`
+- Alterar módulo de Membros: `app/templates/members/*` + `src/app.js` + `src/database.js`
+- Alterar módulo de Projetos: `app/templates/projects/*` + `src/app.js` + `src/database.js`
+- Alterar helpers comuns (CSRF/data/rotas utilitárias): `src/utils.js`
 
 ## Verificação
 

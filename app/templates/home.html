@@ -1,8 +1,17 @@
+{#
+  TEMPLATE: home.html
+  FUNCAO: dashboard do Gestor de Atas com resumo e historico recente.
+  IMPACTO DE MUDANCAS:
+  - Alterar campos exibidos exige consistencia com objetos enviados pela rota no backend.
+  - Alterar acoes (download/exclusao) muda o fluxo operacional de atas.
+#}
 {% extends "base.html" %}
 {% set activeAtaTab = activeAtaTab or 'home' %}
 
 {% block content %}
     {% include "partials/atas_tabs.html" %}
+
+    {# SECAO: destaque inicial da home com resumo rapido e CTA de criacao. #}
 
 <section class="ata-hero">
         <div class="ata-hero-copy">
@@ -18,6 +27,8 @@
             </div>
         </div>
 
+        {# SECAO: metricas resumidas do usuario e do modulo de atas. #}
+
         <div class="ata-summary-grid">
             <article class="ata-summary-card">
                 <span class="ata-summary-label">Atas recentes</span>
@@ -31,6 +42,8 @@
             </article>
         </div>
     </section>
+
+    {# SECAO: listagem das atas recentes com acoes de download/exclusao. #}
 
     <section class="recent-atas-section content-panel">
         <div class="panel-header">
@@ -54,12 +67,14 @@
                                 <ion-icon name="download-outline"></ion-icon>
                             </a>
 
-                            <form action="{{ urlFor('delete_ata', { id: ata.id }) }}" method="POST" class="inline-action-form" onsubmit="return confirm('Tem certeza que deseja excluir esta ata? Esta ação não pode ser desfeita.');">
-                                <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
-                                <button type="submit" title="Excluir Ata" class="btn-delete">
-                                     <ion-icon name="trash-outline"></ion-icon>
-                                </button>
-                            </form>
+                            {% if ata.canDelete %}
+                                <form action="{{ urlFor('delete_ata', { id: ata.id }) }}" method="POST" class="inline-action-form" onsubmit="return confirm('Tem certeza que deseja excluir esta ata? Esta ação não pode ser desfeita.');">
+                                    <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+                                    <button type="submit" title="Excluir Ata" class="btn-delete">
+                                         <ion-icon name="trash-outline"></ion-icon>
+                                    </button>
+                                </form>
+                            {% endif %}
                         </div>
                     </li>
                 {% endfor %}

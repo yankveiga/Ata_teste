@@ -1,3 +1,11 @@
+/*
+ * ARQUIVO: src/app.js
+ * FUNCAO: composicao principal da aplicacao (middlewares, autenticacao, validacoes e rotas HTTP).
+ * IMPACTO DE MUDANCAS:
+ * - Mudancas em middlewares globais alteram comportamento de todas as rotas (sessao, CSRF, flashes e parsing de formulario).
+ * - Mudancas em regras de permissao ou validacao podem abrir acesso indevido ou bloquear fluxos legitimos.
+ * - Mudancas nas rotas afetam formularios, links e consumo de dados nos templates.
+ */
 const fs = require("node:fs");
 const path = require("node:path");
 
@@ -32,6 +40,8 @@ const {
   verifyCsrf,
 } = require("./utils");
 
+// SECAO: constantes de dominio usadas por validacoes e comportamento de modulos.
+
 const ALMOX_TABS = new Set([
   "overview",
   "users",
@@ -43,17 +53,150 @@ const ALMOX_TABS = new Set([
   "requests",
 ]);
 const INVENTORY_ITEM_TYPES = new Set(["stock", "patrimony"]);
+const DEFAULT_PROJECT_COLOR = "#0b6bcb";
+
+// SECAO: helpers de normalizacao de entrada (query/form).
+// Mantem valores padrao quando entrada vier ausente ou invalida.
+
+// DETALHE: Normaliza a aba solicitada para evitar estados invalidos na interface do almoxarifado.
 
 function normalizeAlmoxTab(value) {
   const normalized = String(value || "").trim().toLowerCase();
   return ALMOX_TABS.has(normalized) ? normalized : "overview";
 }
 
+// DETALHE: Garante que o tipo de item fique restrito aos tipos reconhecidos pelo sistema.
+
 function normalizeInventoryItemType(value) {
   return INVENTORY_ITEM_TYPES.has(value) ? value : "stock";
 }
 
+// DETALHE: Valida e padroniza cor hexadecimal; evita salvar valor invalido no banco.
+
+function normalizeProjectColor(value, fallback = DEFAULT_PROJECT_COLOR) {
+  const normalized = String(value || "").trim();
+  return /^#[0-9a-fA-F]{6}$/.test(normalized) ? normalized.toLowerCase() : fallback;
+}
+
+// DETALHE: Calcula o inicio da semana (segunda-feira UTC) usado nos relatorios semanais.
+
+function getCurrentWeekStartDate() {
+  const now = new Date();
+  const date = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const day = date.getUTCDay();
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  date.setUTCDate(date.getUTCDate() + diffToMonday);
+  return date.toISOString().slice(0, 10);
+}
+
+// DETALHE: Converte data recebida para a segunda-feira da semana correspondente.
+
+function normalizeWeekStartDate(value) {
+  const text = String(value || "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) {
+    return null;
+  }
+
+  const date = new Date(`${text}T00:00:00Z`);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  const day = date.getUTCDay();
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  date.setUTCDate(date.getUTCDate() + diffToMonday);
+  return date.toISOString().slice(0, 10);
+}
+
+// DETALHE: Normaliza status do relatorio e aplica fallback seguro quando vier invalido.
+
+function normalizeReportStatus(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  return ["completed", "in_progress", "blocked"].includes(normalized)
+    ? normalized
+    : "in_progress";
+}
+
+// DETALHE: Monta querystring de filtros preservando contexto de navegacao na tela de relatorios.
+
+function buildReportsQuery({ memberId = null, projectId = null, editId = null } = {}) {
+  const params = new URLSearchParams();
+  if (memberId) {
+    params.set("member_id", String(memberId));
+  }
+  if (projectId) {
+    params.set("project_id", String(projectId));
+  }
+  if (editId) {
+    params.set("edit_id", String(editId));
+  }
+  const query = params.toString();
+  return query ? `?${query}` : "";
+}
+
+// SECAO: integracao com planilha de presenca (leitura/escrita de arquivo XLSX).
+
+// DETALHE: Executa leitura, validacao e gravacao da presenca diretamente na planilha XLSX.
+
+function registerPresenceInWorkbook(cracha, evento) {
+  const crachaValue = String(cracha || "").trim();
+  const eventoValue = String(evento || "").trim();
+
+  if (!crachaValue) {
+    return { success: false, message: "Informe o número do crachá." };
+  }
+
+  const workbook = XLSX.readFile("planilha_presenca.xlsx");
+  const sheetName = workbook.SheetNames[0];
+  const sheet = workbook.Sheets[sheetName];
+  const rawData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+  const header = rawData[0];
+  const data = rawData.slice(1).map((row) => {
+    const obj = {};
+    header.forEach((col, i) => {
+      obj[col] = row[i] || "";
+    });
+    return obj;
+  });
+
+  const row = data.find((currentRow) => String(currentRow.CRACHA || "").trim() === crachaValue);
+  if (!row) {
+    return { success: false, message: "Crachá não encontrado." };
+  }
+
+  const nome = row.NOME || "Participante";
+  const eventoCol = String(eventoValue || "").toUpperCase();
+  if (!header.includes(eventoCol)) {
+    return { success: false, message: "Evento inválido." };
+  }
+
+  const eventLabel = eventoValue.replace(/evento_/i, "Evento ").replace(/_/g, " ");
+  if (row[eventoCol]) {
+    return {
+      success: false,
+      message: `${nome} já foi registrado para ${eventLabel}.`,
+    };
+  }
+
+  row[eventoCol] = "X";
+
+  const updatedRaw = [header, ...data.map((obj) => header.map((col) => obj[col] || ""))];
+  const newSheet = XLSX.utils.aoa_to_sheet(updatedRaw);
+  workbook.Sheets[sheetName] = newSheet;
+  XLSX.writeFile(workbook, "planilha_presenca.xlsx");
+
+  return {
+    success: true,
+    message: `${nome} foi registrado para ${eventLabel}.`,
+  };
+}
+
+// SECAO: fabrica principal da aplicacao Express (middlewares, rotas e tratamento de erro).
+
+// DETALHE: Ponto central de composicao: configura Express, middlewares, regras de acesso e rotas.
+
 function createApp() {
+  database.ensureSchema();
   fs.mkdirSync(config.uploadDir, { recursive: true });
 
   const app = express();
@@ -72,7 +215,9 @@ function createApp() {
   env.addFilter("formatDate", formatDatePt);
   env.addFilter("dateTimeLocal", toDateTimeLocalValue);
 
-  app.use(
+    // SECAO: middlewares globais de sessao, parsers e contexto comum para templates/rotas.
+
+app.use(
     cookieSession({
       name: "ata_session",
       keys: [config.sessionSecret],
@@ -96,6 +241,7 @@ function createApp() {
 
     res.locals.currentUser = req.currentUser;
     res.locals.isAdmin = Boolean(req.currentUser?.is_admin);
+    res.locals.currentMember = null;
     res.locals.flashMessages = consumeFlashes(req);
     res.locals.csrfToken = req.session.csrfToken;
     res.locals.title = "";
@@ -103,7 +249,9 @@ function createApp() {
     next();
   });
 
-  const upload = multer({
+    // SECAO: upload de arquivos de logo com validacao de tipo e nome sanitizado.
+
+const upload = multer({
     storage: multer.diskStorage({
       destination: config.uploadDir,
       filename: (req, file, callback) => {
@@ -112,17 +260,18 @@ function createApp() {
     }),
     fileFilter: (req, file, callback) => {
       if (!isAllowedImage(file.originalname)) {
-        callback(
-          new Error(
-            "Apenas imagens (jpg, png, jpeg, gif) são permitidas!",
-          ),
-        );
+        // DETALHE: Rejeita arquivo invalido sem abortar parsing do multipart,
+        // preservando campos de formulario (incluindo csrf_token) em req.body.
+        req.uploadError = "Apenas imagens (jpg, jpeg, png, gif, webp, jfif) são permitidas!";
+        callback(null, false);
         return;
       }
 
       callback(null, true);
     },
   });
+
+  // DETALHE: Executa upload de logo e converte erro tecnico em mensagem amigavel para a tela.
 
   function runLogoUpload(req, res, next) {
     upload.single("logo")(req, res, (error) => {
@@ -133,9 +282,24 @@ function createApp() {
     });
   }
 
+  // DETALHE: Executa upload de foto de membro e reutiliza mesma validacao de imagem.
+
+  function runMemberPhotoUpload(req, res, next) {
+    upload.single("photo")(req, res, (error) => {
+      if (error) {
+        req.uploadError = error.message;
+      }
+      next();
+    });
+  }
+
+  // DETALHE: Monta URL do almoxarifado preservando aba ativa para redirecionamentos.
+
   function almoxPath(tab = "overview") {
     return `${urlFor("almox_home")}?tab=${normalizeAlmoxTab(tab)}`;
   }
+
+  // DETALHE: Define para onde redirecionar quando usuario sem permissao tenta acao administrativa.
 
   function adminDeniedRedirect(req) {
     if (req.path.startsWith("/almoxarifado")) {
@@ -153,7 +317,11 @@ function createApp() {
     return urlFor("services");
   }
 
-  function requireAuth(req, res, next) {
+    // SECAO: guardas de acesso (autenticacao, autorizacao e protecao CSRF).
+
+// DETALHE: Middleware de autenticacao: bloqueia acesso anonimo e envia usuario para login.
+
+function requireAuth(req, res, next) {
     if (req.currentUser) {
       return next();
     }
@@ -162,6 +330,8 @@ function createApp() {
     const nextPath = encodeURIComponent(req.originalUrl || urlFor("services"));
     return res.redirect(`${urlFor("login")}?next=${nextPath}`);
   }
+
+  // DETALHE: Middleware para paginas administrativas com feedback via flash e redirect seguro.
 
   function requireAdminPage(req, res, next) {
     if (req.currentUser?.is_admin) {
@@ -175,6 +345,8 @@ function createApp() {
     return res.redirect(adminDeniedRedirect(req));
   }
 
+  // DETALHE: Middleware para APIs administrativas retornando 403 em JSON.
+
   function requireAdminApi(req, res, next) {
     if (req.currentUser?.is_admin) {
       return next();
@@ -185,6 +357,129 @@ function createApp() {
     });
   }
 
+  // DETALHE: Resolve membro atual a partir da sessao e cacheia resultado no request.
+
+  function getCurrentMember(req) {
+    if (req.currentMemberResolved) {
+      return req.currentMember || null;
+    }
+
+    req.currentMemberResolved = true;
+    if (!req.currentUser) {
+      req.currentMember = null;
+      return null;
+    }
+
+    if (req.currentUser.member_id) {
+      const linkedMember = database.getMemberById(req.currentUser.member_id);
+      if (linkedMember) {
+        req.currentMember = linkedMember;
+        if (req.res?.locals) {
+          req.res.locals.currentMember = req.currentMember;
+        }
+        return req.currentMember;
+      }
+    }
+
+    const fromName = database.getMemberByName(req.currentUser.name);
+    const fromUsername = database.getMemberByName(req.currentUser.username);
+    req.currentMember = fromName || fromUsername || null;
+    if (req.res?.locals) {
+      req.res.locals.currentMember = req.currentMember;
+    }
+    return req.currentMember;
+  }
+
+  // DETALHE: Lista projetos acessiveis de acordo com perfil e vinculo de membro.
+
+  function listAccessibleProjects(req) {
+    if (req.currentUser?.is_admin) {
+      return database.listProjectsBasic();
+    }
+
+    const currentMember = getCurrentMember(req);
+    if (!currentMember?.is_active) {
+      return [];
+    }
+
+    return database.listProjectsForMember(currentMember.id);
+  }
+
+  // DETALHE: Regra de autorizacao para criacao de ata em projeto especifico.
+
+  function canCreateAtaForProject(req, project) {
+    if (!project) {
+      return false;
+    }
+
+    if (req.currentUser?.is_admin) {
+      return true;
+    }
+
+    const currentMember = getCurrentMember(req);
+    if (!currentMember?.is_active) {
+      return false;
+    }
+
+    return database.isProjectMember(project.id, currentMember.id);
+  }
+
+  // DETALHE: Regra de autorizacao para manutencao de projeto (coordenador/admin).
+
+  function canManageProject(req, project) {
+    if (!project) {
+      return false;
+    }
+
+    if (req.currentUser?.is_admin) {
+      return true;
+    }
+
+    const currentMember = getCurrentMember(req);
+    if (!currentMember?.is_active) {
+      return false;
+    }
+
+    return database.isProjectCoordinator(project.id, currentMember.id);
+  }
+
+  // DETALHE: Regra de autorizacao para editar/excluir entradas de relatorio.
+
+  function canManageReportEntry(req, reportEntry) {
+    if (!reportEntry?.project) {
+      return false;
+    }
+    return canManageProject(req, reportEntry.project);
+  }
+
+  // DETALHE: Regra de autorizacao para metas semanais por membro/projeto.
+
+  function canManageReportGoal(req, { memberId, projectId }) {
+    if (!memberId || !projectId) {
+      return false;
+    }
+
+    if (req.currentUser?.is_admin) {
+      return true;
+    }
+
+    const currentMember = getCurrentMember(req);
+    if (!currentMember?.is_active) {
+      return false;
+    }
+
+    if (
+      currentMember.id === memberId &&
+      database.isProjectMember(projectId, currentMember.id)
+    ) {
+      return true;
+    }
+
+    return database.isProjectCoordinator(projectId, currentMember.id);
+  }
+
+  // DETALHE: Valida token CSRF para formularios e interrompe fluxo quando invalido.
+
   function ensureValidCsrf(req, res) {
     if (verifyCsrf(req)) {
       return true;
@@ -194,6 +489,8 @@ function createApp() {
     res.redirect(req.get("referer") || urlFor("services"));
     return false;
   }
+
+  // DETALHE: Valida token CSRF para rotas API e responde erro padrao quando invalido.
 
   function ensureValidApiCsrf(req, res) {
     if (verifyCsrf(req)) {
@@ -206,7 +503,11 @@ function createApp() {
     return false;
   }
 
-  function render(res, template, data = {}) {
+    // SECAO: helpers de renderizacao para reduzir repeticao entre telas.
+
+// DETALHE: Wrapper de renderizacao para aplicar titulo/section padrao em todas as views.
+
+function render(res, template, data = {}) {
     res.render(template, {
       title: data.title || "",
       activeSection: data.activeSection || "",
@@ -214,12 +515,16 @@ function createApp() {
     });
   }
 
+  // DETALHE: Resposta 404 padronizada para recursos inexistentes.
+
   function notFound(res) {
     return res.status(404).render("errors/404.html", {
       title: "Página Não Encontrada",
       activeSection: "",
     });
   }
+
+  // DETALHE: Renderiza tela de login centralizando defaults de formulario e erros.
 
   function renderLogin(res, { formData = {}, errors = {} } = {}) {
     return render(res, "login.html", {
@@ -229,6 +534,8 @@ function createApp() {
       next: formData.next || "",
     });
   }
+
+  // DETALHE: Renderiza formulario de membro com dados e mensagens de validacao.
 
   function renderMemberForm(res, data) {
     return render(res, "members/form.html", {
@@ -241,21 +548,37 @@ function createApp() {
     });
   }
 
+  // DETALHE: Renderiza formulario de projeto incluindo membros ativos e controle de permissao.
+
   function renderProjectForm(res, data) {
+    const normalizedFormData = {
+      name: "",
+      primaryColor: DEFAULT_PROJECT_COLOR,
+      memberIds: [],
+      coordinatorIds: [],
+      logoClear: false,
+      ...(data.formData || {}),
+    };
+
     return render(res, "projects/form.html", {
       title: data.title,
       activeSection: "projects",
-      formData: data.formData,
+      formData: normalizedFormData,
       errors: data.errors || {},
       actionLabel: data.actionLabel,
       activeMembers: database.listActiveMembers(),
       project: data.project || null,
+      canManageProject: Boolean(data.canManageProject),
     });
   }
 
-  function renderAtaForm(res, data) {
+  // DETALHE: Renderiza formulario de ata conforme projeto selecionado e membros disponiveis.
+
+  function renderAtaForm(req, res, data) {
+    const availableProjects = data.projects || listAccessibleProjects(req);
+    const availableProjectIds = new Set(availableProjects.map((project) => project.id));
     const selectedProjectId = parseId(data.formData.projectId);
-    const selectedProject = selectedProjectId
+    const selectedProject = selectedProjectId && availableProjectIds.has(selectedProjectId)
       ? database.getProjectById(selectedProjectId)
       : null;
     const selectedProjectMembers = selectedProject
@@ -271,11 +594,127 @@ function createApp() {
       activeSection: "atas",
       formData: normalizedFormData,
       errors: data.errors || {},
-      projects: database.listProjectsBasic(),
+      projects: availableProjects,
       selectedProject,
       selectedProjectMembers,
     });
   }
+
+  // DETALHE: Renderiza tela de relatorios com filtros, resumo, formulario e lista de entradas.
+
+  function renderReportPage(req, res, data = {}) {
+    const currentMember = getCurrentMember(req);
+    const currentWeekStart = getCurrentWeekStartDate();
+    const membersSummary = database.listReportMembersSummary();
+    const requestedMemberId = parseId(data.selectedMemberId || req.query.member_id);
+    const selectedMemberId =
+      requestedMemberId ||
+      currentMember?.id ||
+      membersSummary.find((member) => member.total_entries > 0)?.id ||
+      membersSummary[0]?.id ||
+      null;
+
+    const selectedMember =
+      selectedMemberId && membersSummary.some((member) => member.id === selectedMemberId)
+        ? database.getMemberById(selectedMemberId)
+        : null;
+    const requestedProjectId = parseId(data.selectedProjectId || req.query.project_id);
+    const reportProjectOptions = selectedMember
+      ? database.listProjectsForMember(selectedMember.id)
+      : [];
+    const validProjectIds = new Set(reportProjectOptions.map((project) => project.id));
+    const selectedProjectId = requestedProjectId && validProjectIds.has(requestedProjectId)
+      ? requestedProjectId
+      : null;
+
+    const reportGoals = selectedMember
+      ? database.listReportWeekGoalsForMember(selectedMember.id, {
+          projectId: selectedProjectId || null,
+          currentWeekStart,
+          limit: 400,
+        }).map((goal) => ({
+          ...goal,
+          can_manage: canManageReportGoal(req, {
+            memberId: goal.member_id,
+            projectId: goal.project_id,
+          }),
+        }))
+      : [];
+    const pendingGoals = reportGoals.filter((goal) => !goal.is_completed);
+    const completedGoals = reportGoals.filter((goal) => goal.is_completed);
+    const overduePendingGoals = pendingGoals.filter((goal) => goal.is_overdue);
+    const openPendingGoals = pendingGoals.filter((goal) => !goal.is_overdue);
+    const canCreateGoalsForSelectedMember = Boolean(
+      selectedMember && (
+        req.currentUser?.is_admin
+        || (currentMember?.is_active && currentMember.id === selectedMember.id)
+      ),
+    );
+    const goalsSummary = reportGoals.reduce(
+      (summary, goal) => {
+        summary.total += 1;
+        if (goal.is_completed) {
+          summary.completed += 1;
+        } else if (goal.is_overdue) {
+          summary.overdue += 1;
+        } else {
+          summary.pending += 1;
+        }
+        summary.projectIds.add(goal.project.id);
+        summary.weekStarts.add(goal.week_start);
+        return summary;
+      },
+      {
+        total: 0,
+        completed: 0,
+        overdue: 0,
+        pending: 0,
+        projectIds: new Set(),
+        weekStarts: new Set(),
+      },
+    );
+
+    return render(res, "reports/index.html", {
+      title: "Relatórios",
+      activeSection: "reports",
+      activeAtaTab: "reports",
+      selectedMemberId: selectedMember ? selectedMember.id : null,
+      selectedProjectId: selectedProjectId || "",
+      selectedMember,
+      membersSummary,
+      reportProjectOptions,
+      reportGoals,
+      pendingGoals,
+      completedGoals,
+      overduePendingGoals,
+      openPendingGoals,
+      canCreateGoalsForSelectedMember,
+      currentWeekStart,
+      currentMember,
+      goalFormData: {
+        projectId: selectedProjectId || "",
+        activity: "",
+        description: "",
+        isCompleted: false,
+        ...(data.goalFormData || {}),
+      },
+      goalFormErrors: data.goalFormErrors || {},
+      goalsSummary: {
+        total: goalsSummary.total,
+        completed: goalsSummary.completed,
+        overdue: goalsSummary.overdue,
+        pending: goalsSummary.pending,
+        totalProjects: goalsSummary.projectIds.size,
+        totalWeeks: goalsSummary.weekStarts.size,
+      },
+      currentReportsQuery: buildReportsQuery({
+        memberId: selectedMember?.id || null,
+        projectId: selectedProjectId || null,
+      }),
+    });
+  }
+
+  // DETALHE: Renderiza dashboard do almoxarifado com estado atual de abas e formularios.
 
   function renderAlmox(res, data = {}) {
     const activeTab = normalizeAlmoxTab(data.activeTab);
@@ -286,6 +725,7 @@ function createApp() {
       activeTab,
       dashboard: database.getInventoryDashboardData(),
       users: database.listUsers(),
+      members: database.listActiveMembers(),
       inventoryItems: database.listInventoryItems(),
       stockItems: database.listInventoryItems({ type: "stock" }),
       patrimonyItems: database.listInventoryItems({ type: "patrimony" }),
@@ -300,6 +740,7 @@ function createApp() {
         username: "",
         password: "",
         role: "common",
+        memberId: "",
         ...(data.userFormData || {}),
       },
       userErrors: data.userErrors || {},
@@ -343,6 +784,8 @@ function createApp() {
     });
   }
 
+  // DETALHE: Normaliza payload de inventario vindo de forms web ou API JSON.
+
   function parseInventoryPayload(source = {}) {
     const quantityValue =
       source.quantity ??
@@ -370,7 +813,11 @@ function createApp() {
     };
   }
 
+  // DETALHE: Valida campos obrigatorios e limites antes de criar/editar item de inventario.
+
   function validateInventoryPayload(payload) {
+    // DETALHE: Objeto para acumular erros de validacao e devolver feedback completo ao usuario.
+
     const errors = {};
     const quantity = Number(payload.quantity);
 
@@ -411,8 +858,12 @@ function createApp() {
     };
   }
 
+  // DETALHE: Valida nome de catalogos auxiliares (categoria/local) com regras comuns.
+
   function validateCatalogName(name, entityLabel = "nome") {
     const normalized = String(name || "").trim();
+    // DETALHE: Objeto para acumular erros de validacao e devolver feedback completo ao usuario.
+
     const errors = {};
 
     if (!normalized) {
@@ -427,7 +878,11 @@ function createApp() {
     };
   }
 
-  app.get("/login", (req, res) => {
+    // SECAO: rotas de autenticacao (login/logout).
+
+// DETALHE: Rota GET /login: consulta dados necessarios e monta resposta (HTML/JSON) para a tela solicitada.
+
+app.get("/login", (req, res) => {
     if (req.currentUser) {
       return res.redirect(urlFor("services"));
     }
@@ -441,7 +896,11 @@ function createApp() {
     });
   });
 
+  // DETALHE: Rota POST /login: processa envio de formulario/acao, valida entrada, persiste dados e redireciona.
+
   app.post("/login", (req, res) => {
+    // DETALHE: Interrompe o fluxo quando token CSRF esta invalido ou expirado.
+
     if (!ensureValidCsrf(req, res)) {
       return;
     }
@@ -455,6 +914,8 @@ function createApp() {
       next: String(req.body.next || ""),
     };
     const password = String(req.body.password || "");
+    // DETALHE: Objeto para acumular erros de validacao e devolver feedback completo ao usuario.
+
     const errors = {};
 
     if (!formData.username) {
@@ -464,6 +925,8 @@ function createApp() {
     if (!password) {
       errors.password = ["Senha é obrigatória."];
     }
+
+    // DETALHE: Se houver erro de validacao, encerra cedo para evitar persistencia inconsistente.
 
     if (Object.keys(errors).length > 0) {
       return renderLogin(res, { formData, errors });
@@ -489,6 +952,8 @@ function createApp() {
     return res.redirect(nextPath);
   });
 
+  // DETALHE: Rota GET /logout: consulta dados necessarios e monta resposta (HTML/JSON) para a tela solicitada.
+
   app.get("/logout", requireAuth, (req, res) => {
     req.session = {
       flashes: [
@@ -502,26 +967,41 @@ function createApp() {
     return res.redirect(urlFor("login"));
   });
 
+  // DETALHE: Rota GET /: consulta dados necessarios e monta resposta (HTML/JSON) para a tela solicitada.
+
   app.get("/", requireAuth, (req, res) => {
     return res.redirect(urlFor("services"));
   });
 
-  app.get("/services", requireAuth, (req, res) => {
+    // SECAO: rotas gerais de navegacao (services/home/presenca).
+
+// DETALHE: Rota GET /services: consulta dados necessarios e monta resposta (HTML/JSON) para a tela solicitada.
+
+app.get("/services", requireAuth, (req, res) => {
     return render(res, "services.html", {
       title: "Serviços",
       activeSection: "services",
     });
   });
 
+  // DETALHE: Rota GET /home: consulta dados necessarios e monta resposta (HTML/JSON) para a tela solicitada.
+
   app.get("/home", requireAuth, (req, res) => {
-    const tab = req.query.tab || 'home';
+    const tab = req.query.tab || "home";
+    const recentAtas = database.listRecentAtas(5).map((ata) => ({
+      ...ata,
+      canDelete: canManageProject(req, ata.project),
+    }));
+
     return render(res, "home.html", {
       title: "Atas",
       activeSection: "home",
       activeAtaTab: tab,
-      recentAtas: database.listRecentAtas(5),
+      recentAtas,
     });
   });
+
+  // DETALHE: Rota GET /presenca: consulta dados necessarios e monta resposta (HTML/JSON) para a tela solicitada.
 
   app.get("/presenca", requireAuth, (req, res) => {
     return render(res, "presenca/index.html", {
@@ -529,6 +1009,8 @@ function createApp() {
       activeSection: "presenca",
     });
   });
+
+  // DETALHE: Rota POST /presenca/registrar: processa envio de formulario/acao, valida entrada, persiste dados e redireciona.
 
   app.post("/presenca/registrar", requireAuth, (req, res) => {
     if (!verifyCsrf(req)) {
@@ -540,64 +1022,219 @@ function createApp() {
       });
     }
 
-    const crachaValue = String(req.body.cracha || "").trim();
-    const eventoValue = String(req.body.evento || "").trim();
-
-    if (!crachaValue) {
-      return res.json({ success: false, message: 'Informe o número do crachá.', error: 'Crachá obrigatório.' });
-    }
-
-    if (!eventoValue) {
-      return res.json({ success: false, message: 'Selecione o evento.', error: 'Evento obrigatório.' });
-    }
-
-    const workbook = XLSX.readFile('planilha_presenca.xlsx');
-    const sheetName = workbook.SheetNames[0];
-    const sheet = workbook.Sheets[sheetName];
-    const rawData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-    const header = rawData[0];
-    const data = rawData.slice(1).map((row) => {
-      const obj = {};
-      header.forEach((col, i) => {
-        obj[col] = row[i] || '';
-      });
-      return obj;
-    });
-
-    const row = data.find((r) => String(r.CRACHA || '').trim() === crachaValue);
-    if (!row) {
-      return res.json({ success: false, message: 'Crachá não encontrado.' });
-    }
-
-    const nome = row.NOME || 'Participante';
-    const eventoCol = eventoValue.toUpperCase();
-    if (!header.includes(eventoCol)) {
-      return res.json({ success: false, message: 'Evento inválido.' });
-    }
-
-    const eventLabel = eventoValue.replace(/evento_/i, 'Evento ').replace(/_/g, ' ');
-
-    if (row[eventoCol]) {
-      return res.json({
+    try {
+      const result = registerPresenceInWorkbook(req.body.cracha, req.body.evento);
+      return res.json(result);
+    } catch (error) {
+      console.error("Erro ao registrar presença:", error);
+      return res.status(500).json({
         success: false,
-        message: `${nome} já foi registrado para ${eventLabel}.`,
+        error: "Erro interno ao registrar presença.",
       });
     }
-
-    row[eventoCol] = 'X';
-
-    const updatedRaw = [header, ...data.map((obj) => header.map((col) => obj[col] || ''))];
-    const newSheet = XLSX.utils.aoa_to_sheet(updatedRaw);
-    workbook.Sheets[sheetName] = newSheet;
-    XLSX.writeFile(workbook, 'planilha_presenca.xlsx');
-
-    return res.json({
-      success: true,
-      message: `${nome} foi registrado para ${eventLabel}.`,
-    });
   });
 
-  app.get("/members", requireAuth, (req, res) => {
+    // SECAO: rotas de relatorios semanais (criacao, edicao e exclusao).
+
+// DETALHE: Rota GET /relatorios: consulta dados necessarios e monta resposta (HTML/JSON) para a tela solicitada.
+
+app.get("/relatorios", requireAuth, (req, res) => {
+    return renderReportPage(req, res);
+  });
+
+  // DETALHE: Rota POST /relatorios/create: processa envio de formulario/acao, valida entrada, persiste dados e redireciona.
+
+  app.post("/relatorios/create", requireAuth, (req, res) => {
+    if (!ensureValidCsrf(req, res)) {
+      return;
+    }
+    req.flash("info", "O registro semanal agora é feito em \"Metas da Semana\".");
+    return res.redirect("/relatorios#report-goals-panel");
+  });
+
+  // DETALHE: Rota POST /relatorios/edit/:id: processa envio de formulario/acao, valida entrada, persiste dados e redireciona.
+
+  app.post("/relatorios/edit/:id", requireAuth, (req, res) => {
+    if (!ensureValidCsrf(req, res)) {
+      return;
+    }
+    req.flash("info", "A edição semanal agora é feita em \"Metas da Semana\".");
+    return res.redirect("/relatorios#report-goals-panel");
+  });
+
+  // DETALHE: Rota POST /relatorios/delete/:id: processa envio de formulario/acao, valida entrada, persiste dados e redireciona.
+
+  app.post("/relatorios/delete/:id", requireAuth, (req, res) => {
+    if (!ensureValidCsrf(req, res)) {
+      return;
+    }
+    req.flash("info", "A remoção semanal agora é feita em \"Metas da Semana\".");
+    return res.redirect("/relatorios#report-goals-panel");
+  });
+
+  // DETALHE: Rota POST /relatorios/goals/create: cria meta semanal para membro/projeto selecionados.
+
+  app.post("/relatorios/goals/create", requireAuth, (req, res) => {
+    if (!ensureValidCsrf(req, res)) {
+      return;
+    }
+
+    const selectedMemberId = parseId(req.body.member_id);
+    const projectId = parseId(req.body.project_id);
+    const goalFormData = {
+      projectId: String(req.body.project_id || "").trim(),
+      activity: String(req.body.activity || "").trim(),
+      description: String(req.body.description || "").trim(),
+      isCompleted: Boolean(req.body.is_completed),
+    };
+    const goalFormErrors = {};
+
+    const selectedMember = selectedMemberId
+      ? database.getMemberById(selectedMemberId)
+      : null;
+    if (!selectedMember) {
+      req.flash("warning", "Membro inválido para cadastrar meta da semana.");
+      return res.redirect("/relatorios");
+    }
+
+    const project = projectId ? database.getProjectById(projectId) : null;
+    if (!project) {
+      goalFormErrors.projectId = ["Selecione um projeto válido."];
+    } else if (!database.isProjectMember(project.id, selectedMember.id)) {
+      goalFormErrors.projectId = ["Este membro não participa do projeto selecionado."];
+    }
+
+    if (!goalFormData.activity) {
+      goalFormErrors.activity = ["Informe a atividade da meta semanal."];
+    } else if (goalFormData.activity.length < 3 || goalFormData.activity.length > 180) {
+      goalFormErrors.activity = ["A atividade deve ter entre 3 e 180 caracteres."];
+    }
+
+    if (goalFormData.description.length > 2000) {
+      goalFormErrors.description = ["A descrição pode ter no máximo 2000 caracteres."];
+    }
+
+    if (!req.currentUser?.is_admin) {
+      const currentMember = getCurrentMember(req);
+      if (!currentMember?.is_active || currentMember.id !== selectedMember.id) {
+        goalFormErrors.activity = [
+          "Usuário comum só pode adicionar metas para o próprio membro.",
+        ];
+      }
+    }
+
+    if (Object.keys(goalFormErrors).length > 0) {
+      return renderReportPage(req, res, {
+        selectedMemberId: selectedMember.id,
+        selectedProjectId: project?.id || null,
+        goalFormData,
+        goalFormErrors,
+      });
+    }
+
+    try {
+      database.createReportWeekGoal({
+        memberId: selectedMember.id,
+        projectId: project.id,
+        createdByUserId: req.currentUser.id,
+        weekStart: getCurrentWeekStartDate(),
+        activity: goalFormData.activity,
+        description: goalFormData.description,
+        isCompleted: goalFormData.isCompleted,
+      });
+      req.flash("success", "Meta da semana adicionada com sucesso.");
+    } catch (error) {
+      console.error("Erro ao criar meta semanal:", error);
+      req.flash("danger", `Erro ao criar meta semanal: ${error.message}`);
+      return renderReportPage(req, res, {
+        selectedMemberId: selectedMember.id,
+        selectedProjectId: project?.id || null,
+        goalFormData,
+        goalFormErrors,
+      });
+    }
+
+    return res.redirect(
+      `/relatorios${buildReportsQuery({
+        memberId: selectedMember.id,
+      })}#report-goals-panel`,
+    );
+  });
+
+  // DETALHE: Rota POST /relatorios/goals/:id/update: atualiza atividade/descricao/status de uma meta semanal.
+
+  app.post("/relatorios/goals/:id/update", requireAuth, (req, res) => {
+    if (!ensureValidCsrf(req, res)) {
+      return;
+    }
+
+    const goalId = parseId(req.params.id);
+    const goal = goalId ? database.getReportWeekGoalById(goalId) : null;
+    if (!goal) {
+      req.flash("warning", "Meta semanal não encontrada.");
+      return res.redirect("/relatorios");
+    }
+
+    if (!canManageReportGoal(req, {
+      memberId: goal.member_id,
+      projectId: goal.project_id,
+    })) {
+      req.flash("warning", "Sem permissão para editar esta meta semanal.");
+      return res.redirect(
+        `/relatorios${buildReportsQuery({
+          memberId: goal.member_id,
+        })}#report-goals-panel`,
+      );
+    }
+
+    const activity = String(req.body.activity || "").trim();
+    const description = String(req.body.description || "").trim();
+    const isCompleted = Boolean(req.body.is_completed);
+    const goalFormErrors = {};
+
+    if (!activity) {
+      goalFormErrors.activity = ["A atividade não pode ficar vazia."];
+    } else if (activity.length < 3 || activity.length > 180) {
+      goalFormErrors.activity = ["A atividade deve ter entre 3 e 180 caracteres."];
+    }
+
+    if (description.length > 2000) {
+      goalFormErrors.description = ["A descrição pode ter no máximo 2000 caracteres."];
+    }
+
+    if (Object.keys(goalFormErrors).length > 0) {
+      req.flash("warning", goalFormErrors.activity?.[0] || goalFormErrors.description?.[0]);
+      return res.redirect(
+        `/relatorios${buildReportsQuery({
+          memberId: goal.member_id,
+        })}#report-goals-panel`,
+      );
+    }
+
+    try {
+      database.updateReportWeekGoal(goal.id, {
+        activity,
+        description,
+        isCompleted,
+      });
+      req.flash("success", "Meta semanal atualizada.");
+    } catch (error) {
+      console.error("Erro ao atualizar meta semanal:", error);
+      req.flash("danger", `Erro ao atualizar meta semanal: ${error.message}`);
+    }
+
+    return res.redirect(
+      `/relatorios${buildReportsQuery({
+        memberId: goal.member_id,
+      })}#report-goals-panel`,
+    );
+  });
+
+    // SECAO: rotas de membros (listagem e manutencao administrativa).
+
+// DETALHE: Rota GET /members: consulta dados necessarios e monta resposta (HTML/JSON) para a tela solicitada.
+
+app.get("/members", requireAuth, (req, res) => {
     return render(res, "members/list.html", {
       title: "Membros Ativos",
       activeSection: "members",
@@ -605,25 +1242,35 @@ function createApp() {
     });
   });
 
+  // DETALHE: Rota GET /members/add: consulta dados necessarios e monta resposta (HTML/JSON) para a tela solicitada.
+
   app.get("/members/add", requireAuth, requireAdminPage, (req, res) => {
     return renderMemberForm(res, {
       title: "Adicionar Membro",
       actionLabel: "Adicionar",
       formData: {
         name: "",
+        photoClear: false,
       },
       errors: {},
     });
   });
 
-  app.post("/members/add", requireAuth, requireAdminPage, (req, res) => {
+  // DETALHE: Rota POST /members/add: processa envio de formulario/acao, valida entrada, persiste dados e redireciona.
+
+  app.post("/members/add", requireAuth, requireAdminPage, runMemberPhotoUpload, (req, res) => {
+    // DETALHE: Interrompe o fluxo quando token CSRF esta invalido ou expirado.
+
     if (!ensureValidCsrf(req, res)) {
       return;
     }
 
     const formData = {
       name: String(req.body.name || "").trim(),
+      photoClear: Boolean(req.body["photo-clear"]),
     };
+    // DETALHE: Objeto para acumular erros de validacao e devolver feedback completo ao usuario.
+
     const errors = {};
 
     if (!formData.name) {
@@ -631,8 +1278,16 @@ function createApp() {
     } else if (formData.name.length < 2 || formData.name.length > 100) {
       errors.name = ["Nome deve ter entre 2 e 100 caracteres."];
     }
+    if (req.uploadError) {
+      errors.photo = [req.uploadError];
+    }
+
+    // DETALHE: Se houver erro de validacao, encerra cedo para evitar persistencia inconsistente.
 
     if (Object.keys(errors).length > 0) {
+      if (req.file?.filename) {
+        safeUnlink(path.join(config.uploadDir, req.file.filename));
+      }
       return renderMemberForm(res, {
         title: "Adicionar Membro",
         actionLabel: "Adicionar",
@@ -642,10 +1297,13 @@ function createApp() {
     }
 
     try {
-      const member = database.createMember(formData.name);
+      const member = database.createMember(formData.name, req.file?.filename || null);
       req.flash("success", `Membro "${member.name}" adicionado com sucesso!`);
       return res.redirect(urlFor("list_members"));
     } catch (error) {
+      if (req.file?.filename) {
+        safeUnlink(path.join(config.uploadDir, req.file.filename));
+      }
       if (isUniqueConstraintError(error)) {
         errors.name = ["Já existe um membro com este nome."];
         return renderMemberForm(res, {
@@ -667,6 +1325,8 @@ function createApp() {
     }
   });
 
+  // DETALHE: Rota GET /members/edit/:id: consulta dados necessarios e monta resposta (HTML/JSON) para a tela solicitada.
+
   app.get("/members/edit/:id", requireAuth, requireAdminPage, (req, res) => {
     const member = database.getMemberById(parseId(req.params.id));
     if (!member) {
@@ -678,13 +1338,18 @@ function createApp() {
       actionLabel: "Salvar Alterações",
       formData: {
         name: member.name,
+        photoClear: false,
       },
       errors: {},
       member,
     });
   });
 
-  app.post("/members/edit/:id", requireAuth, requireAdminPage, (req, res) => {
+  // DETALHE: Rota POST /members/edit/:id: processa envio de formulario/acao, valida entrada, persiste dados e redireciona.
+
+  app.post("/members/edit/:id", requireAuth, requireAdminPage, runMemberPhotoUpload, (req, res) => {
+    // DETALHE: Interrompe o fluxo quando token CSRF esta invalido ou expirado.
+
     if (!ensureValidCsrf(req, res)) {
       return;
     }
@@ -697,7 +1362,10 @@ function createApp() {
 
     const formData = {
       name: String(req.body.name || "").trim(),
+      photoClear: Boolean(req.body["photo-clear"]),
     };
+    // DETALHE: Objeto para acumular erros de validacao e devolver feedback completo ao usuario.
+
     const errors = {};
 
     if (!formData.name) {
@@ -705,8 +1373,16 @@ function createApp() {
     } else if (formData.name.length < 2 || formData.name.length > 100) {
       errors.name = ["Nome deve ter entre 2 e 100 caracteres."];
     }
+    if (req.uploadError) {
+      errors.photo = [req.uploadError];
+    }
+
+    // DETALHE: Se houver erro de validacao, encerra cedo para evitar persistencia inconsistente.
 
     if (Object.keys(errors).length > 0) {
+      if (req.file?.filename) {
+        safeUnlink(path.join(config.uploadDir, req.file.filename));
+      }
       return renderMemberForm(res, {
         title: `Editar Membro: ${member.name} ${member.is_active ? "(Ativo)" : "(Inativo)"}`,
         actionLabel: "Salvar Alterações",
@@ -717,10 +1393,27 @@ function createApp() {
     }
 
     try {
-      database.updateMember(memberId, formData.name);
+      const nextPhoto = req.file?.filename
+        ? req.file.filename
+        : (formData.photoClear ? null : member.photo || null);
+      const previousPhotoToDelete =
+        nextPhoto !== (member.photo || null) && member.photo
+          ? member.photo
+          : null;
+
+      database.updateMember(memberId, {
+        name: formData.name,
+        photo: nextPhoto,
+      });
+      if (previousPhotoToDelete) {
+        safeUnlink(path.join(config.uploadDir, previousPhotoToDelete));
+      }
       req.flash("success", `Membro "${formData.name}" atualizado com sucesso!`);
       return res.redirect(urlFor("list_members"));
     } catch (error) {
+      if (req.file?.filename && req.file.filename !== member.photo) {
+        safeUnlink(path.join(config.uploadDir, req.file.filename));
+      }
       if (isUniqueConstraintError(error)) {
         errors.name = ["Já existe um membro com este nome."];
       } else {
@@ -738,7 +1431,11 @@ function createApp() {
     }
   });
 
+  // DETALHE: Rota POST /members/delete/:id: processa envio de formulario/acao, valida entrada, persiste dados e redireciona.
+
   app.post("/members/delete/:id", requireAuth, requireAdminPage, (req, res) => {
+    // DETALHE: Interrompe o fluxo quando token CSRF esta invalido ou expirado.
+
     if (!ensureValidCsrf(req, res)) {
       return;
     }
@@ -768,13 +1465,30 @@ function createApp() {
     return res.redirect(urlFor("list_members"));
   });
 
-  app.get("/projects", requireAuth, (req, res) => {
+    // SECAO: rotas de projetos (cadastro, associacoes e logo).
+
+// DETALHE: Rota GET /projects: consulta dados necessarios e monta resposta (HTML/JSON) para a tela solicitada.
+
+app.get("/projects", requireAuth, (req, res) => {
+    const projects = listAccessibleProjects(req).map((project) => {
+      const detailed = database.getProjectById(project.id);
+      if (!detailed) {
+        return null;
+      }
+      return {
+        ...detailed,
+        can_manage: canManageProject(req, detailed),
+      };
+    }).filter(Boolean);
+
     return render(res, "projects/list.html", {
       title: "Projetos",
       activeSection: "projects",
-      projects: database.listProjectsWithMembers(),
+      projects,
     });
   });
+
+  // DETALHE: Rota GET /projects/add: consulta dados necessarios e monta resposta (HTML/JSON) para a tela solicitada.
 
   app.get("/projects/add", requireAuth, requireAdminPage, (req, res) => {
     return renderProjectForm(res, {
@@ -782,12 +1496,17 @@ function createApp() {
       actionLabel: "Adicionar",
       formData: {
         name: "",
+        primaryColor: DEFAULT_PROJECT_COLOR,
         memberIds: [],
+        coordinatorIds: [],
         logoClear: false,
       },
       errors: {},
+      canManageProject: true,
     });
   });
+
+  // DETALHE: Inicio de bloco de rota declarada em multiplas linhas; revisar path e middlewares logo abaixo.
 
   app.post(
     "/projects/add",
@@ -795,6 +1514,8 @@ function createApp() {
     requireAdminPage,
     runLogoUpload,
     (req, res) => {
+      // DETALHE: Interrompe o fluxo quando token CSRF esta invalido ou expirado.
+
       if (!ensureValidCsrf(req, res)) {
         if (req.file) {
           safeUnlink(req.file.path);
@@ -803,11 +1524,16 @@ function createApp() {
       }
 
       const memberIds = parseIdArray(req.body.members);
+      const coordinatorIds = parseIdArray(req.body.coordinators);
       const formData = {
         name: String(req.body.name || "").trim(),
+        primaryColor: normalizeProjectColor(req.body.primary_color),
         memberIds,
+        coordinatorIds,
         logoClear: false,
       };
+      // DETALHE: Objeto para acumular erros de validacao e devolver feedback completo ao usuario.
+
       const errors = {};
 
       if (!formData.name) {
@@ -826,9 +1552,22 @@ function createApp() {
       const invalidMemberIds = memberIds.filter(
         (memberId) => !validMemberIds.has(memberId),
       );
-      if (invalidMemberIds.length > 0) {
+      if (memberIds.length === 0) {
+        errors.members = ["Selecione ao menos um membro para o projeto."];
+      } else if (invalidMemberIds.length > 0) {
         errors.members = ["Há membros inválidos na seleção."];
       }
+
+      const coordinatorOutsideProject = coordinatorIds.filter(
+        (memberId) => !memberIds.includes(memberId),
+      );
+      if (coordinatorOutsideProject.length > 0) {
+        errors.coordinators = ["Todo coordenador também precisa estar marcado como membro."];
+      } else if (memberIds.length > 0 && coordinatorIds.length === 0) {
+        errors.coordinators = ["Selecione ao menos um coordenador para o projeto."];
+      }
+
+      // DETALHE: Se houver erro de validacao, encerra cedo para evitar persistencia inconsistente.
 
       if (Object.keys(errors).length > 0) {
         if (req.file) {
@@ -839,6 +1578,7 @@ function createApp() {
           actionLabel: "Adicionar",
           formData,
           errors,
+          canManageProject: true,
         });
       }
 
@@ -846,7 +1586,9 @@ function createApp() {
         const project = database.createProject({
           name: formData.name,
           logo: req.file ? req.file.filename : null,
+          primaryColor: formData.primaryColor,
           memberIds,
+          coordinatorIds,
         });
         req.flash("success", `Projeto "${project.name}" adicionado com sucesso!`);
         return res.redirect(urlFor("list_projects"));
@@ -867,15 +1609,26 @@ function createApp() {
           actionLabel: "Adicionar",
           formData,
           errors,
+          canManageProject: true,
         });
       }
     },
   );
 
-  app.get("/projects/edit/:id", requireAuth, requireAdminPage, (req, res) => {
+  // DETALHE: Rota GET /projects/edit/:id: consulta dados necessarios e monta resposta (HTML/JSON) para a tela solicitada.
+
+  app.get("/projects/edit/:id", requireAuth, (req, res) => {
     const project = database.getProjectById(parseId(req.params.id));
     if (!project) {
       return notFound(res);
+    }
+
+    if (!canManageProject(req, project)) {
+      req.flash(
+        "warning",
+        "Somente coordenadores deste projeto podem editar membros, coordenadores e dados do projeto.",
+      );
+      return res.redirect(urlFor("list_projects"));
     }
 
     return renderProjectForm(res, {
@@ -883,20 +1636,26 @@ function createApp() {
       actionLabel: "Salvar Alterações",
       formData: {
         name: project.name,
+        primaryColor: project.primary_color || DEFAULT_PROJECT_COLOR,
         memberIds: project.active_member_ids,
+        coordinatorIds: project.coordinator_member_ids,
         logoClear: false,
       },
       errors: {},
       project,
+      canManageProject: true,
     });
   });
+
+  // DETALHE: Inicio de bloco de rota declarada em multiplas linhas; revisar path e middlewares logo abaixo.
 
   app.post(
     "/projects/edit/:id",
     requireAuth,
-    requireAdminPage,
     runLogoUpload,
     (req, res) => {
+      // DETALHE: Interrompe o fluxo quando token CSRF esta invalido ou expirado.
+
       if (!ensureValidCsrf(req, res)) {
         if (req.file) {
           safeUnlink(req.file.path);
@@ -913,12 +1672,28 @@ function createApp() {
         return notFound(res);
       }
 
+      if (!canManageProject(req, project)) {
+        if (req.file) {
+          safeUnlink(req.file.path);
+        }
+        req.flash(
+          "warning",
+          "Somente coordenadores deste projeto podem editar membros, coordenadores e dados do projeto.",
+        );
+        return res.redirect(urlFor("list_projects"));
+      }
+
       const memberIds = parseIdArray(req.body.members);
+      const coordinatorIds = parseIdArray(req.body.coordinators);
       const formData = {
         name: String(req.body.name || "").trim(),
+        primaryColor: normalizeProjectColor(req.body.primary_color, project.primary_color),
         memberIds,
+        coordinatorIds,
         logoClear: Boolean(req.body["logo-clear"]),
       };
+      // DETALHE: Objeto para acumular erros de validacao e devolver feedback completo ao usuario.
+
       const errors = {};
 
       if (!formData.name) {
@@ -937,9 +1712,22 @@ function createApp() {
       const invalidMemberIds = memberIds.filter(
         (memberId) => !validMemberIds.has(memberId),
       );
-      if (invalidMemberIds.length > 0) {
+      if (memberIds.length === 0) {
+        errors.members = ["Selecione ao menos um membro para o projeto."];
+      } else if (invalidMemberIds.length > 0) {
         errors.members = ["Há membros inválidos na seleção."];
       }
+
+      const coordinatorOutsideProject = coordinatorIds.filter(
+        (memberId) => !memberIds.includes(memberId),
+      );
+      if (coordinatorOutsideProject.length > 0) {
+        errors.coordinators = ["Todo coordenador também precisa estar marcado como membro."];
+      } else if (memberIds.length > 0 && coordinatorIds.length === 0) {
+        errors.coordinators = ["Selecione ao menos um coordenador para o projeto."];
+      }
+
+      // DETALHE: Se houver erro de validacao, encerra cedo para evitar persistencia inconsistente.
 
       if (Object.keys(errors).length > 0) {
         if (req.file) {
@@ -951,6 +1739,7 @@ function createApp() {
           formData,
           errors,
           project,
+          canManageProject: true,
         });
       }
 
@@ -974,7 +1763,9 @@ function createApp() {
         const updated = database.updateProject(projectId, {
           name: formData.name,
           logo,
+          primaryColor: formData.primaryColor,
           memberIds,
+          coordinatorIds,
         });
         req.flash("success", `Projeto "${updated.name}" atualizado com sucesso!`);
         return res.redirect(urlFor("list_projects"));
@@ -998,13 +1789,19 @@ function createApp() {
           project: {
             ...project,
             logo,
+            primary_color: formData.primaryColor,
           },
+          canManageProject: true,
         });
       }
     },
   );
 
-  app.post("/projects/delete/:id", requireAuth, requireAdminPage, (req, res) => {
+  // DETALHE: Rota POST /projects/delete/:id: processa envio de formulario/acao, valida entrada, persiste dados e redireciona.
+
+  app.post("/projects/delete/:id", requireAuth, (req, res) => {
+    // DETALHE: Interrompe o fluxo quando token CSRF esta invalido ou expirado.
+
     if (!ensureValidCsrf(req, res)) {
       return;
     }
@@ -1013,6 +1810,14 @@ function createApp() {
     const project = database.getProjectById(projectId);
     if (!project) {
       return notFound(res);
+    }
+
+    if (!canManageProject(req, project)) {
+      req.flash(
+        "warning",
+        "Somente coordenadores deste projeto podem remover o projeto.",
+      );
+      return res.redirect(urlFor("list_projects"));
     }
 
     try {
@@ -1032,8 +1837,13 @@ function createApp() {
     return res.redirect(urlFor("list_projects"));
   });
 
-  app.get("/atas/create", requireAuth, (req, res) => {
-    return renderAtaForm(res, {
+    // SECAO: rotas de atas (criacao, download de PDF e exclusao).
+
+// DETALHE: Rota GET /atas/create: consulta dados necessarios e monta resposta (HTML/JSON) para a tela solicitada.
+
+app.get("/atas/create", requireAuth, (req, res) => {
+    const availableProjects = listAccessibleProjects(req);
+    return renderAtaForm(req, res, {
       title: "Criar Nova Ata",
       formData: {
         projectId: "",
@@ -1043,8 +1853,11 @@ function createApp() {
         justifications: {},
       },
       errors: {},
+      projects: availableProjects,
     });
   });
+
+  // DETALHE: Rota GET /atas/create/for/:project_id: consulta dados necessarios e monta resposta (HTML/JSON) para a tela solicitada.
 
   app.get("/atas/create/for/:project_id", requireAuth, (req, res) => {
     const projectId = parseId(req.params.project_id);
@@ -1053,7 +1866,15 @@ function createApp() {
       return notFound(res);
     }
 
-    return renderAtaForm(res, {
+    if (!canCreateAtaForProject(req, project)) {
+      req.flash(
+        "warning",
+        "Você só pode criar atas para projetos nos quais está vinculado como membro.",
+      );
+      return res.redirect(urlFor("create_ata"));
+    }
+
+    return renderAtaForm(req, res, {
       title: "Criar Nova Ata",
       formData: {
         projectId: String(projectId),
@@ -1063,13 +1884,18 @@ function createApp() {
         justifications: {},
       },
       errors: {},
+      projects: listAccessibleProjects(req),
     });
   });
+
+  // DETALHE: Inicio de bloco de rota declarada em multiplas linhas; revisar path e middlewares logo abaixo.
 
   app.post(
     ["/atas/create", "/atas/create/for/:project_id"],
     requireAuth,
     (req, res) => {
+      // DETALHE: Interrompe o fluxo quando token CSRF esta invalido ou expirado.
+
       if (!ensureValidCsrf(req, res)) {
         return;
       }
@@ -1082,12 +1908,18 @@ function createApp() {
         justifications: {},
       };
 
+      // DETALHE: Objeto para acumular erros de validacao e devolver feedback completo ao usuario.
+
       const errors = {};
       const projectId = parseId(formData.projectId);
       const project = projectId ? database.getProjectById(projectId) : null;
 
       if (!project) {
         errors.project = ["É necessário selecionar um projeto válido."];
+      } else if (!canCreateAtaForProject(req, project)) {
+        errors.project = [
+          "Você só pode criar atas para projetos nos quais está vinculado como membro.",
+        ];
       }
 
       const meetingDateTime = toSqlDateTime(formData.meetingDatetime);
@@ -1125,11 +1957,14 @@ function createApp() {
         }
       });
 
+      // DETALHE: Se houver erro de validacao, encerra cedo para evitar persistencia inconsistente.
+
       if (Object.keys(errors).length > 0) {
-        return renderAtaForm(res, {
+        return renderAtaForm(req, res, {
           title: "Criar Nova Ata",
           formData,
           errors,
+          projects: listAccessibleProjects(req),
         });
       }
 
@@ -1158,14 +1993,17 @@ function createApp() {
       } catch (error) {
         console.error("Erro ao criar ata:", error);
         req.flash("danger", `Erro ao criar ata: ${error.message}`);
-        return renderAtaForm(res, {
+        return renderAtaForm(req, res, {
           title: "Criar Nova Ata",
           formData,
           errors,
+          projects: listAccessibleProjects(req),
         });
       }
     },
   );
+
+  // DETALHE: Rota GET /atas/download/:id: consulta dados necessarios e monta resposta (HTML/JSON) para a tela solicitada.
 
   app.get("/atas/download/:id", requireAuth, async (req, res) => {
     const ata = database.getAtaById(parseId(req.params.id));
@@ -1193,7 +2031,11 @@ function createApp() {
     }
   });
 
+  // DETALHE: Rota POST /atas/delete/:id: processa envio de formulario/acao, valida entrada, persiste dados e redireciona.
+
   app.post("/atas/delete/:id", requireAuth, (req, res) => {
+    // DETALHE: Interrompe o fluxo quando token CSRF esta invalido ou expirado.
+
     if (!ensureValidCsrf(req, res)) {
       return;
     }
@@ -1202,6 +2044,14 @@ function createApp() {
     const ata = database.getAtaById(ataId);
     if (!ata) {
       return notFound(res);
+    }
+
+    if (!canManageProject(req, ata.project)) {
+      req.flash(
+        "warning",
+        "Somente coordenadores do projeto podem excluir esta ata.",
+      );
+      return res.redirect(urlFor("home"));
     }
 
     try {
@@ -1215,17 +2065,25 @@ function createApp() {
     return res.redirect(urlFor("home"));
   });
 
-  app.get("/almoxarifado", requireAuth, (req, res) => {
+    // SECAO: rotas do almoxarifado (painel, estoque, emprestimos e APIs internas).
+
+// DETALHE: Rota GET /almoxarifado: consulta dados necessarios e monta resposta (HTML/JSON) para a tela solicitada.
+
+app.get("/almoxarifado", requireAuth, (req, res) => {
     return renderAlmox(res, {
       activeTab: req.query.tab,
     });
   });
+
+  // DETALHE: Inicio de bloco de rota declarada em multiplas linhas; revisar path e middlewares logo abaixo.
 
   app.post(
     "/almoxarifado/users/create",
     requireAuth,
     requireAdminPage,
     (req, res) => {
+      // DETALHE: Interrompe o fluxo quando token CSRF esta invalido ou expirado.
+
       if (!ensureValidCsrf(req, res)) {
         return;
       }
@@ -1236,8 +2094,11 @@ function createApp() {
         username: String(req.body.username || "").trim(),
         password: "",
         role: String(req.body.role || "common").trim().toLowerCase(),
+        memberId: String(req.body.member_id || "").trim(),
       };
       const rawPassword = String(req.body.password || "");
+      // DETALHE: Objeto para acumular erros de validacao e devolver feedback completo ao usuario.
+
       const userErrors = {};
 
       if (!userFormData.name) {
@@ -1264,6 +2125,18 @@ function createApp() {
         userFormData.role = "common";
       }
 
+      const memberId = parseId(userFormData.memberId);
+      if (userFormData.memberId && !memberId) {
+        userErrors.memberId = ["Selecione um membro válido."];
+      } else if (memberId) {
+        const member = database.getMemberById(memberId);
+        if (!member || !member.is_active) {
+          userErrors.memberId = ["Selecione um membro ativo válido."];
+        }
+      }
+
+      // DETALHE: Se houver erro de validacao, encerra cedo para evitar persistencia inconsistente.
+
       if (Object.keys(userErrors).length > 0) {
         return renderAlmox(res, {
           activeTab,
@@ -1277,6 +2150,7 @@ function createApp() {
         const createdUser = database.createUser(userFormData.username, passwordHash, {
           name: userFormData.name,
           role: userFormData.role,
+          memberId: memberId || null,
         });
 
         req.flash(
@@ -1301,11 +2175,78 @@ function createApp() {
     },
   );
 
+  // DETALHE: Inicio de bloco de rota declarada em multiplas linhas; revisar path e middlewares logo abaixo.
+
+  app.post(
+    "/almoxarifado/users/link/:id",
+    requireAuth,
+    requireAdminPage,
+    (req, res) => {
+      // DETALHE: Interrompe o fluxo quando token CSRF esta invalido ou expirado.
+
+      if (!ensureValidCsrf(req, res)) {
+        return;
+      }
+
+      const activeTab = "users";
+      const userId = parseId(req.params.id);
+      if (!userId) {
+        req.flash("warning", "Usuário inválido para vinculação.");
+        return res.redirect(almoxPath(activeTab));
+      }
+
+      const user = database.getUserById(userId);
+      if (!user) {
+        req.flash("warning", "Usuário não encontrado.");
+        return res.redirect(almoxPath(activeTab));
+      }
+
+      const memberIdRaw = String(req.body.member_id || "").trim();
+      const memberId = parseId(memberIdRaw);
+      if (memberIdRaw && !memberId) {
+        req.flash("warning", "Selecione um membro válido.");
+        return res.redirect(almoxPath(activeTab));
+      }
+
+      if (memberId) {
+        const member = database.getMemberById(memberId);
+        if (!member || !member.is_active) {
+          req.flash("warning", "Selecione um membro ativo válido.");
+          return res.redirect(almoxPath(activeTab));
+        }
+      }
+
+      try {
+        const updatedUser = database.setUserMemberLink(userId, memberId || null);
+        if (updatedUser?.member_name) {
+          req.flash(
+            "success",
+            `Usuário @${updatedUser.username} vinculado ao membro ${updatedUser.member_name}.`,
+          );
+        } else {
+          req.flash(
+            "success",
+            `Vínculo de membro removido do usuário @${user.username}.`,
+          );
+        }
+      } catch (error) {
+        console.error("Erro ao vincular usuário ao membro:", error);
+        req.flash("danger", `Erro ao vincular usuário: ${error.message}`);
+      }
+
+      return res.redirect(almoxPath(activeTab));
+    },
+  );
+
+  // DETALHE: Inicio de bloco de rota declarada em multiplas linhas; revisar path e middlewares logo abaixo.
+
   app.post(
     "/almoxarifado/inventory/create",
     requireAuth,
     requireAdminPage,
     (req, res) => {
+      // DETALHE: Interrompe o fluxo quando token CSRF esta invalido ou expirado.
+
       if (!ensureValidCsrf(req, res)) {
         return;
       }
@@ -1323,6 +2264,8 @@ function createApp() {
         description: parsed.description,
       };
       const { errors: itemErrors, normalized } = validateInventoryPayload(parsed);
+
+      // DETALHE: Se houver erro de validacao, encerra cedo para evitar persistencia inconsistente.
 
       if (Object.keys(itemErrors).length > 0) {
         return renderAlmox(res, {
@@ -1361,11 +2304,15 @@ function createApp() {
     },
   );
 
+  // DETALHE: Inicio de bloco de rota declarada em multiplas linhas; revisar path e middlewares logo abaixo.
+
   app.post(
     "/almoxarifado/categories/create",
     requireAuth,
     requireAdminPage,
     (req, res) => {
+      // DETALHE: Interrompe o fluxo quando token CSRF esta invalido ou expirado.
+
       if (!ensureValidCsrf(req, res)) {
         return;
       }
@@ -1375,6 +2322,8 @@ function createApp() {
         req.body.name,
         "nome da categoria",
       );
+
+      // DETALHE: Se houver erro de validacao, encerra cedo para evitar persistencia inconsistente.
 
       if (Object.keys(errors).length > 0) {
         return renderAlmox(res, {
@@ -1405,11 +2354,15 @@ function createApp() {
     },
   );
 
+  // DETALHE: Inicio de bloco de rota declarada em multiplas linhas; revisar path e middlewares logo abaixo.
+
   app.post(
     "/almoxarifado/categories/delete/:id",
     requireAuth,
     requireAdminPage,
     (req, res) => {
+      // DETALHE: Interrompe o fluxo quando token CSRF esta invalido ou expirado.
+
       if (!ensureValidCsrf(req, res)) {
         return;
       }
@@ -1436,11 +2389,15 @@ function createApp() {
     },
   );
 
+  // DETALHE: Inicio de bloco de rota declarada em multiplas linhas; revisar path e middlewares logo abaixo.
+
   app.post(
     "/almoxarifado/locations/create",
     requireAuth,
     requireAdminPage,
     (req, res) => {
+      // DETALHE: Interrompe o fluxo quando token CSRF esta invalido ou expirado.
+
       if (!ensureValidCsrf(req, res)) {
         return;
       }
@@ -1450,6 +2407,8 @@ function createApp() {
         req.body.name,
         "nome do local",
       );
+
+      // DETALHE: Se houver erro de validacao, encerra cedo para evitar persistencia inconsistente.
 
       if (Object.keys(errors).length > 0) {
         return renderAlmox(res, {
@@ -1480,11 +2439,15 @@ function createApp() {
     },
   );
 
+  // DETALHE: Inicio de bloco de rota declarada em multiplas linhas; revisar path e middlewares logo abaixo.
+
   app.post(
     "/almoxarifado/locations/delete/:id",
     requireAuth,
     requireAdminPage,
     (req, res) => {
+      // DETALHE: Interrompe o fluxo quando token CSRF esta invalido ou expirado.
+
       if (!ensureValidCsrf(req, res)) {
         return;
       }
@@ -1511,11 +2474,15 @@ function createApp() {
     },
   );
 
+  // DETALHE: Inicio de bloco de rota declarada em multiplas linhas; revisar path e middlewares logo abaixo.
+
   app.post(
     "/almoxarifado/inventory/delete/:id",
     requireAuth,
     requireAdminPage,
     (req, res) => {
+      // DETALHE: Interrompe o fluxo quando token CSRF esta invalido ou expirado.
+
       if (!ensureValidCsrf(req, res)) {
         return;
       }
@@ -1546,7 +2513,11 @@ function createApp() {
     },
   );
 
+  // DETALHE: Rota POST /almoxarifado/inventory/withdraw: processa envio de formulario/acao, valida entrada, persiste dados e redireciona.
+
   app.post("/almoxarifado/inventory/withdraw", requireAuth, (req, res) => {
+    // DETALHE: Interrompe o fluxo quando token CSRF esta invalido ou expirado.
+
     if (!ensureValidCsrf(req, res)) {
       return;
     }
@@ -1556,6 +2527,8 @@ function createApp() {
       nameOrCode: String(req.body.name_or_code || "").trim(),
       quantity: String(req.body.quantity || "").trim(),
     };
+    // DETALHE: Objeto para acumular erros de validacao e devolver feedback completo ao usuario.
+
     const withdrawErrors = {};
     const quantity = Number(withdrawFormData.quantity);
 
@@ -1566,6 +2539,8 @@ function createApp() {
     if (!Number.isInteger(quantity) || quantity <= 0) {
       withdrawErrors.quantity = ["Informe uma quantidade inteira maior que zero."];
     }
+
+    // DETALHE: Se houver erro de validacao, encerra cedo para evitar persistencia inconsistente.
 
     if (Object.keys(withdrawErrors).length > 0) {
       return renderAlmox(res, {
@@ -1595,7 +2570,11 @@ function createApp() {
     return res.redirect(almoxPath("withdraw"));
   });
 
+  // DETALHE: Rota POST /almoxarifado/inventory/borrow: processa envio de formulario/acao, valida entrada, persiste dados e redireciona.
+
   app.post("/almoxarifado/inventory/borrow", requireAuth, (req, res) => {
+    // DETALHE: Interrompe o fluxo quando token CSRF esta invalido ou expirado.
+
     if (!ensureValidCsrf(req, res)) {
       return;
     }
@@ -1605,6 +2584,8 @@ function createApp() {
       nameOrCode: String(req.body.name_or_code || "").trim(),
       quantity: String(req.body.quantity || "").trim(),
     };
+    // DETALHE: Objeto para acumular erros de validacao e devolver feedback completo ao usuario.
+
     const loanErrors = {};
     const quantity = Number(loanFormData.quantity);
 
@@ -1615,6 +2596,8 @@ function createApp() {
     if (!Number.isInteger(quantity) || quantity <= 0) {
       loanErrors.quantity = ["Informe uma quantidade inteira maior que zero."];
     }
+
+    // DETALHE: Se houver erro de validacao, encerra cedo para evitar persistencia inconsistente.
 
     if (Object.keys(loanErrors).length > 0) {
       return renderAlmox(res, {
@@ -1644,7 +2627,11 @@ function createApp() {
     return res.redirect(almoxPath("borrowed"));
   });
 
+  // DETALHE: Rota POST /almoxarifado/loans/return/:id: processa envio de formulario/acao, valida entrada, persiste dados e redireciona.
+
   app.post("/almoxarifado/loans/return/:id", requireAuth, (req, res) => {
+    // DETALHE: Interrompe o fluxo quando token CSRF esta invalido ou expirado.
+
     if (!ensureValidCsrf(req, res)) {
       return;
     }
@@ -1683,11 +2670,15 @@ function createApp() {
     return res.redirect(almoxPath("borrowed"));
   });
 
+  // DETALHE: Inicio de bloco de rota declarada em multiplas linhas; revisar path e middlewares logo abaixo.
+
   app.post(
     "/almoxarifado/loans/extend/:id",
     requireAuth,
     requireAdminPage,
     (req, res) => {
+      // DETALHE: Interrompe o fluxo quando token CSRF esta invalido ou expirado.
+
       if (!ensureValidCsrf(req, res)) {
         return;
       }
@@ -1724,6 +2715,8 @@ function createApp() {
     },
   );
 
+  // DETALHE: Rota GET /almoxarifado/api/itens: consulta dados necessarios e monta resposta (HTML/JSON) para a tela solicitada.
+
   app.get("/almoxarifado/api/itens", requireAuth, (req, res) => {
     return res.json(
       database.listInventoryItems().map((item) => ({
@@ -1740,17 +2733,23 @@ function createApp() {
     );
   });
 
+  // DETALHE: Inicio de bloco de rota declarada em multiplas linhas; revisar path e middlewares logo abaixo.
+
   app.post(
     "/almoxarifado/api/itens",
     requireAuth,
     requireAdminApi,
     (req, res) => {
+      // DETALHE: Garante integridade de chamadas API protegidas por CSRF.
+
       if (!ensureValidApiCsrf(req, res)) {
         return;
       }
 
       const parsed = parseInventoryPayload(req.body);
       const { errors, normalized } = validateInventoryPayload(parsed);
+      // DETALHE: Se houver erro de validacao, encerra cedo para evitar persistencia inconsistente.
+
       if (Object.keys(errors).length > 0) {
         return res.status(400).json({ error: "Dados inválidos.", details: errors });
       }
@@ -1774,11 +2773,15 @@ function createApp() {
     },
   );
 
+  // DETALHE: Inicio de bloco de rota declarada em multiplas linhas; revisar path e middlewares logo abaixo.
+
   app.put(
     "/almoxarifado/api/itens/:id",
     requireAuth,
     requireAdminApi,
     (req, res) => {
+      // DETALHE: Garante integridade de chamadas API protegidas por CSRF.
+
       if (!ensureValidApiCsrf(req, res)) {
         return;
       }
@@ -1790,6 +2793,8 @@ function createApp() {
 
       const parsed = parseInventoryPayload(req.body);
       const { errors, normalized } = validateInventoryPayload(parsed);
+      // DETALHE: Se houver erro de validacao, encerra cedo para evitar persistencia inconsistente.
+
       if (Object.keys(errors).length > 0) {
         return res.status(400).json({ error: "Dados inválidos.", details: errors });
       }
@@ -1818,11 +2823,15 @@ function createApp() {
     },
   );
 
+  // DETALHE: Inicio de bloco de rota declarada em multiplas linhas; revisar path e middlewares logo abaixo.
+
   app.delete(
     "/almoxarifado/api/itens/:id",
     requireAuth,
     requireAdminApi,
     (req, res) => {
+      // DETALHE: Garante integridade de chamadas API protegidas por CSRF.
+
       if (!ensureValidApiCsrf(req, res)) {
         return;
       }
@@ -1849,6 +2858,8 @@ function createApp() {
     },
   );
 
+  // DETALHE: Rota GET /almoxarifado/api/categorias: consulta dados necessarios e monta resposta (HTML/JSON) para a tela solicitada.
+
   app.get("/almoxarifado/api/categorias", requireAuth, (req, res) => {
     return res.json(
       database.listInventoryCategories().map((category) => ({
@@ -1858,11 +2869,15 @@ function createApp() {
     );
   });
 
+  // DETALHE: Inicio de bloco de rota declarada em multiplas linhas; revisar path e middlewares logo abaixo.
+
   app.post(
     "/almoxarifado/api/categorias",
     requireAuth,
     requireAdminApi,
     (req, res) => {
+      // DETALHE: Garante integridade de chamadas API protegidas por CSRF.
+
       if (!ensureValidApiCsrf(req, res)) {
         return;
       }
@@ -1871,6 +2886,8 @@ function createApp() {
         req.body.nome || req.body.name,
         "nome da categoria",
       );
+      // DETALHE: Se houver erro de validacao, encerra cedo para evitar persistencia inconsistente.
+
       if (Object.keys(errors).length > 0) {
         return res.status(400).json({ error: "Dados inválidos.", details: errors });
       }
@@ -1888,11 +2905,15 @@ function createApp() {
     },
   );
 
+  // DETALHE: Inicio de bloco de rota declarada em multiplas linhas; revisar path e middlewares logo abaixo.
+
   app.put(
     "/almoxarifado/api/categorias/:id",
     requireAuth,
     requireAdminApi,
     (req, res) => {
+      // DETALHE: Garante integridade de chamadas API protegidas por CSRF.
+
       if (!ensureValidApiCsrf(req, res)) {
         return;
       }
@@ -1906,6 +2927,8 @@ function createApp() {
         req.body.nome || req.body.name,
         "nome da categoria",
       );
+      // DETALHE: Se houver erro de validacao, encerra cedo para evitar persistencia inconsistente.
+
       if (Object.keys(errors).length > 0) {
         return res.status(400).json({ error: "Dados inválidos.", details: errors });
       }
@@ -1927,11 +2950,15 @@ function createApp() {
     },
   );
 
+  // DETALHE: Inicio de bloco de rota declarada em multiplas linhas; revisar path e middlewares logo abaixo.
+
   app.delete(
     "/almoxarifado/api/categorias/:id",
     requireAuth,
     requireAdminApi,
     (req, res) => {
+      // DETALHE: Garante integridade de chamadas API protegidas por CSRF.
+
       if (!ensureValidApiCsrf(req, res)) {
         return;
       }
@@ -1958,6 +2985,8 @@ function createApp() {
     },
   );
 
+  // DETALHE: Rota GET /almoxarifado/api/locais: consulta dados necessarios e monta resposta (HTML/JSON) para a tela solicitada.
+
   app.get("/almoxarifado/api/locais", requireAuth, (req, res) => {
     return res.json(
       database.listInventoryLocations().map((location) => ({
@@ -1967,11 +2996,15 @@ function createApp() {
     );
   });
 
+  // DETALHE: Inicio de bloco de rota declarada em multiplas linhas; revisar path e middlewares logo abaixo.
+
   app.post(
     "/almoxarifado/api/locais",
     requireAuth,
     requireAdminApi,
     (req, res) => {
+      // DETALHE: Garante integridade de chamadas API protegidas por CSRF.
+
       if (!ensureValidApiCsrf(req, res)) {
         return;
       }
@@ -1980,6 +3013,8 @@ function createApp() {
         req.body.nome || req.body.name,
         "nome do local",
       );
+      // DETALHE: Se houver erro de validacao, encerra cedo para evitar persistencia inconsistente.
+
       if (Object.keys(errors).length > 0) {
         return res.status(400).json({ error: "Dados inválidos.", details: errors });
       }
@@ -1997,11 +3032,15 @@ function createApp() {
     },
   );
 
+  // DETALHE: Inicio de bloco de rota declarada em multiplas linhas; revisar path e middlewares logo abaixo.
+
   app.put(
     "/almoxarifado/api/locais/:id",
     requireAuth,
     requireAdminApi,
     (req, res) => {
+      // DETALHE: Garante integridade de chamadas API protegidas por CSRF.
+
       if (!ensureValidApiCsrf(req, res)) {
         return;
       }
@@ -2015,6 +3054,8 @@ function createApp() {
         req.body.nome || req.body.name,
         "nome do local",
       );
+      // DETALHE: Se houver erro de validacao, encerra cedo para evitar persistencia inconsistente.
+
       if (Object.keys(errors).length > 0) {
         return res.status(400).json({ error: "Dados inválidos.", details: errors });
       }
@@ -2036,11 +3077,15 @@ function createApp() {
     },
   );
 
+  // DETALHE: Inicio de bloco de rota declarada em multiplas linhas; revisar path e middlewares logo abaixo.
+
   app.delete(
     "/almoxarifado/api/locais/:id",
     requireAuth,
     requireAdminApi,
     (req, res) => {
+      // DETALHE: Garante integridade de chamadas API protegidas por CSRF.
+
       if (!ensureValidApiCsrf(req, res)) {
         return;
       }
@@ -2067,12 +3112,22 @@ function createApp() {
     },
   );
 
-  app.get("/api/project/:project_id/members", requireAuth, (req, res) => {
+    // SECAO: endpoints auxiliares para preencher formularios dinamicos no frontend.
+
+// DETALHE: Rota GET /api/project/:project_id/members: consulta dados necessarios e monta resposta (HTML/JSON) para a tela solicitada.
+
+app.get("/api/project/:project_id/members", requireAuth, (req, res) => {
     const projectId = parseId(req.params.project_id);
     const project = projectId ? database.getProjectById(projectId) : null;
 
     if (!project) {
       return res.status(404).json({ error: "Projeto não encontrado." });
+    }
+
+    if (!canCreateAtaForProject(req, project)) {
+      return res.status(403).json({
+        error: "Você não tem acesso aos membros deste projeto.",
+      });
     }
 
     return res.json({
@@ -2083,7 +3138,9 @@ function createApp() {
     });
   });
 
-  app.use((req, res) => {
+    // SECAO: fallback de erro (404) e handler global de excecoes (500).
+
+app.use((req, res) => {
     return notFound(res);
   });
 
