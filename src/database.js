@@ -1,19 +1,223 @@
 /*
  * ARQUIVO: src/database.js
- * FUNCAO: camada de persistencia SQLite (schema, consultas, insercoes e atualizacoes de dados de dominio).
+ * FUNCAO: camada de persistencia PostgreSQL/Neon (schema, consultas, insercoes e atualizacoes de dados de dominio).
  * IMPACTO DE MUDANCAS:
  * - Qualquer ajuste de schema exige compatibilidade com dados existentes e consultas ja usadas no app.
  * - Mudancas em regras de normalizacao/validacao podem alterar dados gravados e relatorios gerados.
  * - Mudancas em nomes de colunas/joins afetam telas, filtros e exportacoes.
  */
-const fs = require("node:fs");
-const path = require("node:path");
-const { DatabaseSync } = require("node:sqlite");
+const { MessageChannel, Worker, receiveMessageOnPort } = require("node:worker_threads");
 
 const { config } = require("./config");
 const { firstNamesSummary } = require("./utils");
 
 let database;
+let bridgeState;
+let querySequence = 0;
+const sleeper = new Int32Array(new SharedArrayBuffer(4));
+
+function normalizeError(payload) {
+  if (!payload) {
+    return null;
+  }
+
+  const error = new Error(payload.message || "Database query failed");
+  Object.assign(error, payload);
+  return error;
+}
+
+function toPostgresSql(sql) {
+  let index = 1;
+  let inSingleQuote = false;
+  let inDoubleQuote = false;
+  let output = "";
+
+  for (let i = 0; i < sql.length; i += 1) {
+    const char = sql[i];
+    const previous = i > 0 ? sql[i - 1] : "";
+
+    if (char === "'" && previous !== "\\" && !inDoubleQuote) {
+      inSingleQuote = !inSingleQuote;
+      output += char;
+      continue;
+    }
+
+    if (char === '"' && previous !== "\\" && !inSingleQuote) {
+      inDoubleQuote = !inDoubleQuote;
+      output += char;
+      continue;
+    }
+
+    if (char === "?" && !inSingleQuote && !inDoubleQuote) {
+      output += `$${index}`;
+      index += 1;
+      continue;
+    }
+
+    output += char;
+  }
+
+  // "user" e palavra sensivel no Postgres; quote apenas a tabela.
+  return output.replace(/\buser\b/g, '"user"');
+}
+
+function createSyncBridge() {
+  if (bridgeState) {
+    return bridgeState;
+  }
+
+  if (!process.env.DATABASE_URL) {
+    throw new Error(
+      "DATABASE_URL não configurada. Para Neon/Postgres, defina DATABASE_URL no ambiente.",
+    );
+  }
+
+  const workerCode = `
+    const { parentPort } = require("node:worker_threads");
+    const { Client } = require("pg");
+
+    const client = new Client({
+      connectionString: process.env.DATABASE_URL,
+      ssl: process.env.DATABASE_URL.includes("sslmode=")
+        ? undefined
+        : { rejectUnauthorized: false },
+    });
+
+    let channel = null;
+    let connected = false;
+
+    async function ensureConnected() {
+      if (!connected) {
+        await client.connect();
+        connected = true;
+      }
+    }
+
+    async function handle(message) {
+      const { id, sql, params } = message;
+      try {
+        await ensureConnected();
+        const result = await client.query(sql, params || []);
+        channel.postMessage({
+          id,
+          ok: true,
+          result: {
+            rows: result.rows || [],
+            rowCount: Number(result.rowCount || 0),
+            command: result.command || "",
+          },
+        });
+      } catch (error) {
+        channel.postMessage({
+          id,
+          ok: false,
+          error: {
+            message: error.message,
+            code: error.code,
+            detail: error.detail,
+            table: error.table,
+            constraint: error.constraint,
+          },
+        });
+      }
+    }
+
+    parentPort.on("message", (message) => {
+      if (!message || !message.port) {
+        return;
+      }
+      channel = message.port;
+      channel.on("message", (payload) => {
+        handle(payload);
+      });
+    });
+  `;
+
+  const worker = new Worker(workerCode, { eval: true });
+  const { port1, port2 } = new MessageChannel();
+  worker.postMessage({ port: port2 }, [port2]);
+  if (typeof worker.unref === "function") {
+    worker.unref();
+  }
+  if (typeof port1.unref === "function") {
+    port1.unref();
+  }
+
+  bridgeState = {
+    worker,
+    port: port1,
+    pending: new Map(),
+  };
+
+  return bridgeState;
+}
+
+function querySync(sql, params = []) {
+  const bridge = createSyncBridge();
+  const id = ++querySequence;
+  bridge.port.postMessage({ id, sql, params });
+
+  while (true) {
+    const ready = bridge.pending.get(id);
+    if (ready) {
+      bridge.pending.delete(id);
+      if (!ready.ok) {
+        throw normalizeError(ready.error);
+      }
+      return ready.result;
+    }
+
+    const packet = receiveMessageOnPort(bridge.port);
+    if (packet && packet.message) {
+      const message = packet.message;
+      bridge.pending.set(message.id, message);
+      continue;
+    }
+
+    Atomics.wait(sleeper, 0, 0, 10);
+  }
+}
+
+function createPreparedStatement(sql, inTransaction = false) {
+  const transformedSql = toPostgresSql(sql);
+  const execute = (params = []) =>
+    inTransaction
+      ? querySync(transformedSql, params)
+      : querySync(transformedSql, params);
+
+  return {
+    run(...params) {
+      const result = execute(params);
+      let lastInsertRowid = null;
+      if (result.rows && result.rows[0] && result.rows[0].id !== undefined) {
+        lastInsertRowid = Number(result.rows[0].id);
+      }
+      return {
+        changes: Number(result.rowCount || 0),
+        lastInsertRowid,
+      };
+    },
+    get(...params) {
+      const result = execute(params);
+      return result.rows[0] || undefined;
+    },
+    all(...params) {
+      const result = execute(params);
+      return result.rows || [];
+    },
+  };
+}
+
+function createDbAdapter() {
+  return {
+    exec(sql) {
+      querySync(toPostgresSql(sql));
+    },
+    prepare(sql) {
+      return createPreparedStatement(sql);
+    },
+  };
+}
 // SECAO: constantes de dominio e restricoes de valores aceitos no banco.
 
 const USER_ROLES = new Set(["admin", "common"]);
@@ -53,28 +257,31 @@ function addDaysToNow(days) {
   return toSqlDateTime(date);
 }
 
-// SECAO: conexao SQLite e garantia incremental de schema.
+// SECAO: conexao PostgreSQL/Neon e garantia incremental de schema.
 
 function getDb() {
   if (!database) {
-    fs.mkdirSync(path.dirname(config.databasePath), { recursive: true });
-    database = new DatabaseSync(config.databasePath);
-    database.exec("PRAGMA foreign_keys = ON");
-    database.exec("PRAGMA journal_mode = WAL");
+    database = createDbAdapter();
   }
 
   return database;
 }
 
 function ensureColumn(tableName, columnName, definition) {
-  const db = getDb();
-  const columns = db
-    .prepare(`PRAGMA table_info(${tableName})`)
-    .all()
-    .map((column) => column.name);
+  const exists = querySync(
+    `
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = $1
+        AND column_name = $2
+      LIMIT 1
+    `,
+    [tableName, columnName],
+  );
 
-  if (!columns.includes(columnName)) {
-    db.exec(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${definition}`);
+  if (!exists.rows.length) {
+    querySync(`ALTER TABLE ${tableName === "user" ? '"user"' : tableName} ADD COLUMN ${columnName} ${definition}`);
   }
 }
 
@@ -82,8 +289,15 @@ function ensureSchema() {
   const db = getDb();
 
   db.exec(`
-    CREATE TABLE IF NOT EXISTS user (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+    CREATE TABLE IF NOT EXISTS member (
+      id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+      name TEXT NOT NULL UNIQUE,
+      photo TEXT,
+      is_active INTEGER NOT NULL DEFAULT 1
+    );
+
+    CREATE TABLE IF NOT EXISTS "user" (
+      id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
       username TEXT NOT NULL UNIQUE,
       password_hash TEXT NOT NULL,
       name TEXT,
@@ -92,22 +306,15 @@ function ensureSchema() {
       FOREIGN KEY (member_id) REFERENCES member(id)
     );
 
-    CREATE TABLE IF NOT EXISTS member (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL UNIQUE,
-      photo TEXT,
-      is_active INTEGER NOT NULL DEFAULT 1
-    );
-
     CREATE TABLE IF NOT EXISTS project (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
       name TEXT NOT NULL UNIQUE,
       logo TEXT,
       primary_color TEXT NOT NULL DEFAULT '${DEFAULT_PROJECT_COLOR}'
     );
 
     CREATE TABLE IF NOT EXISTS ata (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
       meeting_datetime TEXT NOT NULL,
       location_type TEXT,
       location_details TEXT,
@@ -144,7 +351,7 @@ function ensureSchema() {
     );
 
     CREATE TABLE IF NOT EXISTS report_entry (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
       project_id INTEGER NOT NULL,
       member_id INTEGER NOT NULL,
       created_by_user_id INTEGER,
@@ -159,7 +366,7 @@ function ensureSchema() {
     );
 
     CREATE TABLE IF NOT EXISTS report_week_goal (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
       member_id INTEGER NOT NULL,
       project_id INTEGER NOT NULL,
       created_by_user_id INTEGER,
@@ -176,7 +383,7 @@ function ensureSchema() {
     );
 
     CREATE TABLE IF NOT EXISTS estoque (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
       name TEXT NOT NULL,
       item_type TEXT NOT NULL DEFAULT 'stock',
       category TEXT NOT NULL,
@@ -188,7 +395,7 @@ function ensureSchema() {
     );
 
     CREATE TABLE IF NOT EXISTS pedido (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
       qtd_retirada INTEGER NOT NULL,
       usuario_id INTEGER NOT NULL,
       estoque_id INTEGER NOT NULL,
@@ -198,17 +405,17 @@ function ensureSchema() {
     );
 
     CREATE TABLE IF NOT EXISTS inventory_category (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
       name TEXT NOT NULL UNIQUE
     );
 
     CREATE TABLE IF NOT EXISTS inventory_location (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
       name TEXT NOT NULL UNIQUE
     );
 
     CREATE TABLE IF NOT EXISTS inventory_loan (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
       item_id INTEGER NOT NULL,
       user_id INTEGER NOT NULL,
       quantity INTEGER NOT NULL DEFAULT 1,
@@ -228,7 +435,7 @@ function ensureSchema() {
     CREATE INDEX IF NOT EXISTS ix_member_name ON member(name);
     CREATE INDEX IF NOT EXISTS ix_member_is_active ON member(is_active);
     CREATE INDEX IF NOT EXISTS ix_project_name ON project(name);
-    CREATE INDEX IF NOT EXISTS ix_user_username ON user(username);
+    CREATE INDEX IF NOT EXISTS ix_user_username ON "user"(username);
     CREATE INDEX IF NOT EXISTS ix_ata_meeting_datetime ON ata(meeting_datetime);
     CREATE INDEX IF NOT EXISTS ix_report_entry_project_id ON report_entry(project_id);
     CREATE INDEX IF NOT EXISTS ix_report_entry_member_id ON report_entry(member_id);
@@ -292,15 +499,17 @@ function ensureSchema() {
   ).run();
 
   db.exec(`
-    INSERT OR IGNORE INTO inventory_category (name)
+    INSERT INTO inventory_category (name)
     SELECT DISTINCT TRIM(category)
     FROM estoque
-    WHERE category IS NOT NULL AND TRIM(category) <> '';
+    WHERE category IS NOT NULL AND TRIM(category) <> ''
+    ON CONFLICT (name) DO NOTHING;
 
-    INSERT OR IGNORE INTO inventory_location (name)
+    INSERT INTO inventory_location (name)
     SELECT DISTINCT TRIM(location)
     FROM estoque
-    WHERE location IS NOT NULL AND TRIM(location) <> '';
+    WHERE location IS NOT NULL AND TRIM(location) <> ''
+    ON CONFLICT (name) DO NOTHING;
   `);
 
   db.prepare(
@@ -337,7 +546,7 @@ function ensureSchema() {
     `
     UPDATE project
     SET primary_color = CASE
-      WHEN primary_color GLOB '#[0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f]' THEN LOWER(primary_color)
+      WHEN primary_color ~* '^#[0-9a-f]{6}$' THEN LOWER(primary_color)
       ELSE ?
     END
   `,
@@ -652,6 +861,7 @@ function createUser(
       `
       INSERT INTO user (username, password_hash, name, role, member_id)
       VALUES (?, ?, ?, ?, ?)
+      RETURNING id
     `,
     ).run(username, passwordHash, name || username, normalizedRole, memberId);
 
@@ -705,6 +915,7 @@ function createInventoryCategory(name) {
       `
       INSERT INTO inventory_category (name)
       VALUES (?)
+      RETURNING id
     `,
     )
     .run(name);
@@ -804,6 +1015,7 @@ function createInventoryLocation(name) {
       `
       INSERT INTO inventory_location (name)
       VALUES (?)
+      RETURNING id
     `,
     )
     .run(name);
@@ -900,7 +1112,7 @@ function resolveInventoryCatalogEntry({
   }
 
   const result = db
-    .prepare(`INSERT INTO ${table} (name) VALUES (?)`)
+    .prepare(`INSERT INTO ${table} (name) VALUES (?) RETURNING id`)
     .run(normalizedName);
 
   return mapInventoryCatalog({
@@ -959,7 +1171,7 @@ function getMemberByName(name) {
 function createMember(name, photo = null) {
   const db = getDb();
   const result = db
-    .prepare("INSERT INTO member (name, photo, is_active) VALUES (?, ?, 1)")
+    .prepare("INSERT INTO member (name, photo, is_active) VALUES (?, ?, 1) RETURNING id")
     .run(name, photo);
 
   return getMemberById(result.lastInsertRowid);
@@ -1044,7 +1256,7 @@ function createProject({ name, logo, primaryColor, memberIds, coordinatorIds = n
     const coordinatorIdSet = new Set(normalizedCoordinatorIds);
 
     const result = db
-      .prepare("INSERT INTO project (name, logo, primary_color) VALUES (?, ?, ?)")
+      .prepare("INSERT INTO project (name, logo, primary_color) VALUES (?, ?, ?) RETURNING id")
       .run(name, logo || null, normalizeProjectColor(primaryColor));
 
     const projectId = Number(result.lastInsertRowid);
@@ -1285,6 +1497,7 @@ function createAta({ projectId, meetingDateTime, notes, presentMemberIds, justif
         `
         INSERT INTO ata (meeting_datetime, location_type, location_details, notes, created_at, project_id)
         VALUES (?, NULL, NULL, ?, CURRENT_TIMESTAMP, ?)
+        RETURNING id
       `,
       )
       .run(meetingDateTime, notes, projectId);
@@ -1342,6 +1555,7 @@ function createReportEntry({
         content
       )
       VALUES (?, ?, ?, ?, ?, ?)
+      RETURNING id
     `,
     )
     .run(
@@ -1592,6 +1806,7 @@ function createReportWeekGoal({
         completed_at
       )
       VALUES (?, ?, ?, ?, ?, ?, ?, CASE WHEN ? = 1 THEN CURRENT_TIMESTAMP ELSE NULL END)
+      RETURNING id
     `,
     )
     .run(
@@ -1799,6 +2014,7 @@ function createInventoryItem({
         `
         INSERT INTO estoque (name, item_type, category, category_id, location, location_id, amount, description)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        RETURNING id
       `,
       )
       .run(
@@ -2046,6 +2262,7 @@ function borrowInventoryItem({ nameOrCode, quantity, userId }) {
           due_at
         )
         VALUES (?, ?, ?, ?, ?)
+        RETURNING id
       `,
       )
       .run(item.id, userId, quantity, dueAt, dueAt);

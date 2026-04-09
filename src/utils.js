@@ -305,7 +305,12 @@ function isAllowedImage(filename) {
 
 function isUniqueConstraintError(error) {
   const message = String(error?.message || "");
-  return message.includes("UNIQUE constraint failed");
+  const code = String(error?.code || "");
+  return (
+    message.includes("UNIQUE constraint failed") ||
+    message.toLowerCase().includes("duplicate key value violates unique constraint") ||
+    code === "23505"
+  );
 }
 
 function safeRedirectPath(nextPath, fallback) {

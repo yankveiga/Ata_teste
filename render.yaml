@@ -5,3 +5,12 @@ services:
     plan: free
     autoDeploy: true
     branch: main
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SECRET_KEY
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: PRESENCE_WORKBOOK_PATH
+        value: /var/data/planilha_presenca.xlsx

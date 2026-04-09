@@ -5,7 +5,7 @@ Aplicação web em **Node.js + Express + Nunjucks** que unifica dois serviços n
 - **Gestor de Atas**
 - **Almoxarifado / Patrimônio**
 
-O projeto usa **login único**, **sessão compartilhada** e **SQLite** como banco local.
+O projeto usa **login único**, **sessão compartilhada** e **PostgreSQL (Neon)** como banco.
 
 ## O que o sistema faz
 
@@ -26,19 +26,14 @@ O projeto usa **login único**, **sessão compartilhada** e **SQLite** como banc
 
 - **Backend:** Node.js + Express
 - **Views:** Nunjucks
-- **Banco:** SQLite
+- **Banco:** PostgreSQL (Neon)
 - **Auth:** cookie-session + bcryptjs
 - **PDF:** PDFKit
 
 ## Banco de dados
 
-Por padrão, o banco fica em:
-
-```bash
-instance/ata.sqlite3
-```
-
-Ele é criado e atualizado automaticamente pela aplicação.
+O sistema usa `DATABASE_URL` para conectar no PostgreSQL (Neon).  
+O schema é criado/atualizado automaticamente na inicialização.
 
 ## Rodando localmente
 
@@ -80,7 +75,12 @@ npm run verify
 ```bash
 PORT=3000
 SECRET_KEY=sua-chave-secreta
-DATABASE_PATH=instance/ata.sqlite3
+DATABASE_URL=postgresql://USUARIO:SENHA@HOST/DBNAME?sslmode=require
+PRESENCE_WORKBOOK_PATH=planilha_presenca.xlsx
+BOOTSTRAP_ADMIN=false
+BOOTSTRAP_ADMIN_USERNAME=admin
+BOOTSTRAP_ADMIN_PASSWORD=sua-senha
+BOOTSTRAP_ADMIN_NAME=Administrador
 ```
 
 ## Presença
@@ -92,7 +92,7 @@ Modelo de dados da presença:
 - `user`: usuários do sistema (login/senha/role `admin` ou `common`)
 - `planilha_presenca.xlsx`: participantes por crachá e marcações por evento (`EVENTO_1` a `EVENTO_16`)
 
-## Deploy rápido (Render)
+## Deploy rápido (Render + Neon)
 
 1. No Render, crie um Web Service apontando para este repositório.
 2. Configure:
@@ -101,13 +101,32 @@ Modelo de dados da presença:
 3. Em **Environment Variables** no Render, defina:
    - `SECRET_KEY`
    - `NODE_ENV=production`
+   - `DATABASE_URL` (string de conexão do Neon)
+   - `PRESENCE_WORKBOOK_PATH` (exemplo: `/var/data/planilha_presenca.xlsx`)
 4. Faça deploy.
+
+### Bootstrap do primeiro admin no Render (opcional)
+
+Para criar o primeiro admin automaticamente no primeiro boot:
+
+```bash
+BOOTSTRAP_ADMIN=true
+BOOTSTRAP_ADMIN_USERNAME=admin
+BOOTSTRAP_ADMIN_PASSWORD=sua-senha-forte
+BOOTSTRAP_ADMIN_NAME=Administrador
+```
+
+Depois de criar o admin, volte `BOOTSTRAP_ADMIN=false`.
+
+## Estratégia atual
+
+O projeto já está preparado para rodar com Neon/Postgres diretamente.
 
 ## Estrutura principal
 
 - `server.js`: ponto de entrada da aplicação
 - `src/app.js`: rotas, sessão, autenticação e permissões
-- `src/database.js`: schema SQLite e regras de persistência
+- `src/database.js`: schema PostgreSQL e regras de persistência
 - `src/pdf.js`: geração das atas em PDF
 - `src/utils.js`: helpers de rota, datas, CSRF e utilidades gerais
 - `scripts/create-user.js`: criação manual de usuários `admin` ou `common`
@@ -136,7 +155,7 @@ Para validar a aplicação sem mexer no banco principal:
 npm run verify
 ```
 
-Esse comando usa uma cópia temporária do SQLite e verifica, entre outras coisas:
+Esse comando verifica fluxos principais da aplicação (rotas, renderizações e regras de domínio).
 
 - renderização das páginas principais
 - rotas do portal integrado

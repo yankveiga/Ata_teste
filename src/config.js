@@ -1,8 +1,8 @@
 /*
  * ARQUIVO: src/config.js
- * FUNCAO: centraliza configuracoes da aplicacao (diretorios, porta, segredo de sessao e caminho do banco).
+ * FUNCAO: centraliza configuracoes da aplicacao (diretorios, porta, segredo de sessao e parametros de ambiente).
  * IMPACTO DE MUDANCAS:
- * - Alterar paths pode quebrar carga de estaticos, templates, uploads e acesso ao SQLite.
+ * - Alterar paths pode quebrar carga de estaticos, templates e uploads.
  * - Alterar SECRET/porta impacta sessao de usuarios, execucao local e ambiente de producao.
  */
 const path = require("node:path");
@@ -10,8 +10,17 @@ const path = require("node:path");
 // SECAO: resolucao do diretorio-base para montar caminhos absolutos do projeto.
 
 const baseDir = path.resolve(__dirname, "..");
+const defaultWorkbookPath = path.join(baseDir, "planilha_presenca.xlsx");
 
-// SECAO: configuracoes centrais (porta, segredo, paths de estaticos/templates/uploads/banco).
+function resolveFromBase(value, fallback) {
+  const raw = String(value || "").trim();
+  if (!raw) {
+    return fallback;
+  }
+  return path.isAbsolute(raw) ? raw : path.join(baseDir, raw);
+}
+
+// SECAO: configuracoes centrais (porta, segredo, paths de estaticos/templates/uploads).
 
 const config = {
   appName: "Gestor de Atas",
@@ -21,9 +30,16 @@ const config = {
   sessionSecret:
     process.env.SECRET_KEY ||
     "uma-chave-secreta-muito-dificil-de-adivinhar",
-  databasePath:
-    process.env.DATABASE_PATH ||
-    path.join(baseDir, "instance", "ata.sqlite3"),
+  presenceWorkbookPath: resolveFromBase(
+    process.env.PRESENCE_WORKBOOK_PATH,
+    defaultWorkbookPath,
+  ),
+  bootstrapAdmin: {
+    enabled: String(process.env.BOOTSTRAP_ADMIN || "").trim() === "true",
+    username: String(process.env.BOOTSTRAP_ADMIN_USERNAME || "").trim(),
+    password: String(process.env.BOOTSTRAP_ADMIN_PASSWORD || "").trim(),
+    name: String(process.env.BOOTSTRAP_ADMIN_NAME || "").trim() || "Administrador",
+  },
   staticDir: path.join(baseDir, "app", "static"),
   viewsDir: path.join(baseDir, "app", "templates"),
   uploadDir: path.join(baseDir, "app", "static", "uploads"),

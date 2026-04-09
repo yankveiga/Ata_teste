@@ -1,35 +1,29 @@
 /*
  * ARQUIVO: scripts/verify-app.js
- * FUNCAO: script de verificacao automatizada para validar fluxos principais do sistema em banco temporario.
+ * FUNCAO: script de verificacao automatizada para validar fluxos principais do sistema em banco Postgres configurado.
  * IMPACTO DE MUDANCAS:
  * - Alterar assercoes pode ocultar regressao real ou gerar falso positivo no processo de validacao.
- * - Alterar preparo de banco temporario pode contaminar dados locais ou invalidar resultado do teste.
+ * - O script usa DATABASE_URL do ambiente; execute em uma base de teste dedicada.
  */
 const assert = require("node:assert/strict");
-const fs = require("node:fs");
-const os = require("node:os");
-const path = require("node:path");
 const { promisify } = require("node:util");
 
 const bcrypt = require("bcryptjs");
 
 const { urlFor } = require("../src/utils");
 
-// SECAO: rotina de verificacao ponta a ponta com banco temporario isolado.
+// SECAO: rotina de verificacao ponta a ponta usando a base Postgres configurada.
 
 async function main() {
-  const originalDb = path.resolve(__dirname, "..", "instance", "ata.sqlite3");
-  const tempDb = path.join(os.tmpdir(), `ata-verify-${Date.now()}.sqlite3`);
-  fs.copyFileSync(originalDb, tempDb);
+  if (!process.env.DATABASE_URL) {
+    throw new Error("Defina DATABASE_URL para executar a verificação no Postgres.");
+  }
 
-  try {
-    process.env.DATABASE_PATH = tempDb;
+  const database = require("../src/database");
+  const { createApp } = require("../src/app");
+  const { generateAtaPdf } = require("../src/pdf");
 
-    const database = require("../src/database");
-    const { createApp } = require("../src/app");
-    const { generateAtaPdf } = require("../src/pdf");
-
-    database.ensureSchema();
+  database.ensureSchema();
 
     const adminUsername = "codex_verify_admin";
     const adminPassword = "codex123";
@@ -448,12 +442,7 @@ async function main() {
     assert.equal(urlFor("almox_home"), "/almoxarifado");
     assert.equal(urlFor("create_ata", { project_id: project.id }), `/atas/create/for/${project.id}`);
 
-    console.log("Verificação concluída com sucesso.");
-  } finally {
-    if (fs.existsSync(tempDb)) {
-      fs.unlinkSync(tempDb);
-    }
-  }
+  console.log("Verificação concluída com sucesso.");
 }
 
 main().catch((error) => {

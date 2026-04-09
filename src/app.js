@@ -146,7 +146,14 @@ function registerPresenceInWorkbook(cracha, evento) {
     return { success: false, message: "Informe o número do crachá." };
   }
 
-  const workbook = XLSX.readFile("planilha_presenca.xlsx");
+  if (!fs.existsSync(config.presenceWorkbookPath)) {
+    return {
+      success: false,
+      message: "Planilha de presença não encontrada no servidor.",
+    };
+  }
+
+  const workbook = XLSX.readFile(config.presenceWorkbookPath);
   const sheetName = workbook.SheetNames[0];
   const sheet = workbook.Sheets[sheetName];
   const rawData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
@@ -183,7 +190,7 @@ function registerPresenceInWorkbook(cracha, evento) {
   const updatedRaw = [header, ...data.map((obj) => header.map((col) => obj[col] || ""))];
   const newSheet = XLSX.utils.aoa_to_sheet(updatedRaw);
   workbook.Sheets[sheetName] = newSheet;
-  XLSX.writeFile(workbook, "planilha_presenca.xlsx");
+  XLSX.writeFile(workbook, config.presenceWorkbookPath);
 
   return {
     success: true,
