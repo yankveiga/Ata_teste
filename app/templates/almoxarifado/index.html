@@ -288,6 +288,22 @@ data-tab-panel="users">
                                                         </select>
                                                         <button type="submit" class="secondary-button">Vincular</button>
                                                     </form>
+                                                    <details class="almox-user-actions">
+                                                        <summary>Mais ações</summary>
+                                                        <form action="{{ urlFor('almox_home') }}/users/reset-password/{{ user.id }}" method="post" class="inline-form">
+                                                            <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+                                                            <input type="hidden" name="tab" value="users">
+                                                            <input type="password" name="new_password" minlength="6" placeholder="Nova senha" required>
+                                                            <button type="submit" class="secondary-button">Redefinir senha</button>
+                                                        </form>
+                                                        {% if currentUser.id != user.id %}
+                                                            <form action="{{ urlFor('almox_home') }}/users/delete/{{ user.id }}" method="post" onsubmit="return confirm('Deseja excluir o usuário @{{ user.username }}?');">
+                                                                <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+                                                                <input type="hidden" name="tab" value="users">
+                                                                <button type="submit" class="danger-button">Excluir perfil</button>
+                                                            </form>
+                                                        {% endif %}
+                                                    </details>
                                                 </td>
                                             {% endif %}
                                         </tr>

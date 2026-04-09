@@ -885,6 +885,61 @@ function setUserMemberLink(userId, memberId = null) {
   return getUserById(userId);
 }
 
+function updateUserPassword(userId, passwordHash) {
+  const current = getUserById(userId);
+  if (!current) {
+    return null;
+  }
+
+  getDb()
+    .prepare("UPDATE user SET password_hash = ? WHERE id = ?")
+    .run(passwordHash, userId);
+  return getUserById(userId);
+}
+
+function deleteUser(userId) {
+  return withTransaction((db) => {
+    const current = getUserById(userId);
+    if (!current) {
+      return { deleted: false, reason: "not_found" };
+    }
+
+    const requestCount = Number(
+      db.prepare("SELECT COUNT(*) AS total FROM pedido WHERE usuario_id = ?").get(userId)
+        ?.total || 0,
+    );
+    const loanCount = Number(
+      db.prepare("SELECT COUNT(*) AS total FROM inventory_loan WHERE user_id = ?").get(userId)
+        ?.total || 0,
+    );
+
+    if (requestCount > 0 || loanCount > 0) {
+      return {
+        deleted: false,
+        reason: "has_history",
+        requestCount,
+        loanCount,
+      };
+    }
+
+    db.prepare(
+      "UPDATE report_entry SET created_by_user_id = NULL WHERE created_by_user_id = ?",
+    ).run(userId);
+    db.prepare(
+      "UPDATE report_week_goal SET created_by_user_id = NULL WHERE created_by_user_id = ?",
+    ).run(userId);
+    db.prepare(
+      "UPDATE inventory_loan SET extended_by_user_id = NULL WHERE extended_by_user_id = ?",
+    ).run(userId);
+    db.prepare(
+      "UPDATE inventory_loan SET returned_by_user_id = NULL WHERE returned_by_user_id = ?",
+    ).run(userId);
+    db.prepare("DELETE FROM user WHERE id = ?").run(userId);
+
+    return { deleted: true, user: current };
+  });
+}
+
 // SECAO: tabelas auxiliares do almoxarifado (categorias e locais).
 
 function listInventoryCategories() {
@@ -1946,6 +2001,49 @@ function listReportWeekGoalsForMember(
     });
 }
 
+function listReportMonthGoalsForMember(memberId, { monthKey, limit = 1200 } = {}) {
+  const normalizedMonth = String(monthKey || "").trim();
+  if (!/^\d{4}-\d{2}$/.test(normalizedMonth)) {
+    return [];
+  }
+
+  return getDb()
+    .prepare(
+      `
+      SELECT
+        g.id,
+        g.member_id,
+        g.project_id,
+        g.created_by_user_id,
+        g.week_start,
+        g.activity,
+        g.description,
+        g.is_completed,
+        g.completed_at,
+        g.created_at,
+        g.updated_at,
+        p.name AS project_name,
+        p.logo AS project_logo,
+        p.primary_color AS project_primary_color,
+        m.name AS member_name,
+        m.photo AS member_photo,
+        m.is_active AS member_is_active,
+        u.username AS created_by_username,
+        u.name AS created_by_name
+      FROM report_week_goal g
+      INNER JOIN project p ON p.id = g.project_id
+      INNER JOIN member m ON m.id = g.member_id
+      LEFT JOIN user u ON u.id = g.created_by_user_id
+      WHERE g.member_id = ?
+        AND g.week_start LIKE (? || '-%')
+      ORDER BY g.week_start DESC, g.id DESC
+      LIMIT ?
+    `,
+    )
+    .all(memberId, normalizedMonth, limit)
+    .map(mapReportWeekGoal);
+}
+
 // SECAO: inventario e movimentacoes (retirada, emprestimo, prorrogacao e devolucao).
 
 function listInventoryItems({ type = null } = {}) {
@@ -2586,6 +2684,7 @@ module.exports = {
   listReportEntries,
   listReportMembersSummary,
   listReportProjectsForMember,
+  listReportMonthGoalsForMember,
   listReportWeekGoalsForMember,
   listReportWeeksForMember,
   listRecentAtas,
@@ -2594,6 +2693,8 @@ module.exports = {
   extendInventoryLoan,
   returnInventoryLoan,
   setUserMemberLink,
+  updateUserPassword,
+  deleteUser,
   updateInventoryCategory,
   updateInventoryItem,
   updateInventoryLocation,

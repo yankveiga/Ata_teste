@@ -18,7 +18,7 @@ const XLSX = require("xlsx");
 
 const { config } = require("./config");
 const database = require("./database");
-const { generateAtaPdf } = require("./pdf");
+const { generateAtaPdf, generateMonthlyReportPdf } = require("./pdf");
 const {
   addFlash,
   consumeFlashes,
@@ -185,6 +185,21 @@ function buildReportsQuery({ memberId = null, projectId = null, editId = null } 
   }
   const query = params.toString();
   return query ? `?${query}` : "";
+}
+
+function getCurrentMonthKeyInSaoPaulo() {
+  const formatted = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+  }).format(new Date());
+  const [year, month] = formatted.split("-");
+  return `${year}-${month}`;
+}
+
+function normalizeMonthKey(value) {
+  const text = String(value || "").trim();
+  return /^\d{4}-\d{2}$/.test(text) ? text : null;
 }
 
 // SECAO: integracao com planilha de presenca (leitura/escrita de arquivo XLSX).
@@ -759,6 +774,18 @@ function render(res, template, data = {}) {
         ...(data.goalFormData || {}),
       },
       goalFormErrors: data.goalFormErrors || {},
+      monthlyReportForm: {
+        memberId: String(
+          data.monthlyReportForm?.memberId
+            || selectedMember?.id
+            || currentMember?.id
+            || "",
+        ),
+        month: String(
+          data.monthlyReportForm?.month || getCurrentMonthKeyInSaoPaulo(),
+        ),
+      },
+      canGenerateMonthlyReportForAny: Boolean(req.currentUser?.is_admin),
       goalsSummary: {
         total: goalsSummary.total,
         completed: goalsSummary.completed,
@@ -1100,6 +1127,62 @@ app.get("/services", requireAuth, (req, res) => {
 
 app.get("/relatorios", requireAuth, (req, res) => {
     return renderReportPage(req, res);
+  });
+
+  app.get("/relatorios/monthly/pdf", requireAuth, async (req, res) => {
+    const requestedMemberId = parseId(req.query.member_id);
+    const currentMember = getCurrentMember(req);
+    const targetMemberId = requestedMemberId || currentMember?.id || null;
+    const targetMember = targetMemberId ? database.getMemberById(targetMemberId) : null;
+    const monthKey = normalizeMonthKey(req.query.month) || getCurrentMonthKeyInSaoPaulo();
+
+    if (!targetMember) {
+      req.flash("warning", "Selecione um membro válido para gerar o relatório mensal.");
+      return res.redirect("/relatorios");
+    }
+
+    const canGenerate =
+      Boolean(req.currentUser?.is_admin)
+      || (currentMember?.is_active && currentMember.id === targetMember.id);
+    if (!canGenerate) {
+      req.flash("warning", "Você não tem permissão para gerar esse relatório mensal.");
+      return res.redirect(
+        `/relatorios${buildReportsQuery({
+          memberId: targetMember.id,
+        })}`,
+      );
+    }
+
+    try {
+      const goals = database.listReportMonthGoalsForMember(targetMember.id, {
+        monthKey,
+        limit: 2500,
+      });
+      const pdf = await generateMonthlyReportPdf({
+        member: targetMember,
+        monthKey,
+        goals,
+        generatedByName: req.currentUser?.name || req.currentUser?.username || null,
+      });
+
+      const safeMemberName = String(targetMember.name || "membro")
+        .replace(/[^\p{L}\p{N}._-]+/gu, "_")
+        .replace(/^_+|_+$/g, "");
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="Relatorio_Mensal_${safeMemberName || "membro"}_${monthKey}.pdf"`,
+      );
+      return res.send(pdf);
+    } catch (error) {
+      console.error("Erro ao gerar PDF mensal de relatório:", error);
+      req.flash("danger", `Erro ao gerar relatório mensal: ${error.message}`);
+      return res.redirect(
+        `/relatorios${buildReportsQuery({
+          memberId: targetMember.id,
+        })}#report-goals-panel`,
+      );
+    }
   });
 
   // DETALHE: Rota POST /relatorios/create: processa envio de formulario/acao, valida entrada, persiste dados e redireciona.
@@ -2292,6 +2375,94 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
       } catch (error) {
         console.error("Erro ao vincular usuário ao membro:", error);
         req.flash("danger", `Erro ao vincular usuário: ${error.message}`);
+      }
+
+      return res.redirect(almoxPath(activeTab));
+    },
+  );
+
+  app.post(
+    "/almoxarifado/users/reset-password/:id",
+    requireAuth,
+    requireAdminPage,
+    (req, res) => {
+      if (!ensureValidCsrf(req, res)) {
+        return;
+      }
+
+      const activeTab = "users";
+      const userId = parseId(req.params.id);
+      if (!userId) {
+        req.flash("warning", "Usuário inválido para redefinição de senha.");
+        return res.redirect(almoxPath(activeTab));
+      }
+
+      const user = database.getUserById(userId);
+      if (!user) {
+        req.flash("warning", "Usuário não encontrado.");
+        return res.redirect(almoxPath(activeTab));
+      }
+
+      const rawPassword = String(req.body.new_password || "");
+      if (!rawPassword || rawPassword.length < 6) {
+        req.flash("warning", "A nova senha deve ter pelo menos 6 caracteres.");
+        return res.redirect(almoxPath(activeTab));
+      }
+
+      try {
+        const passwordHash = bcrypt.hashSync(rawPassword, 12);
+        database.updateUserPassword(userId, passwordHash);
+        req.flash("success", `Senha de @${user.username} redefinida com sucesso.`);
+      } catch (error) {
+        console.error("Erro ao redefinir senha de usuário:", error);
+        req.flash("danger", `Erro ao redefinir senha: ${error.message}`);
+      }
+
+      return res.redirect(almoxPath(activeTab));
+    },
+  );
+
+  app.post(
+    "/almoxarifado/users/delete/:id",
+    requireAuth,
+    requireAdminPage,
+    (req, res) => {
+      if (!ensureValidCsrf(req, res)) {
+        return;
+      }
+
+      const activeTab = "users";
+      const userId = parseId(req.params.id);
+      if (!userId) {
+        req.flash("warning", "Usuário inválido para exclusão.");
+        return res.redirect(almoxPath(activeTab));
+      }
+
+      if (req.currentUser?.id === userId) {
+        req.flash("warning", "Você não pode excluir seu próprio usuário.");
+        return res.redirect(almoxPath(activeTab));
+      }
+
+      try {
+        const result = database.deleteUser(userId);
+        if (!result?.deleted) {
+          if (result?.reason === "not_found") {
+            req.flash("warning", "Usuário não encontrado.");
+          } else if (result?.reason === "has_history") {
+            req.flash(
+              "warning",
+              "Não é possível excluir usuário com histórico de retiradas ou empréstimos.",
+            );
+          } else {
+            req.flash("warning", "Não foi possível excluir o usuário.");
+          }
+          return res.redirect(almoxPath(activeTab));
+        }
+
+        req.flash("success", `Usuário @${result.user.username} excluído com sucesso.`);
+      } catch (error) {
+        console.error("Erro ao excluir usuário:", error);
+        req.flash("danger", `Erro ao excluir usuário: ${error.message}`);
       }
 
       return res.redirect(almoxPath(activeTab));

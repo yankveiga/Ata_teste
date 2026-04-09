@@ -170,6 +170,131 @@ function generateAtaPdf(ata) {
   });
 }
 
+function formatMonthLabel(monthKey) {
+  const [year, month] = String(monthKey || "").split("-");
+  const monthNumber = Number(month);
+  const yearNumber = Number(year);
+  const monthsPt = [
+    "janeiro",
+    "fevereiro",
+    "março",
+    "abril",
+    "maio",
+    "junho",
+    "julho",
+    "agosto",
+    "setembro",
+    "outubro",
+    "novembro",
+    "dezembro",
+  ];
+
+  if (!Number.isInteger(monthNumber) || monthNumber < 1 || monthNumber > 12) {
+    return monthKey || "";
+  }
+
+  if (!Number.isInteger(yearNumber)) {
+    return monthKey || "";
+  }
+
+  return `${monthsPt[monthNumber - 1]} de ${yearNumber}`;
+}
+
+function groupGoalsByProject(goals) {
+  const byProject = new Map();
+  goals.forEach((goal) => {
+    const key = goal.project?.id || -1;
+    if (!byProject.has(key)) {
+      byProject.set(key, {
+        projectName: goal.project?.name || "Projeto não informado",
+        goals: [],
+      });
+    }
+    byProject.get(key).goals.push(goal);
+  });
+  return Array.from(byProject.values()).sort((a, b) =>
+    a.projectName.localeCompare(b.projectName, "pt-BR"),
+  );
+}
+
+function generateMonthlyReportPdf({ member, monthKey, goals, generatedByName = null }) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    const doc = new PDFDocument({
+      size: "A4",
+      margins: { top: 56, bottom: 56, left: 56, right: 56 },
+      info: {
+        Title: `Relatório Mensal - ${member.name} - ${monthKey}`,
+      },
+    });
+
+    doc.on("data", (chunk) => chunks.push(chunk));
+    doc.on("end", () => resolve(Buffer.concat(chunks)));
+    doc.on("error", reject);
+
+    doc.font("Helvetica-Bold").fontSize(18).text("Relatório Mensal de Atividades", {
+      align: "left",
+    });
+    doc.moveDown(0.5);
+    doc.font("Helvetica").fontSize(11);
+    doc.text(`Membro: ${member.name}`);
+    doc.text(`Mês de referência: ${formatMonthLabel(monthKey)}`);
+    doc.text(`Total de metas no mês: ${goals.length}`);
+    if (generatedByName) {
+      doc.text(`Gerado por: ${generatedByName}`);
+    }
+    doc.text(`Gerado em: ${new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}`);
+    doc.moveDown();
+
+    if (!goals.length) {
+      doc.font("Helvetica-Oblique").text("Nenhuma meta encontrada para o período selecionado.");
+      doc.end();
+      return;
+    }
+
+    const grouped = groupGoalsByProject(goals);
+    grouped.forEach((projectGroup) => {
+      if (doc.y > 720) {
+        doc.addPage();
+      }
+
+      doc
+        .font("Helvetica-Bold")
+        .fontSize(13)
+        .text(projectGroup.projectName, { underline: true });
+      doc.moveDown(0.35);
+
+      projectGroup.goals.forEach((goal, index) => {
+        const statusLabel = goal.is_completed ? "Concluída" : "Em aberto";
+        const weekLabel = goal.week_start || "-";
+        doc
+          .font("Helvetica-Bold")
+          .fontSize(11)
+          .text(`${index + 1}. ${goal.activity || "Sem atividade"}`);
+        doc
+          .font("Helvetica")
+          .fontSize(10.5)
+          .text(`Status: ${statusLabel} | Semana: ${weekLabel}`);
+        if (goal.description && goal.description.trim()) {
+          doc.text(`Descrição: ${goal.description.trim()}`);
+        } else {
+          doc.text("Descrição: (sem descrição)");
+        }
+        if (goal.completed_at) {
+          doc.text(`Concluída em: ${goal.completed_at}`);
+        }
+        doc.moveDown(0.5);
+      });
+      doc.moveDown(0.4);
+    });
+
+    doc.end();
+  });
+}
+
 // SECAO: exportacao publica do gerador de PDF para uso nas rotas.
 
-module.exports = { generateAtaPdf };
+module.exports = {
+  generateAtaPdf,
+  generateMonthlyReportPdf,
+};

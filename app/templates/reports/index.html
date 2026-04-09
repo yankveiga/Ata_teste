@@ -98,6 +98,40 @@
             {% endif %}
 
             {% if selectedMember %}
+                <form action="/relatorios/monthly/pdf" method="get" class="portal-form-grid report-monthly-export-form">
+                    <div class="form-group">
+                        <label class="form-label" for="monthly_report_member_id">Membro</label>
+                        {% if canGenerateMonthlyReportForAny %}
+                            <select id="monthly_report_member_id" name="member_id" class="form-control">
+                                {% for member in membersSummary %}
+                                    <option value="{{ member.id }}" {% if monthlyReportForm.memberId == (member.id ~ '') or monthlyReportForm.memberId == member.id %}selected{% endif %}>
+                                        {{ member.name }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        {% else %}
+                            <input type="hidden" name="member_id" value="{{ currentMember.id if currentMember else selectedMember.id }}">
+                            <input type="text" class="form-control" value="{{ currentMember.name if currentMember else selectedMember.name }}" readonly>
+                        {% endif %}
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="monthly_report_month">Mês</label>
+                        <input
+                            id="monthly_report_month"
+                            name="month"
+                            type="month"
+                            class="form-control"
+                            value="{{ monthlyReportForm.month }}"
+                            required
+                        >
+                    </div>
+                    <div class="form-group report-monthly-export-actions">
+                        <button type="submit" class="btn-submit">Gerar Relatório do Mês (PDF)</button>
+                    </div>
+                </form>
+            {% endif %}
+
+            {% if selectedMember %}
                 <div class="report-goal-section-header">
                     <h3>Quadro Scrum da Semana</h3>
                 </div>

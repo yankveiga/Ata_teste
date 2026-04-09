@@ -830,6 +830,19 @@ body.section-almox .form-control:focus {
   margin-bottom: 16px;
 }
 
+.report-monthly-export-form {
+  margin: 0 0 16px;
+  padding: 14px;
+  border: 1px solid rgba(49, 112, 57, 0.18);
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(246, 255, 249, 0.95), rgba(240, 250, 244, 0.88));
+}
+
+.report-monthly-export-actions {
+  display: flex;
+  align-items: flex-end;
+}
+
 .report-member-projects strong {
   display: block;
   margin-bottom: 8px;

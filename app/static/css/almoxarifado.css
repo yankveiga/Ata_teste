@@ -464,6 +464,34 @@
   gap: 8px;
 }
 
+.almox-user-actions {
+  margin-top: 8px;
+  border: 1px dashed rgba(138, 47, 22, 0.2);
+  border-radius: 14px;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.almox-user-actions > summary {
+  cursor: pointer;
+  list-style: none;
+  font-weight: 700;
+  color: var(--almox-accent-dark);
+  margin-bottom: 8px;
+}
+
+.almox-user-actions > summary::-webkit-details-marker {
+  display: none;
+}
+
+.almox-user-actions[open] > summary {
+  margin-bottom: 10px;
+}
+
+.almox-user-actions .inline-form {
+  margin-bottom: 8px;
+}
+
 .inline-number-input {
   min-width: 84px;
   padding: 0.72rem 0.8rem;
