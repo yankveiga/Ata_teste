@@ -216,7 +216,7 @@
                                             </div>
                                             <div class="report-goal-description-col">
                                                 <p>{{ goal.description if goal.description else 'Sem descrição registrada.' }}</p>
-                                                {% if goal.can_delete_completed %}
+                                                {% if currentUser.is_admin or goal.can_delete_completed %}
                                                     <form action="/relatorios/goals/{{ goal.id }}/delete#report-goals-panel" method="post" class="report-goal-delete-form" onsubmit="return confirm('Deseja apagar esta atividade concluída?');">
                                                         <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
                                                         <button type="submit" class="report-goal-delete-button">Apagar atividade</button>

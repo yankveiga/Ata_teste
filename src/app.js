@@ -602,11 +602,7 @@ function requireAuth(req, res, next) {
   }
 
   function canDeleteCompletedGoalFromOthers(req, goal) {
-    if (!goal?.id || !goal?.project_id || !goal?.member_id) {
-      return false;
-    }
-
-    if (!goal.is_completed) {
+    if (!goal?.is_completed) {
       return false;
     }
 
@@ -614,12 +610,12 @@ function requireAuth(req, res, next) {
       return true;
     }
 
-    const currentMember = getCurrentMember(req);
-    if (!currentMember?.is_active) {
+    if (!goal?.id || !goal?.project_id || !goal?.member_id) {
       return false;
     }
 
-    if (currentMember.id === goal.member_id) {
+    const currentMember = getCurrentMember(req);
+    if (!currentMember?.is_active) {
       return false;
     }
 
