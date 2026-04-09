@@ -57,8 +57,14 @@ function toPostgresSql(sql) {
     output += char;
   }
 
-  // "user" e palavra sensivel no Postgres; quote apenas a tabela.
-  return output.replace(/\buser\b/g, '"user"');
+  // "user" e palavra reservada no Postgres; quote apenas quando usado como nome de tabela.
+  return output
+    .replace(/\bFROM\s+user\b/gi, 'FROM "user"')
+    .replace(/\bJOIN\s+user\b/gi, 'JOIN "user"')
+    .replace(/\bINTO\s+user\b/gi, 'INTO "user"')
+    .replace(/\bUPDATE\s+user\b/gi, 'UPDATE "user"')
+    .replace(/\bTABLE\s+user\b/gi, 'TABLE "user"')
+    .replace(/\bREFERENCES\s+user\b/gi, 'REFERENCES "user"');
 }
 
 function createSyncBridge() {
