@@ -601,6 +601,31 @@ function requireAuth(req, res, next) {
     return database.isProjectCoordinator(projectId, currentMember.id);
   }
 
+  function canDeleteCompletedGoalFromOthers(req, goal) {
+    if (!goal?.id || !goal?.project_id || !goal?.member_id) {
+      return false;
+    }
+
+    if (!goal.is_completed) {
+      return false;
+    }
+
+    if (req.currentUser?.is_admin) {
+      return true;
+    }
+
+    const currentMember = getCurrentMember(req);
+    if (!currentMember?.is_active) {
+      return false;
+    }
+
+    if (currentMember.id === goal.member_id) {
+      return false;
+    }
+
+    return database.isProjectCoordinator(goal.project_id, currentMember.id);
+  }
+
   // DETALHE: Valida token CSRF para formularios e interrompe fluxo quando invalido.
 
   function ensureValidCsrf(req, res) {
@@ -761,6 +786,7 @@ function render(res, template, data = {}) {
             memberId: goal.member_id,
             projectId: goal.project_id,
           }),
+          can_delete_completed: canDeleteCompletedGoalFromOthers(req, goal),
         }))
       : [];
     const pendingGoals = reportGoals.filter((goal) => !goal.is_completed);
@@ -773,6 +799,12 @@ function render(res, template, data = {}) {
         || (currentMember?.is_active && currentMember.id === selectedMember.id)
       ),
     );
+    const deletionLogs = selectedMember
+      ? database.listReportWeekGoalDeletionLogsForMember(selectedMember.id, {
+          projectId: selectedProjectId || null,
+          limit: 30,
+        })
+      : [];
     const goalsSummary = reportGoals.reduce(
       (summary, goal) => {
         summary.total += 1;
@@ -809,6 +841,7 @@ function render(res, template, data = {}) {
       reportGoals,
       pendingGoals,
       completedGoals,
+      deletionLogs,
       overduePendingGoals,
       openPendingGoals,
       canCreateGoalsForSelectedMember,
@@ -1417,6 +1450,47 @@ app.get("/relatorios", requireAuth, (req, res) => {
     return res.redirect(
       `/relatorios${buildReportsQuery({
         memberId: goal.member_id,
+      })}#report-goals-panel`,
+    );
+  });
+
+  app.post("/relatorios/goals/:id/delete", requireAuth, (req, res) => {
+    if (!ensureValidCsrf(req, res)) {
+      return;
+    }
+
+    const goalId = parseId(req.params.id);
+    const goal = goalId ? database.getReportWeekGoalById(goalId) : null;
+    if (!goal) {
+      req.flash("warning", "Meta semanal não encontrada.");
+      return res.redirect("/relatorios");
+    }
+
+    if (!canDeleteCompletedGoalFromOthers(req, goal)) {
+      req.flash(
+        "warning",
+        "Sem permissão para apagar metas concluídas deste membro neste projeto.",
+      );
+      return res.redirect(
+        `/relatorios${buildReportsQuery({
+          memberId: goal.member_id,
+          projectId: goal.project_id,
+        })}#report-goals-panel`,
+      );
+    }
+
+    try {
+      database.deleteReportWeekGoalWithAudit(goal.id, req.currentUser.id);
+      req.flash("success", "Atividade concluída removida com sucesso.");
+    } catch (error) {
+      console.error("Erro ao apagar meta concluída:", error);
+      req.flash("danger", `Erro ao apagar atividade concluída: ${error.message}`);
+    }
+
+    return res.redirect(
+      `/relatorios${buildReportsQuery({
+        memberId: goal.member_id,
+        projectId: goal.project_id,
       })}#report-goals-panel`,
     );
   });

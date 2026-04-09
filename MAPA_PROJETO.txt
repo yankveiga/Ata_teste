@@ -1,6 +1,30 @@
 MAPA RÁPIDO DO PROJETO (onde editar cada coisa)
 ===============================================
 
+AMBIENTE E DEPLOY (Render + Neon + Cloudinary)
+==============================================
+
+- Variáveis de ambiente centralizadas: src/config.js
+- Exemplo de variáveis: .env.example
+- Guia de deploy e ambiente: README.md
+- Arquivo de deploy Render: render.yaml
+
+Banco de dados Neon
+- Conexão por URL: variável DATABASE_URL
+- Schema e consultas do banco: src/database.js
+- Inicialização do schema no boot: server.js -> database.ensureSchema()
+
+Imagens (fotos de membros e logos de projetos)
+- Integração com Cloudinary: src/media.js
+- Regras de upload/remoção e fallback local: src/app.js
+- Exibição de imagem (URL remota ou /static/uploads): global mediaUrl em src/app.js
+
+Onde a imagem aparece na interface:
+- Membros (form): app/templates/members/form.html
+- Relatórios (foto de membros): app/templates/reports/index.html
+- Projetos (form): app/templates/projects/form.html
+- Projetos (lista): app/templates/projects/list.html
+
 1) RELATÓRIOS (TELA)
 - Conteúdo/layout principal: app/templates/reports/index.html
 - Estilos visuais da tela de relatórios: app/static/css/custom_styles.css
@@ -54,3 +78,7 @@ MAPA RÁPIDO DO PROJETO (onde editar cada coisa)
 - Mudanças de regra de negócio: app.js + database.js
 - Mudanças de persistência/ordenação: database.js
 
+10) CHECKLIST RÁPIDO (PRODUÇÃO)
+- Subiu no Render e deu erro de banco: revisar DATABASE_URL (Neon) em Render > Environment.
+- Fotos não aparecem: configurar CLOUDINARY_* e reenviar fotos/logos antigos.
+- Primeiro acesso admin: usar BOOTSTRAP_ADMIN=true apenas no primeiro boot; depois voltar para false.

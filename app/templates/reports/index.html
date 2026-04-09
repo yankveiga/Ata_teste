@@ -216,6 +216,12 @@
                                             </div>
                                             <div class="report-goal-description-col">
                                                 <p>{{ goal.description if goal.description else 'Sem descrição registrada.' }}</p>
+                                                {% if goal.can_delete_completed %}
+                                                    <form action="/relatorios/goals/{{ goal.id }}/delete#report-goals-panel" method="post" class="report-goal-delete-form" onsubmit="return confirm('Deseja apagar esta atividade concluída?');">
+                                                        <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+                                                        <button type="submit" class="report-goal-delete-button">Apagar atividade</button>
+                                                    </form>
+                                                {% endif %}
                                             </div>
                                         </div>
                                     </li>
@@ -282,6 +288,26 @@
                         {% endif %}
                     </section>
                 </div>
+
+                <details class="report-goal-completed-details" {% if deletionLogs.length %}open{% endif %}>
+                    <summary>Histórico de exclusões de atividades</summary>
+                    {% if deletionLogs.length %}
+                        <ul class="report-deletion-log-list">
+                            {% for log in deletionLogs %}
+                                <li>
+                                    <strong>{{ log.activity }}</strong>
+                                    <small>
+                                        {{ log.project_name }} · Semana {{ log.week_start | formatDate }} ·
+                                        apagada por {{ log.deleted_by_name if log.deleted_by_name else ('@' ~ log.deleted_by_username) }}
+                                        em {{ log.deleted_at | formatDateTime }}
+                                    </small>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="text-muted">Nenhuma atividade foi apagada até agora.</p>
+                    {% endif %}
+                </details>
 
                 {% if canCreateGoalsForSelectedMember %}
                     <details class="report-goal-create-details" {% if goalFormErrors.projectId or goalFormErrors.activity or goalFormErrors.description %}open{% endif %}>

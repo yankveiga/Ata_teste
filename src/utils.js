@@ -9,6 +9,8 @@ const crypto = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
 
+const APP_TIMEZONE = process.env.APP_TIMEZONE || "America/Sao_Paulo";
+
 // SECAO: mapeamento central das rotas nomeadas usadas por controllers/templates.
 
 const ROUTES = Object.freeze({
@@ -212,33 +214,63 @@ function extractDateParts(value) {
     return null;
   }
 
+  const toTzParts = (date) => {
+    const formatter = new Intl.DateTimeFormat("en-CA", {
+      timeZone: APP_TIMEZONE,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    });
+    const parts = formatter.formatToParts(date);
+    const valueByType = {};
+    parts.forEach((part) => {
+      if (part.type !== "literal") {
+        valueByType[part.type] = part.value;
+      }
+    });
+
+    return {
+      year: Number(valueByType.year),
+      month: Number(valueByType.month),
+      day: Number(valueByType.day),
+      hour: Number(valueByType.hour || 0),
+      minute: Number(valueByType.minute || 0),
+      second: Number(valueByType.second || 0),
+    };
+  };
+
   if (typeof value === "string") {
     const normalized = value.trim().replace("T", " ");
-    const match = normalized.match(
+    const plainMatch = normalized.match(
       /^(\d{4})-(\d{2})-(\d{2})(?: (\d{2}):(\d{2})(?::(\d{2}))?)?$/,
     );
 
-    if (match) {
+    if (plainMatch) {
       return {
-        year: Number(match[1]),
-        month: Number(match[2]),
-        day: Number(match[3]),
-        hour: Number(match[4] || 0),
-        minute: Number(match[5] || 0),
-        second: Number(match[6] || 0),
+        year: Number(plainMatch[1]),
+        month: Number(plainMatch[2]),
+        day: Number(plainMatch[3]),
+        hour: Number(plainMatch[4] || 0),
+        minute: Number(plainMatch[5] || 0),
+        second: Number(plainMatch[6] || 0),
       };
+    }
+
+    const isoCandidate = normalized
+      .replace(" ", "T")
+      .replace(/([+-]\d{2})$/, "$1:00");
+    const parsed = new Date(isoCandidate);
+    if (!Number.isNaN(parsed.getTime())) {
+      return toTzParts(parsed);
     }
   }
 
   if (value instanceof Date && !Number.isNaN(value.getTime())) {
-    return {
-      year: value.getFullYear(),
-      month: value.getMonth() + 1,
-      day: value.getDate(),
-      hour: value.getHours(),
-      minute: value.getMinutes(),
-      second: value.getSeconds(),
-    };
+    return toTzParts(value);
   }
 
   return null;
@@ -434,6 +466,7 @@ function formatDateExtenso(value) {
 // SECAO: exportacao de utilitarios compartilhados.
 
 module.exports = {
+  APP_TIMEZONE,
   ROUTES,
   MONTHS_PT,
   addFlash,

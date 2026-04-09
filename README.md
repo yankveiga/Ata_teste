@@ -34,6 +34,19 @@ O projeto usa **login único**, **sessão compartilhada** e **PostgreSQL (Neon)*
 
 O sistema usa `DATABASE_URL` para conectar no PostgreSQL (Neon).  
 O schema é criado/atualizado automaticamente na inicialização.
+O timezone padrão da aplicação é `America/Sao_Paulo` (horário de Brasília).
+
+### Neon (passo a passo rápido)
+
+1. Crie um projeto no Neon.
+2. Copie a connection string PostgreSQL.
+3. Defina no ambiente da aplicação:
+
+```bash
+DATABASE_URL=postgresql://USUARIO:SENHA@HOST/DBNAME?sslmode=require
+```
+
+4. Suba o app; o schema será criado automaticamente no boot.
 
 ## Rodando localmente
 
@@ -75,6 +88,7 @@ npm run verify
 ```bash
 PORT=3000
 SECRET_KEY=sua-chave-secreta
+APP_TIMEZONE=America/Sao_Paulo
 DATABASE_URL=postgresql://USUARIO:SENHA@HOST/DBNAME?sslmode=require
 CLOUDINARY_CLOUD_NAME=
 CLOUDINARY_API_KEY=
@@ -103,6 +117,25 @@ Em produção no Render, o recomendado é usar Cloudinary para persistir fotos/l
 - se `CLOUDINARY_*` estiver configurado, uploads vão para Cloudinary (URL salva no banco)
 - se não estiver, o sistema usa `app/static/uploads` local
 
+### Cloudinary (passo a passo rápido)
+
+1. Crie conta no Cloudinary (free).
+2. No painel, copie:
+- `Cloud name`
+- `API Key`
+- `API Secret`
+3. No Render (Environment), configure:
+
+```bash
+CLOUDINARY_CLOUD_NAME=...
+CLOUDINARY_API_KEY=...
+CLOUDINARY_API_SECRET=...
+CLOUDINARY_FOLDER=pet-c3
+```
+
+4. Faça deploy.
+5. Reenvie fotos/logos antigos (editar membro/projeto e salvar), para converter registros locais em URL remota.
+
 ## Deploy rápido (Render + Neon)
 
 1. No Render, crie um Web Service apontando para este repositório.
@@ -116,6 +149,15 @@ Em produção no Render, o recomendado é usar Cloudinary para persistir fotos/l
    - `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`
    - `PRESENCE_WORKBOOK_PATH` (exemplo: `/var/data/planilha_presenca.xlsx`)
 4. Faça deploy.
+
+### Ordem recomendada de setup (produção)
+
+1. Configurar Neon (`DATABASE_URL`)
+2. Configurar sessão (`SECRET_KEY`, `NODE_ENV=production`)
+3. Configurar Cloudinary (`CLOUDINARY_*`)
+4. Deploy
+5. Criar/entrar com admin
+6. Desativar bootstrap admin
 
 ### Bootstrap do primeiro admin no Render (opcional)
 

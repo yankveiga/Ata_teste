@@ -1101,6 +1101,24 @@ body.section-almox .form-control:focus {
   line-height: 1.55;
 }
 
+.report-goal-delete-form {
+  margin-top: 10px;
+}
+
+.report-goal-delete-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(220, 38, 38, 0.35);
+  border-radius: 999px;
+  padding: 0.42rem 0.82rem;
+  background: rgba(254, 226, 226, 0.95);
+  color: #b91c1c;
+  font-weight: 700;
+  font: inherit;
+  cursor: pointer;
+}
+
 .report-goal-save-button {
   min-height: 36px;
   padding: 0.5rem 0.9rem;
@@ -1206,6 +1224,27 @@ body.section-almox .form-control:focus {
   color: #166534;
   font-size: 0.72rem;
   font-weight: 700;
+}
+
+.report-deletion-log-list {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.report-deletion-log-list li {
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(248, 250, 252, 0.85);
+  display: grid;
+  gap: 4px;
+}
+
+.report-deletion-log-list li small {
+  color: #475569;
 }
 
 .report-kanban-column .report-goal-list {
