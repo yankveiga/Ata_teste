@@ -60,7 +60,7 @@
             <label class="form-label" for="logo">Logo do Projeto (Opcional)</label>
             {% if project and project.logo %}
                 <div class="project-logo-preview">
-                    <img src="{{ urlFor('static', { filename: 'uploads/' ~ project.logo }) }}" alt="Logo Atual">
+                    <img src="{{ mediaUrl(project.logo) }}" alt="Logo Atual">
                     <label class="checkbox-inline">
                         <input type="checkbox" name="logo-clear" id="logo-clear" {% if formData.logoClear %}checked{% endif %}>
                         <span>Remover logo atual?</span>

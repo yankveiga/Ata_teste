@@ -20,6 +20,12 @@ const { config } = require("./config");
 const database = require("./database");
 const { generateAtaPdf, generateMonthlyReportPdf } = require("./pdf");
 const {
+  isCloudinaryEnabled,
+  isRemoteAssetUrl,
+  uploadImageFromPath,
+  deleteImageByUrl,
+} = require("./media");
+const {
   addFlash,
   consumeFlashes,
   defaultMeetingDateTimeInput,
@@ -289,6 +295,16 @@ function createApp() {
   env.addFilter("formatDateTime", formatDateTimePt);
   env.addFilter("formatDate", formatDatePt);
   env.addFilter("dateTimeLocal", toDateTimeLocalValue);
+  env.addGlobal("mediaUrl", (value) => {
+    const text = String(value || "").trim();
+    if (!text) {
+      return "";
+    }
+    if (isRemoteAssetUrl(text)) {
+      return text;
+    }
+    return urlFor("static", { filename: `uploads/${text}` });
+  });
 
     // SECAO: middlewares globais de sessao, parsers e contexto comum para templates/rotas.
 
@@ -366,6 +382,38 @@ const upload = multer({
       }
       next();
     });
+  }
+
+  async function persistUploadedImage(req, { folder }) {
+    if (!req.file) {
+      return null;
+    }
+
+    if (!isCloudinaryEnabled()) {
+      return req.file.filename;
+    }
+
+    const uploaded = await uploadImageFromPath(req.file.path, { folder });
+    safeUnlink(req.file.path);
+    return uploaded.secureUrl;
+  }
+
+  async function deleteStoredImage(value) {
+    const text = String(value || "").trim();
+    if (!text) {
+      return;
+    }
+
+    if (isRemoteAssetUrl(text)) {
+      try {
+        await deleteImageByUrl(text);
+      } catch (error) {
+        console.error(`Falha ao remover imagem remota: ${text}`, error);
+      }
+      return;
+    }
+
+    safeUnlink(path.join(config.uploadDir, text));
   }
 
   // DETALHE: Monta URL do almoxarifado preservando aba ativa para redirecionamentos.
@@ -1401,7 +1449,7 @@ app.get("/members", requireAuth, (req, res) => {
 
   // DETALHE: Rota POST /members/add: processa envio de formulario/acao, valida entrada, persiste dados e redireciona.
 
-  app.post("/members/add", requireAuth, requireAdminPage, runMemberPhotoUpload, (req, res) => {
+  app.post("/members/add", requireAuth, requireAdminPage, runMemberPhotoUpload, async (req, res) => {
     // DETALHE: Interrompe o fluxo quando token CSRF esta invalido ou expirado.
 
     if (!ensureValidCsrf(req, res)) {
@@ -1439,13 +1487,17 @@ app.get("/members", requireAuth, (req, res) => {
       });
     }
 
+    let storedPhoto = null;
     try {
-      const member = database.createMember(formData.name, req.file?.filename || null);
+      storedPhoto = await persistUploadedImage(req, { folder: "pet-c3/members" });
+      const member = database.createMember(formData.name, storedPhoto || null);
       req.flash("success", `Membro "${member.name}" adicionado com sucesso!`);
       return res.redirect(urlFor("list_members"));
     } catch (error) {
-      if (req.file?.filename) {
-        safeUnlink(path.join(config.uploadDir, req.file.filename));
+      if (storedPhoto) {
+        await deleteStoredImage(storedPhoto);
+      } else if (req.file?.path) {
+        safeUnlink(req.file.path);
       }
       if (isUniqueConstraintError(error)) {
         errors.name = ["Já existe um membro com este nome."];
@@ -1490,7 +1542,7 @@ app.get("/members", requireAuth, (req, res) => {
 
   // DETALHE: Rota POST /members/edit/:id: processa envio de formulario/acao, valida entrada, persiste dados e redireciona.
 
-  app.post("/members/edit/:id", requireAuth, requireAdminPage, runMemberPhotoUpload, (req, res) => {
+  app.post("/members/edit/:id", requireAuth, requireAdminPage, runMemberPhotoUpload, async (req, res) => {
     // DETALHE: Interrompe o fluxo quando token CSRF esta invalido ou expirado.
 
     if (!ensureValidCsrf(req, res)) {
@@ -1535,9 +1587,13 @@ app.get("/members", requireAuth, (req, res) => {
       });
     }
 
+    let uploadedPhoto = null;
     try {
-      const nextPhoto = req.file?.filename
-        ? req.file.filename
+      if (req.file) {
+        uploadedPhoto = await persistUploadedImage(req, { folder: "pet-c3/members" });
+      }
+      const nextPhoto = uploadedPhoto
+        ? uploadedPhoto
         : (formData.photoClear ? null : member.photo || null);
       const previousPhotoToDelete =
         nextPhoto !== (member.photo || null) && member.photo
@@ -1549,13 +1605,15 @@ app.get("/members", requireAuth, (req, res) => {
         photo: nextPhoto,
       });
       if (previousPhotoToDelete) {
-        safeUnlink(path.join(config.uploadDir, previousPhotoToDelete));
+        await deleteStoredImage(previousPhotoToDelete);
       }
       req.flash("success", `Membro "${formData.name}" atualizado com sucesso!`);
       return res.redirect(urlFor("list_members"));
     } catch (error) {
-      if (req.file?.filename && req.file.filename !== member.photo) {
-        safeUnlink(path.join(config.uploadDir, req.file.filename));
+      if (uploadedPhoto && uploadedPhoto !== member.photo) {
+        await deleteStoredImage(uploadedPhoto);
+      } else if (req.file?.path) {
+        safeUnlink(req.file.path);
       }
       if (isUniqueConstraintError(error)) {
         errors.name = ["Já existe um membro com este nome."];
@@ -1656,7 +1714,7 @@ app.get("/projects", requireAuth, (req, res) => {
     requireAuth,
     requireAdminPage,
     runLogoUpload,
-    (req, res) => {
+    async (req, res) => {
       // DETALHE: Interrompe o fluxo quando token CSRF esta invalido ou expirado.
 
       if (!ensureValidCsrf(req, res)) {
@@ -1725,10 +1783,12 @@ app.get("/projects", requireAuth, (req, res) => {
         });
       }
 
+      let storedLogo = null;
       try {
+        storedLogo = await persistUploadedImage(req, { folder: "pet-c3/projects" });
         const project = database.createProject({
           name: formData.name,
-          logo: req.file ? req.file.filename : null,
+          logo: storedLogo || null,
           primaryColor: formData.primaryColor,
           memberIds,
           coordinatorIds,
@@ -1736,7 +1796,9 @@ app.get("/projects", requireAuth, (req, res) => {
         req.flash("success", `Projeto "${project.name}" adicionado com sucesso!`);
         return res.redirect(urlFor("list_projects"));
       } catch (error) {
-        if (req.file) {
+        if (storedLogo) {
+          await deleteStoredImage(storedLogo);
+        } else if (req.file) {
           safeUnlink(req.file.path);
         }
 
@@ -1796,7 +1858,7 @@ app.get("/projects", requireAuth, (req, res) => {
     "/projects/edit/:id",
     requireAuth,
     runLogoUpload,
-    (req, res) => {
+    async (req, res) => {
       // DETALHE: Interrompe o fluxo quando token CSRF esta invalido ou expirado.
 
       if (!ensureValidCsrf(req, res)) {
@@ -1888,21 +1950,17 @@ app.get("/projects", requireAuth, (req, res) => {
 
       let logo = project.logo;
       let uploadedIsNew = false;
-
-      if (req.file) {
-        logo = req.file.filename;
-        uploadedIsNew = logo !== project.logo;
-        if (project.logo && uploadedIsNew) {
-          safeUnlink(path.join(config.uploadDir, project.logo));
-        }
-      } else if (formData.logoClear) {
-        if (project.logo) {
-          safeUnlink(path.join(config.uploadDir, project.logo));
-        }
-        logo = null;
-      }
+      let uploadedLogo = null;
 
       try {
+        if (req.file) {
+          uploadedLogo = await persistUploadedImage(req, { folder: "pet-c3/projects" });
+          logo = uploadedLogo;
+          uploadedIsNew = logo !== project.logo;
+        } else if (formData.logoClear) {
+          logo = null;
+        }
+
         const updated = database.updateProject(projectId, {
           name: formData.name,
           logo,
@@ -1910,10 +1968,15 @@ app.get("/projects", requireAuth, (req, res) => {
           memberIds,
           coordinatorIds,
         });
+        if (project.logo && logo !== project.logo) {
+          await deleteStoredImage(project.logo);
+        }
         req.flash("success", `Projeto "${updated.name}" atualizado com sucesso!`);
         return res.redirect(urlFor("list_projects"));
       } catch (error) {
-        if (req.file && uploadedIsNew) {
+        if (uploadedLogo && uploadedIsNew) {
+          await deleteStoredImage(uploadedLogo);
+        } else if (req.file) {
           safeUnlink(req.file.path);
         }
 
@@ -1942,7 +2005,7 @@ app.get("/projects", requireAuth, (req, res) => {
 
   // DETALHE: Rota POST /projects/delete/:id: processa envio de formulario/acao, valida entrada, persiste dados e redireciona.
 
-  app.post("/projects/delete/:id", requireAuth, (req, res) => {
+  app.post("/projects/delete/:id", requireAuth, async (req, res) => {
     // DETALHE: Interrompe o fluxo quando token CSRF esta invalido ou expirado.
 
     if (!ensureValidCsrf(req, res)) {
@@ -1966,7 +2029,7 @@ app.get("/projects", requireAuth, (req, res) => {
     try {
       database.deleteProject(projectId);
       if (project.logo) {
-        safeUnlink(path.join(config.uploadDir, project.logo));
+        await deleteStoredImage(project.logo);
       }
       req.flash(
         "success",

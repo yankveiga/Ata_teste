@@ -44,7 +44,7 @@
                             >
                                 <span class="report-member-photo-avatar" aria-hidden="true">
                                     {% if member.photo %}
-                                        <img src="{{ urlFor('static', { filename: 'uploads/' ~ member.photo }) }}" alt="">
+                                        <img src="{{ mediaUrl(member.photo) }}" alt="">
                                     {% else %}
                                         <ion-icon name="person-outline"></ion-icon>
                                     {% endif %}

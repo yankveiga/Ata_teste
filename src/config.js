@@ -40,6 +40,12 @@ const config = {
     password: String(process.env.BOOTSTRAP_ADMIN_PASSWORD || "").trim(),
     name: String(process.env.BOOTSTRAP_ADMIN_NAME || "").trim() || "Administrador",
   },
+  cloudinary: {
+    cloudName: String(process.env.CLOUDINARY_CLOUD_NAME || "").trim(),
+    apiKey: String(process.env.CLOUDINARY_API_KEY || "").trim(),
+    apiSecret: String(process.env.CLOUDINARY_API_SECRET || "").trim(),
+    folder: String(process.env.CLOUDINARY_FOLDER || "pet-c3").trim(),
+  },
   staticDir: path.join(baseDir, "app", "static"),
   viewsDir: path.join(baseDir, "app", "templates"),
   uploadDir: path.join(baseDir, "app", "static", "uploads"),

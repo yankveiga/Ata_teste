@@ -55,7 +55,7 @@
                             <tr>
                                 <td class="centered-cell">
                                     {% if project.logo %}
-                                        <img src="{{ urlFor('static', { filename: 'uploads/' ~ project.logo }) }}" alt="Logo {{ project.name }}" class="table-logo">
+                                        <img src="{{ mediaUrl(project.logo) }}" alt="Logo {{ project.name }}" class="table-logo">
                                     {% else %}
                                         <span class="no-logo-placeholder">-</span>
                                     {% endif %}

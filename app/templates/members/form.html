@@ -51,7 +51,7 @@
             <div class="member-photo-field">
                 <div class="member-photo-preview" aria-hidden="true">
                     {% if member and member.photo %}
-                        <img src="{{ urlFor('static', { filename: 'uploads/' ~ member.photo }) }}" alt="Foto atual de {{ member.name }}">
+                        <img src="{{ mediaUrl(member.photo) }}" alt="Foto atual de {{ member.name }}">
                     {% else %}
                         <ion-icon name="person-outline"></ion-icon>
                     {% endif %}

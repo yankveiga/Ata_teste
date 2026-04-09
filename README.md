@@ -76,6 +76,10 @@ npm run verify
 PORT=3000
 SECRET_KEY=sua-chave-secreta
 DATABASE_URL=postgresql://USUARIO:SENHA@HOST/DBNAME?sslmode=require
+CLOUDINARY_CLOUD_NAME=
+CLOUDINARY_API_KEY=
+CLOUDINARY_API_SECRET=
+CLOUDINARY_FOLDER=pet-c3
 PRESENCE_WORKBOOK_PATH=planilha_presenca.xlsx
 BOOTSTRAP_ADMIN=false
 BOOTSTRAP_ADMIN_USERNAME=admin
@@ -92,6 +96,13 @@ Modelo de dados da presença:
 - `user`: usuários do sistema (login/senha/role `admin` ou `common`)
 - `planilha_presenca.xlsx`: participantes por crachá e marcações por evento (`EVENTO_1` a `EVENTO_16`)
 
+## Imagens (Membros e Projetos)
+
+Em produção no Render, o recomendado é usar Cloudinary para persistir fotos/logos.
+
+- se `CLOUDINARY_*` estiver configurado, uploads vão para Cloudinary (URL salva no banco)
+- se não estiver, o sistema usa `app/static/uploads` local
+
 ## Deploy rápido (Render + Neon)
 
 1. No Render, crie um Web Service apontando para este repositório.
@@ -102,6 +113,7 @@ Modelo de dados da presença:
    - `SECRET_KEY`
    - `NODE_ENV=production`
    - `DATABASE_URL` (string de conexão do Neon)
+   - `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`
    - `PRESENCE_WORKBOOK_PATH` (exemplo: `/var/data/planilha_presenca.xlsx`)
 4. Faça deploy.
 
