@@ -1932,18 +1932,11 @@ function listReportWeekGoalsForMember(
       INNER JOIN member m ON m.id = g.member_id
       LEFT JOIN user u ON u.id = g.created_by_user_id
       WHERE ${where.join(" AND ")}
-      ORDER BY
-        CASE
-          WHEN g.is_completed = 0 AND g.week_start < ? THEN 0
-          WHEN g.is_completed = 0 THEN 1
-          ELSE 2
-        END,
-        g.week_start ASC,
-        g.id ASC
+      ORDER BY g.week_start DESC, g.id DESC
       LIMIT ?
     `,
     )
-    .all(...params, overdueReferenceWeek, limit)
+    .all(...params, limit)
     .map((row) => {
       const mapped = mapReportWeekGoal(row);
       return {

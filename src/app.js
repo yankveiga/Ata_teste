@@ -54,6 +54,32 @@ const ALMOX_TABS = new Set([
 ]);
 const INVENTORY_ITEM_TYPES = new Set(["stock", "patrimony"]);
 const DEFAULT_PROJECT_COLOR = "#0b6bcb";
+const REPORTS_TIMEZONE = "America/Sao_Paulo";
+
+function getDatePartsInTimeZone(date, timeZone) {
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    weekday: "short",
+  });
+  const parts = formatter.formatToParts(date);
+  const valueByType = {};
+  parts.forEach((part) => {
+    valueByType[part.type] = part.value;
+  });
+  return {
+    year: Number(valueByType.year),
+    month: Number(valueByType.month),
+    day: Number(valueByType.day),
+    weekday: valueByType.weekday,
+  };
+}
+
+function formatYmd(year, month, day) {
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
 
 // SECAO: helpers de normalizacao de entrada (query/form).
 // Mantem valores padrao quando entrada vier ausente ou invalida.
@@ -82,11 +108,24 @@ function normalizeProjectColor(value, fallback = DEFAULT_PROJECT_COLOR) {
 
 function getCurrentWeekStartDate() {
   const now = new Date();
-  const date = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-  const day = date.getUTCDay();
-  const diffToMonday = day === 0 ? -6 : 1 - day;
-  date.setUTCDate(date.getUTCDate() + diffToMonday);
-  return date.toISOString().slice(0, 10);
+  const weekdayToOffset = {
+    Mon: 0,
+    Tue: -1,
+    Wed: -2,
+    Thu: -3,
+    Fri: -4,
+    Sat: -5,
+    Sun: -6,
+  };
+  const parts = getDatePartsInTimeZone(now, REPORTS_TIMEZONE);
+  const offset = weekdayToOffset[parts.weekday] ?? 0;
+  const baseUtc = new Date(Date.UTC(parts.year, parts.month - 1, parts.day));
+  baseUtc.setUTCDate(baseUtc.getUTCDate() + offset);
+  return formatYmd(
+    baseUtc.getUTCFullYear(),
+    baseUtc.getUTCMonth() + 1,
+    baseUtc.getUTCDate(),
+  );
 }
 
 // DETALHE: Converte data recebida para a segunda-feira da semana correspondente.
@@ -97,15 +136,29 @@ function normalizeWeekStartDate(value) {
     return null;
   }
 
-  const date = new Date(`${text}T00:00:00Z`);
+  const date = new Date(`${text}T12:00:00Z`);
   if (Number.isNaN(date.getTime())) {
     return null;
   }
 
-  const day = date.getUTCDay();
-  const diffToMonday = day === 0 ? -6 : 1 - day;
-  date.setUTCDate(date.getUTCDate() + diffToMonday);
-  return date.toISOString().slice(0, 10);
+  const weekdayToOffset = {
+    Mon: 0,
+    Tue: -1,
+    Wed: -2,
+    Thu: -3,
+    Fri: -4,
+    Sat: -5,
+    Sun: -6,
+  };
+  const parts = getDatePartsInTimeZone(date, REPORTS_TIMEZONE);
+  const offset = weekdayToOffset[parts.weekday] ?? 0;
+  const baseUtc = new Date(Date.UTC(parts.year, parts.month - 1, parts.day));
+  baseUtc.setUTCDate(baseUtc.getUTCDate() + offset);
+  return formatYmd(
+    baseUtc.getUTCFullYear(),
+    baseUtc.getUTCMonth() + 1,
+    baseUtc.getUTCDate(),
+  );
 }
 
 // DETALHE: Normaliza status do relatorio e aplica fallback seguro quando vier invalido.
