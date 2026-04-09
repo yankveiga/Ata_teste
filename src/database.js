@@ -2438,7 +2438,7 @@ function listInventoryLoans({ status = null, limit = null } = {}) {
     `;
   } else if (status === "overdue") {
     conditions.push("l.returned_at IS NULL");
-    conditions.push("l.due_at < CURRENT_TIMESTAMP");
+    conditions.push("CAST(l.due_at AS timestamp) < CURRENT_TIMESTAMP");
     orderBy = `
       ORDER BY
         l.due_at ASC,
@@ -2513,7 +2513,7 @@ function getInventoryDashboardData() {
       ).get()?.total || 0,
     overdue_loan_count:
       db.prepare(
-        "SELECT COUNT(*) AS total FROM inventory_loan WHERE returned_at IS NULL AND due_at < CURRENT_TIMESTAMP",
+        "SELECT COUNT(*) AS total FROM inventory_loan WHERE returned_at IS NULL AND CAST(due_at AS timestamp) < CURRENT_TIMESTAMP",
       ).get()?.total || 0,
     total_units:
       db.prepare("SELECT COALESCE(SUM(amount), 0) AS total FROM estoque").get()
