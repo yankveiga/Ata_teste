@@ -789,10 +789,23 @@ function render(res, template, data = {}) {
     const completedGoals = reportGoals.filter((goal) => goal.is_completed);
     const overduePendingGoals = pendingGoals.filter((goal) => goal.is_overdue);
     const openPendingGoals = pendingGoals.filter((goal) => !goal.is_overdue);
+    const coordinatorProjectIds = currentMember?.is_active
+      ? new Set(
+          database
+            .listProjectsForMember(currentMember.id)
+            .filter((project) => database.isProjectCoordinator(project.id, currentMember.id))
+            .map((project) => project.id),
+        )
+      : new Set();
+    const canCreateAsCoordinator = Boolean(
+      selectedMember && currentMember?.is_active
+      && reportProjectOptions.some((project) => coordinatorProjectIds.has(project.id)),
+    );
     const canCreateGoalsForSelectedMember = Boolean(
       selectedMember && (
         req.currentUser?.is_admin
         || (currentMember?.is_active && currentMember.id === selectedMember.id)
+        || canCreateAsCoordinator
       ),
     );
     const deletionLogs = selectedMember
