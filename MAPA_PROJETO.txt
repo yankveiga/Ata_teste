@@ -28,7 +28,9 @@ Onde a imagem aparece na interface:
 1) RELATÓRIOS (TELA)
 - Conteúdo/layout principal: app/templates/reports/index.html
 - Estilos visuais da tela de relatórios: app/static/css/custom_styles.css
-- Rotas e regras de relatórios/metas: src/app.js
+- Rotas e regras de relatórios/metas: src/routes/reports.js
+- Regras de serviço (PDF mensal/permissão): src/services/reportService.js
+- Validações de metas: src/validators/reportValidators.js
 - Persistência e consultas de metas/relatórios: src/database.js
 
 2) BASE / NAVEGAÇÃO GERAL
@@ -38,27 +40,29 @@ Onde a imagem aparece na interface:
 3) MÓDULO MEMBROS
 - Lista de membros: app/templates/members/list.html
 - Formulário de membro: app/templates/members/form.html
-- Rotas e validações de membro: src/app.js
+- Rotas e validações de membro: src/routes/members.js
 - Tabela/CRUD de membro: src/database.js
 
 4) MÓDULO PROJETOS
 - Lista de projetos: app/templates/projects/list.html
 - Formulário de projetos: app/templates/projects/form.html
-- Rotas e validações de projetos: src/app.js
+- Rotas e validações de projetos: src/routes/projects.js
 - Tabela/CRUD de projetos e vínculo projeto-membro: src/database.js
 
 5) MÓDULO ATAS
 - Home do módulo Atas: app/templates/home.html
 - Criar ata: app/templates/atas/create_form.html
 - Geração de PDF: src/pdf.js
-- Rotas de atas: src/app.js
+- Rotas de atas: src/routes/atas.js
 - Persistência de atas/presença/justificativas: src/database.js
 
 6) AUTENTICAÇÃO E UTILITÁRIOS
 - Login (template): app/templates/login.html
-- Login/logout e middlewares de acesso: src/app.js
+- Login/logout e presença: src/routes/auth.js
+- Composição de app, middlewares e injeção de contexto: src/app.js
 - Funções utilitárias (csrf, formatos, uploads, rotas nomeadas): src/utils.js
 - Configurações gerais (paths, porta, banco): src/config.js
+- HTTP padrão (requestId + erro JSON): src/http.js
 
 7) CSS (VISUAL)
 - CSS principal do portal (customizações e módulos): app/static/css/custom_styles.css
@@ -70,13 +74,21 @@ Onde a imagem aparece na interface:
 8) ARQUIVOS-CHAVE PARA AJUSTES RÁPIDOS
 - "Quero mudar a cor/estilo do relatório": app/static/css/custom_styles.css
 - "Quero mudar o HTML do relatório": app/templates/reports/index.html
-- "Quero mudar regra de permissão no relatório": src/app.js
+- "Quero mudar regra de permissão no relatório": src/routes/reports.js e src/services/reportService.js
 - "Quero mudar lógica de atraso/prioridade": src/database.js
 
 9) DICA DE FLUXO
 - Mudanças de interface: template + CSS
-- Mudanças de regra de negócio: app.js + database.js
+- Mudanças de regra de negócio: src/routes/*.js + src/services/*.js + database.js
 - Mudanças de persistência/ordenação: database.js
+
+11) ESTRUTURA MODULAR DE ROTAS (ATUAL)
+- Auth/Serviços/Presença: src/routes/auth.js
+- Relatórios: src/routes/reports.js
+- Membros: src/routes/members.js
+- Projetos: src/routes/projects.js
+- Atas: src/routes/atas.js
+- Almoxarifado + API interna: src/routes/almox.js
 
 10) CHECKLIST RÁPIDO (PRODUÇÃO)
 - Subiu no Render e deu erro de banco: revisar DATABASE_URL (Neon) em Render > Environment.

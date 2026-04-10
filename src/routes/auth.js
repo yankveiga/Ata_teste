@@ -13,6 +13,8 @@ function registerAuthRoutes(ctx) {
     verifyCsrf,
     safeRedirectPath,
     registerPresenceInWorkbook,
+    logError,
+    sendApiError,
   } = ctx;
 
 app.get("/login", (req, res) => {
@@ -148,22 +150,21 @@ app.get("/services", requireAuth, (req, res) => {
   app.post("/presenca/registrar", requireAuth, (req, res) => {
     if (!verifyCsrf(req)) {
       const nextToken = ensureCsrfToken(req);
-      return res.status(403).json({
-        success: false,
-        error: "CSRF token inválido ou expirado.",
-        csrfToken: nextToken,
-      });
+      return sendApiError(
+        req,
+        res,
+        403,
+        "CSRF token inválido ou expirado.",
+        { csrfToken: nextToken },
+      );
     }
 
     try {
       const result = registerPresenceInWorkbook(req.body.cracha, req.body.evento);
       return res.json(result);
     } catch (error) {
-      console.error("Erro ao registrar presença:", error);
-      return res.status(500).json({
-        success: false,
-        error: "Erro interno ao registrar presença.",
-      });
+      logError(req, "Erro ao registrar presença:", error);
+      return sendApiError(req, res, 500, "Erro interno ao registrar presença.");
     }
   });
 }

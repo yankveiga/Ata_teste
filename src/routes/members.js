@@ -17,6 +17,7 @@ function registerMemberRoutes(ctx) {
     isUniqueConstraintError,
     safeUnlink,
     urlFor,
+    logError,
   } = ctx;
 
 app.get("/members", requireAuth, (req, res) => {
@@ -103,7 +104,7 @@ app.get("/members", requireAuth, (req, res) => {
         });
       }
 
-      console.error("Erro ao adicionar membro:", error);
+      logError(req, "Erro ao adicionar membro:", error);
       req.flash("danger", `Erro ao adicionar membro: ${error.message}`);
       return renderMemberForm(res, {
         title: "Adicionar Membro",
@@ -212,7 +213,7 @@ app.get("/members", requireAuth, (req, res) => {
       if (isUniqueConstraintError(error)) {
         errors.name = ["Já existe um membro com este nome."];
       } else {
-        console.error("Erro ao editar membro:", error);
+        logError(req, "Erro ao editar membro:", error);
         req.flash("danger", `Erro ao editar membro: ${error.message}`);
       }
 
@@ -253,7 +254,7 @@ app.get("/members", requireAuth, (req, res) => {
         `Membro "${member.name}" desativado com sucesso e removido dos projetos!`,
       );
     } catch (error) {
-      console.error("Erro ao desativar membro:", error);
+      logError(req, "Erro ao desativar membro:", error);
       req.flash("danger", `Erro ao desativar membro: ${error.message}`);
     }
 

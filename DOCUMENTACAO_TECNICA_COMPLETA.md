@@ -6,8 +6,12 @@ Objetivo: explicar de forma profissional o papel de cada arquivo e indicar onde 
 ## 1) Visao Geral da Arquitetura
 
 - Entrada da aplicacao: `server.js`
-- Regras HTTP, autenticacao e renderizacao: `src/app.js`
+- Composicao do app e injecao de dependencias: `src/app.js`
+- Rotas HTTP por dominio: `src/routes/*.js`
 - Persistencia de dados (Neon/PostgreSQL): `src/database.js`
+- Padrao HTTP (requestId + erro JSON): `src/http.js`
+- Servicos de negocio: `src/services/*.js`
+- Validadores: `src/validators/*.js`
 - Utilitarios globais (datas, csrf, rotas nomeadas): `src/utils.js`
 - Geracao de PDF: `src/pdf.js`
 - Configuracoes de ambiente: `src/config.js`
@@ -36,17 +40,30 @@ Objetivo: explicar de forma profissional o papel de cada arquivo e indicar onde 
   - novos diretórios globais de runtime
 
 ### `src/app.js`
-- Responsabilidade: composicao principal do Express.
+- Responsabilidade: composicao principal do Express e wiring dos modulos.
 - Blocos principais:
   - middlewares de sessao, csrf, parser de body
-  - autenticacao e autorizacao
+  - autenticacao/autorizacao base (helpers)
   - uploads de imagem
-  - rotas de login, servicos, membros, projetos, atas, relatorios, presenca e almoxarifado
+  - registro das rotas modulares (`register*Routes`)
 - Onde adicionar:
-  - nova rota HTTP: aqui
+  - nova rota HTTP: no modulo correspondente em `src/routes`
   - nova regra de permissao: helpers de autorizacao em `app.js`
-  - validacao de formularios: handler da rota correspondente
+  - validacao compartilhada: `src/validators`
   - nova pagina: rota + template em `app/templates`
+
+### `src/routes/*.js`
+- Responsabilidade: handlers HTTP por dominio.
+- Modulos atuais:
+  - `src/routes/auth.js`
+  - `src/routes/reports.js`
+  - `src/routes/members.js`
+  - `src/routes/projects.js`
+  - `src/routes/atas.js`
+  - `src/routes/almox.js`
+- Onde adicionar:
+  - endpoints novos do dominio
+  - regras de fluxo da tela/API daquele modulo
 
 ### `src/database.js`
 - Responsabilidade: schema e operacoes de persistencia.
@@ -71,6 +88,21 @@ Objetivo: explicar de forma profissional o papel de cada arquivo e indicar onde 
 - Onde adicionar:
   - helper compartilhado por mais de uma rota/template
   - regras de formatacao global
+
+### `src/http.js`
+- Responsabilidade: padrao de request/erro para HTTP.
+- O que faz:
+  - gera `requestId` por requisicao
+  - expoe `logError(req, ...)`
+  - expoe `sendApiError(req, res, ...)` para respostas JSON padronizadas
+
+### `src/services/*.js`
+- `src/services/reportService.js`: regras de negocio de relatorios (permissao/exportacao mensal).
+- `src/services/inventoryService.js`: mapeamentos/formatos do almoxarifado.
+
+### `src/validators/*.js`
+- `src/validators/reportValidators.js`: validacoes de metas semanais.
+- `src/validators/inventoryValidators.js`: validacoes de estoque/categoria/local.
 
 ### `src/pdf.js`
 - Responsabilidade: gerar PDFs (atas e relatorio mensal).
@@ -195,11 +227,12 @@ Objetivo: explicar de forma profissional o papel de cada arquivo e indicar onde 
 
 ## 6) Onde adicionar cada tipo de demanda (atalho rapido)
 
-- Nova rota backend: `src/app.js`
+- Nova rota backend: `src/routes/<modulo>.js`
 - Nova tabela/campo de banco: `src/database.js` (`ensureSchema` + CRUD)
-- Nova permissao por perfil: `src/app.js` (helpers de autorizacao)
+- Nova permissao por perfil: helpers em `src/app.js` e aplicacao em `src/routes/*`
 - Nova exportacao PDF: `src/pdf.js`
 - Novo helper global: `src/utils.js`
+- Novo erro padronizado de API: `src/http.js` (`sendApiError`)
 - Nova integracao de midia: `src/media.js`
 - Novo card/aba de tela: `app/templates/*` + `app/static/css/*`
 - Novo comportamento JS da tela: `app/static/js/*`
@@ -215,6 +248,6 @@ Objetivo: explicar de forma profissional o papel de cada arquivo e indicar onde 
 ## 8) Regra pratica de manutencao
 
 - Interface: template + css
-- Regra de negocio: app.js
+- Regra de negocio: routes + services
 - Persistencia/consultas: database.js
 - Documentacao da mudanca: README + MAPA_PROJETO + este arquivo

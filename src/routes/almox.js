@@ -16,6 +16,9 @@ function registerAlmoxRoutes(ctx) {
     validateCatalogName,
     isUniqueConstraintError,
     canCreateAtaForProject,
+    logError,
+    sendApiError,
+    mapInventoryApiItem,
   } = ctx;
 
 app.get("/almoxarifado", requireAuth, (req, res) => {
@@ -111,7 +114,7 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
         if (isUniqueConstraintError(error)) {
           userErrors.username = ["Já existe um usuário com esse nome de acesso."];
         } else {
-          console.error("Erro ao criar usuário:", error);
+          logError(req, "Erro ao criar usuário:", error);
           req.flash("danger", `Erro ao criar usuário: ${error.message}`);
         }
 
@@ -179,7 +182,7 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
           );
         }
       } catch (error) {
-        console.error("Erro ao vincular usuário ao membro:", error);
+        logError(req, "Erro ao vincular usuário ao membro:", error);
         req.flash("danger", `Erro ao vincular usuário: ${error.message}`);
       }
 
@@ -220,7 +223,7 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
         database.updateUserPassword(userId, passwordHash);
         req.flash("success", `Senha de @${user.username} redefinida com sucesso.`);
       } catch (error) {
-        console.error("Erro ao redefinir senha de usuário:", error);
+        logError(req, "Erro ao redefinir senha de usuário:", error);
         req.flash("danger", `Erro ao redefinir senha: ${error.message}`);
       }
 
@@ -267,7 +270,7 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
 
         req.flash("success", `Usuário @${result.user.username} excluído com sucesso.`);
       } catch (error) {
-        console.error("Erro ao excluir usuário:", error);
+        logError(req, "Erro ao excluir usuário:", error);
         req.flash("danger", `Erro ao excluir usuário: ${error.message}`);
       }
 
@@ -330,7 +333,7 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
         );
         return res.redirect(almoxPath(activeTab));
       } catch (error) {
-        console.error("Erro ao adicionar item ao estoque:", error);
+        logError(req, "Erro ao adicionar item ao estoque:", error);
         req.flash("danger", `Erro ao adicionar item: ${error.message}`);
         return renderAlmox(res, {
           activeTab,
@@ -378,7 +381,7 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
         if (isUniqueConstraintError(error)) {
           errors.name = ["Já existe uma categoria com esse nome."];
         } else {
-          console.error("Erro ao criar categoria:", error);
+          logError(req, "Erro ao criar categoria:", error);
           req.flash("danger", `Erro ao criar categoria: ${error.message}`);
         }
 
@@ -418,7 +421,7 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
           req.flash("success", `Categoria "${deleted.name}" removida com sucesso.`);
         }
       } catch (error) {
-        console.error("Erro ao remover categoria:", error);
+        logError(req, "Erro ao remover categoria:", error);
         req.flash("danger", `Erro ao remover categoria: ${error.message}`);
       }
 
@@ -463,7 +466,7 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
         if (isUniqueConstraintError(error)) {
           errors.name = ["Já existe um local com esse nome."];
         } else {
-          console.error("Erro ao criar local:", error);
+          logError(req, "Erro ao criar local:", error);
           req.flash("danger", `Erro ao criar local: ${error.message}`);
         }
 
@@ -503,7 +506,7 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
           req.flash("success", `Local "${deleted.name}" removido com sucesso.`);
         }
       } catch (error) {
-        console.error("Erro ao remover local:", error);
+        logError(req, "Erro ao remover local:", error);
         req.flash("danger", `Erro ao remover local: ${error.message}`);
       }
 
@@ -542,7 +545,7 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
           );
         }
       } catch (error) {
-        console.error("Erro ao excluir item do estoque:", error);
+        logError(req, "Erro ao excluir item do estoque:", error);
         req.flash("danger", `Erro ao excluir item: ${error.message}`);
       }
 
@@ -755,19 +758,7 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
   // DETALHE: Rota GET /almoxarifado/api/itens: consulta dados necessarios e monta resposta (HTML/JSON) para a tela solicitada.
 
   app.get("/almoxarifado/api/itens", requireAuth, (req, res) => {
-    return res.json(
-      database.listInventoryItems().map((item) => ({
-        id: item.id,
-        nome: item.name,
-        tipo: item.item_type,
-        descricao: item.description,
-        categoria: item.category,
-        categoria_id: item.category_id,
-        local: item.location,
-        local_id: item.location_id,
-        quantidade: item.amount,
-      })),
-    );
+    return res.json(database.listInventoryItems().map(mapInventoryApiItem));
   });
 
   // DETALHE: Inicio de bloco de rota declarada em multiplas linhas; revisar path e middlewares logo abaixo.
@@ -788,7 +779,7 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
       // DETALHE: Se houver erro de validacao, encerra cedo para evitar persistencia inconsistente.
 
       if (Object.keys(errors).length > 0) {
-        return res.status(400).json({ error: "Dados inválidos.", details: errors });
+        return sendApiError(req, res, 400, "Dados inválidos.", errors);
       }
 
       try {
@@ -804,8 +795,8 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
         });
         return res.status(201).json(item);
       } catch (error) {
-        console.error("Erro ao criar item via API:", error);
-        return res.status(500).json({ error: error.message });
+        logError(req, "Erro ao criar item via API:", error);
+        return sendApiError(req, res, 500, error.message);
       }
     },
   );
@@ -825,7 +816,7 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
 
       const itemId = parseId(req.params.id);
       if (!itemId) {
-        return res.status(400).json({ error: "Item inválido." });
+        return sendApiError(req, res, 400, "Item inválido.");
       }
 
       const parsed = parseInventoryPayload(req.body);
@@ -833,7 +824,7 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
       // DETALHE: Se houver erro de validacao, encerra cedo para evitar persistencia inconsistente.
 
       if (Object.keys(errors).length > 0) {
-        return res.status(400).json({ error: "Dados inválidos.", details: errors });
+        return sendApiError(req, res, 400, "Dados inválidos.", errors);
       }
 
       try {
@@ -849,13 +840,13 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
         });
 
         if (!updated) {
-          return res.status(404).json({ error: "Item não encontrado." });
+          return sendApiError(req, res, 404, "Item não encontrado.");
         }
 
         return res.json(updated);
       } catch (error) {
-        console.error("Erro ao atualizar item via API:", error);
-        return res.status(500).json({ error: error.message });
+        logError(req, "Erro ao atualizar item via API:", error);
+        return sendApiError(req, res, 500, error.message);
       }
     },
   );
@@ -875,13 +866,13 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
 
       const itemId = parseId(req.params.id);
       if (!itemId) {
-        return res.status(400).json({ error: "Item inválido." });
+        return sendApiError(req, res, 400, "Item inválido.");
       }
 
       try {
         const deleted = database.deleteInventoryItem(itemId);
         if (!deleted) {
-          return res.status(404).json({ error: "Item não encontrado." });
+          return sendApiError(req, res, 404, "Item não encontrado.");
         }
 
         return res.json({
@@ -889,8 +880,8 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
           item: deleted,
         });
       } catch (error) {
-        console.error("Erro ao remover item via API:", error);
-        return res.status(500).json({ error: error.message });
+        logError(req, "Erro ao remover item via API:", error);
+        return sendApiError(req, res, 500, error.message);
       }
     },
   );
@@ -926,7 +917,7 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
       // DETALHE: Se houver erro de validacao, encerra cedo para evitar persistencia inconsistente.
 
       if (Object.keys(errors).length > 0) {
-        return res.status(400).json({ error: "Dados inválidos.", details: errors });
+        return sendApiError(req, res, 400, "Dados inválidos.", errors);
       }
 
       try {
@@ -934,10 +925,10 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
         return res.status(201).json({ id: category.id, nome: category.name });
       } catch (error) {
         if (isUniqueConstraintError(error)) {
-          return res.status(400).json({ error: "Categoria já cadastrada." });
+          return sendApiError(req, res, 400, "Categoria já cadastrada.");
         }
-        console.error("Erro ao criar categoria via API:", error);
-        return res.status(500).json({ error: error.message });
+        logError(req, "Erro ao criar categoria via API:", error);
+        return sendApiError(req, res, 500, error.message);
       }
     },
   );
@@ -957,7 +948,7 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
 
       const categoryId = parseId(req.params.id);
       if (!categoryId) {
-        return res.status(400).json({ error: "Categoria inválida." });
+        return sendApiError(req, res, 400, "Categoria inválida.");
       }
 
       const { normalized, errors } = validateCatalogName(
@@ -967,22 +958,22 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
       // DETALHE: Se houver erro de validacao, encerra cedo para evitar persistencia inconsistente.
 
       if (Object.keys(errors).length > 0) {
-        return res.status(400).json({ error: "Dados inválidos.", details: errors });
+        return sendApiError(req, res, 400, "Dados inválidos.", errors);
       }
 
       try {
         const category = database.updateInventoryCategory(categoryId, normalized);
         if (!category) {
-          return res.status(404).json({ error: "Categoria não encontrada." });
+          return sendApiError(req, res, 404, "Categoria não encontrada.");
         }
 
         return res.json({ id: category.id, nome: category.name });
       } catch (error) {
         if (isUniqueConstraintError(error)) {
-          return res.status(400).json({ error: "Categoria já cadastrada." });
+          return sendApiError(req, res, 400, "Categoria já cadastrada.");
         }
-        console.error("Erro ao atualizar categoria via API:", error);
-        return res.status(500).json({ error: error.message });
+        logError(req, "Erro ao atualizar categoria via API:", error);
+        return sendApiError(req, res, 500, error.message);
       }
     },
   );
@@ -1002,13 +993,13 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
 
       const categoryId = parseId(req.params.id);
       if (!categoryId) {
-        return res.status(400).json({ error: "Categoria inválida." });
+        return sendApiError(req, res, 400, "Categoria inválida.");
       }
 
       try {
         const deleted = database.deleteInventoryCategory(categoryId);
         if (!deleted) {
-          return res.status(404).json({ error: "Categoria não encontrada." });
+          return sendApiError(req, res, 404, "Categoria não encontrada.");
         }
 
         return res.json({
@@ -1016,8 +1007,8 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
           categoria: { id: deleted.id, nome: deleted.name },
         });
       } catch (error) {
-        console.error("Erro ao remover categoria via API:", error);
-        return res.status(500).json({ error: error.message });
+        logError(req, "Erro ao remover categoria via API:", error);
+        return sendApiError(req, res, 500, error.message);
       }
     },
   );
@@ -1053,7 +1044,7 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
       // DETALHE: Se houver erro de validacao, encerra cedo para evitar persistencia inconsistente.
 
       if (Object.keys(errors).length > 0) {
-        return res.status(400).json({ error: "Dados inválidos.", details: errors });
+        return sendApiError(req, res, 400, "Dados inválidos.", errors);
       }
 
       try {
@@ -1061,10 +1052,10 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
         return res.status(201).json({ id: location.id, nome: location.name });
       } catch (error) {
         if (isUniqueConstraintError(error)) {
-          return res.status(400).json({ error: "Local já cadastrado." });
+          return sendApiError(req, res, 400, "Local já cadastrado.");
         }
-        console.error("Erro ao criar local via API:", error);
-        return res.status(500).json({ error: error.message });
+        logError(req, "Erro ao criar local via API:", error);
+        return sendApiError(req, res, 500, error.message);
       }
     },
   );
@@ -1084,7 +1075,7 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
 
       const locationId = parseId(req.params.id);
       if (!locationId) {
-        return res.status(400).json({ error: "Local inválido." });
+        return sendApiError(req, res, 400, "Local inválido.");
       }
 
       const { normalized, errors } = validateCatalogName(
@@ -1094,22 +1085,22 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
       // DETALHE: Se houver erro de validacao, encerra cedo para evitar persistencia inconsistente.
 
       if (Object.keys(errors).length > 0) {
-        return res.status(400).json({ error: "Dados inválidos.", details: errors });
+        return sendApiError(req, res, 400, "Dados inválidos.", errors);
       }
 
       try {
         const location = database.updateInventoryLocation(locationId, normalized);
         if (!location) {
-          return res.status(404).json({ error: "Local não encontrado." });
+          return sendApiError(req, res, 404, "Local não encontrado.");
         }
 
         return res.json({ id: location.id, nome: location.name });
       } catch (error) {
         if (isUniqueConstraintError(error)) {
-          return res.status(400).json({ error: "Local já cadastrado." });
+          return sendApiError(req, res, 400, "Local já cadastrado.");
         }
-        console.error("Erro ao atualizar local via API:", error);
-        return res.status(500).json({ error: error.message });
+        logError(req, "Erro ao atualizar local via API:", error);
+        return sendApiError(req, res, 500, error.message);
       }
     },
   );
@@ -1129,13 +1120,13 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
 
       const locationId = parseId(req.params.id);
       if (!locationId) {
-        return res.status(400).json({ error: "Local inválido." });
+        return sendApiError(req, res, 400, "Local inválido.");
       }
 
       try {
         const deleted = database.deleteInventoryLocation(locationId);
         if (!deleted) {
-          return res.status(404).json({ error: "Local não encontrado." });
+          return sendApiError(req, res, 404, "Local não encontrado.");
         }
 
         return res.json({
@@ -1143,8 +1134,8 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
           local: { id: deleted.id, nome: deleted.name },
         });
       } catch (error) {
-        console.error("Erro ao remover local via API:", error);
-        return res.status(500).json({ error: error.message });
+        logError(req, "Erro ao remover local via API:", error);
+        return sendApiError(req, res, 500, error.message);
       }
     },
   );
@@ -1158,13 +1149,11 @@ app.get("/api/project/:project_id/members", requireAuth, (req, res) => {
     const project = projectId ? database.getProjectById(projectId) : null;
 
     if (!project) {
-      return res.status(404).json({ error: "Projeto não encontrado." });
+      return sendApiError(req, res, 404, "Projeto não encontrado.");
     }
 
     if (!canCreateAtaForProject(req, project)) {
-      return res.status(403).json({
-        error: "Você não tem acesso aos membros deste projeto.",
-      });
+      return sendApiError(req, res, 403, "Você não tem acesso aos membros deste projeto.");
     }
 
     return res.json({

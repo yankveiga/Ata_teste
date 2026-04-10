@@ -14,6 +14,10 @@ function registerReportRoutes(ctx) {
     ensureValidCsrf,
     canManageReportGoal,
     canDeleteCompletedGoalFromOthers,
+    canGenerateMonthlyReport,
+    buildMonthlyPdfFilename,
+    validateWeekGoalForm,
+    logError,
   } = ctx;
 
 app.get("/relatorios", requireAuth, (req, res) => {
@@ -32,9 +36,7 @@ app.get("/relatorios", requireAuth, (req, res) => {
       return res.redirect("/relatorios");
     }
 
-    const canGenerate =
-      Boolean(req.currentUser?.is_admin)
-      || (currentMember?.is_active && currentMember.id === targetMember.id);
+    const canGenerate = canGenerateMonthlyReport(req, currentMember, targetMember);
     if (!canGenerate) {
       req.flash("warning", "Você não tem permissão para gerar esse relatório mensal.");
       return res.redirect(
@@ -56,17 +58,14 @@ app.get("/relatorios", requireAuth, (req, res) => {
         generatedByName: req.currentUser?.name || req.currentUser?.username || null,
       });
 
-      const safeMemberName = String(targetMember.name || "membro")
-        .replace(/[^\p{L}\p{N}._-]+/gu, "_")
-        .replace(/^_+|_+$/g, "");
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader(
         "Content-Disposition",
-        `attachment; filename="Relatorio_Mensal_${safeMemberName || "membro"}_${monthKey}.pdf"`,
+        `attachment; filename="${buildMonthlyPdfFilename(targetMember.name, monthKey)}"`,
       );
       return res.send(pdf);
     } catch (error) {
-      console.error("Erro ao gerar PDF mensal de relatório:", error);
+      logError(req, "Erro ao gerar PDF mensal de relatório:", error);
       req.flash("danger", `Erro ao gerar relatório mensal: ${error.message}`);
       return res.redirect(
         `/relatorios${buildReportsQuery({
@@ -138,15 +137,7 @@ app.get("/relatorios", requireAuth, (req, res) => {
       goalFormErrors.projectId = ["Este membro não participa do projeto selecionado."];
     }
 
-    if (!goalFormData.activity) {
-      goalFormErrors.activity = ["Informe a atividade da meta semanal."];
-    } else if (goalFormData.activity.length < 3 || goalFormData.activity.length > 180) {
-      goalFormErrors.activity = ["A atividade deve ter entre 3 e 180 caracteres."];
-    }
-
-    if (goalFormData.description.length > 2000) {
-      goalFormErrors.description = ["A descrição pode ter no máximo 2000 caracteres."];
-    }
+    Object.assign(goalFormErrors, validateWeekGoalForm(goalFormData).errors);
 
     if (!req.currentUser?.is_admin) {
       const currentMember = getCurrentMember(req);
@@ -185,7 +176,7 @@ app.get("/relatorios", requireAuth, (req, res) => {
       });
       req.flash("success", "Meta da semana adicionada com sucesso.");
     } catch (error) {
-      console.error("Erro ao criar meta semanal:", error);
+      logError(req, "Erro ao criar meta semanal:", error);
       req.flash("danger", `Erro ao criar meta semanal: ${error.message}`);
       return renderReportPage(req, res, {
         selectedMemberId: selectedMember.id,
@@ -233,14 +224,12 @@ app.get("/relatorios", requireAuth, (req, res) => {
     const isCompleted = Boolean(req.body.is_completed);
     const goalFormErrors = {};
 
-    if (!activity) {
-      goalFormErrors.activity = ["A atividade não pode ficar vazia."];
-    } else if (activity.length < 3 || activity.length > 180) {
-      goalFormErrors.activity = ["A atividade deve ter entre 3 e 180 caracteres."];
+    const validatedGoal = validateWeekGoalForm({ activity, description });
+    if (validatedGoal.errors.activity) {
+      goalFormErrors.activity = validatedGoal.errors.activity;
     }
-
-    if (description.length > 2000) {
-      goalFormErrors.description = ["A descrição pode ter no máximo 2000 caracteres."];
+    if (validatedGoal.errors.description) {
+      goalFormErrors.description = validatedGoal.errors.description;
     }
 
     if (Object.keys(goalFormErrors).length > 0) {
@@ -260,7 +249,7 @@ app.get("/relatorios", requireAuth, (req, res) => {
       });
       req.flash("success", "Meta semanal atualizada.");
     } catch (error) {
-      console.error("Erro ao atualizar meta semanal:", error);
+      logError(req, "Erro ao atualizar meta semanal:", error);
       req.flash("danger", `Erro ao atualizar meta semanal: ${error.message}`);
     }
 
@@ -300,7 +289,7 @@ app.get("/relatorios", requireAuth, (req, res) => {
       database.deleteReportWeekGoalWithAudit(goal.id, req.currentUser.id);
       req.flash("success", "Atividade concluída removida com sucesso.");
     } catch (error) {
-      console.error("Erro ao apagar meta concluída:", error);
+      logError(req, "Erro ao apagar meta concluída:", error);
       req.flash("danger", `Erro ao apagar atividade concluída: ${error.message}`);
     }
 

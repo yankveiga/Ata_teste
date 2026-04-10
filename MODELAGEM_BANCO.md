@@ -2,6 +2,15 @@
 
 Fonte de verdade: `src/database.js` (função `ensureSchema()`).
 
+## Camadas de Acesso (Arquitetura Atual)
+- Schema e consultas SQL: `src/database.js`
+- Rotas por domínio: `src/routes/*.js`
+- Regras de serviço: `src/services/*.js`
+- Validações de entrada: `src/validators/*.js`
+- Erros/logs HTTP padronizados: `src/http.js`
+
+Observação: a modelagem física (tabelas/FKs/índices) continua centralizada em `src/database.js`; a modularização de rotas não altera o schema.
+
 ## Visão Geral
 O sistema está organizado em 4 domínios principais:
 - Pessoas e acesso (`member`, `user`)

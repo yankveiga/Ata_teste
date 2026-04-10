@@ -20,6 +20,7 @@ function registerProjectRoutes(ctx) {
     isUniqueConstraintError,
     safeUnlink,
     urlFor,
+    logError,
   } = ctx;
 
 app.get("/projects", requireAuth, (req, res) => {
@@ -157,7 +158,7 @@ app.get("/projects", requireAuth, (req, res) => {
         if (isUniqueConstraintError(error)) {
           errors.name = ["Já existe um projeto com este nome."];
         } else {
-          console.error("Erro ao adicionar projeto:", error);
+          logError(req, "Erro ao adicionar projeto:", error);
           req.flash("danger", `Erro ao adicionar projeto: ${error.message}`);
         }
 
@@ -335,7 +336,7 @@ app.get("/projects", requireAuth, (req, res) => {
         if (isUniqueConstraintError(error)) {
           errors.name = ["Já existe um projeto com este nome."];
         } else {
-          console.error("Erro ao editar projeto:", error);
+          logError(req, "Erro ao editar projeto:", error);
           req.flash("danger", `Erro ao editar projeto: ${error.message}`);
         }
 
@@ -388,7 +389,7 @@ app.get("/projects", requireAuth, (req, res) => {
         `Projeto "${project.name}" e suas atas associadas foram excluídos com sucesso!`,
       );
     } catch (error) {
-      console.error("Erro ao excluir projeto:", error);
+      logError(req, "Erro ao excluir projeto:", error);
       req.flash("danger", `Erro ao excluir projeto: ${error.message}`);
     }
 
