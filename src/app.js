@@ -19,6 +19,17 @@ const XLSX = require("xlsx");
 const { config } = require("./config");
 const database = require("./database");
 const { generateAtaPdf, generateMonthlyReportPdf } = require("./pdf");
+const { requestContextMiddleware, logError, sendApiError } = require("./http");
+const {
+  validateInventoryPayload: validateInventoryPayloadShared,
+  validateCatalogName: validateCatalogNameShared,
+} = require("./validators/inventoryValidators");
+const { validateWeekGoalForm } = require("./validators/reportValidators");
+const {
+  canGenerateMonthlyReport,
+  buildMonthlyPdfFilename,
+} = require("./services/reportService");
+const { mapInventoryApiItem } = require("./services/inventoryService");
 const {
   isCloudinaryEnabled,
   isRemoteAssetUrl,
@@ -321,6 +332,7 @@ app.use(
 
   app.use(express.urlencoded({ extended: true }));
   app.use(express.json());
+  app.use(requestContextMiddleware);
   app.use("/static", express.static(config.staticDir));
 
   app.use((req, res, next) => {
@@ -993,66 +1005,13 @@ function render(res, template, data = {}) {
   // DETALHE: Valida campos obrigatorios e limites antes de criar/editar item de inventario.
 
   function validateInventoryPayload(payload) {
-    // DETALHE: Objeto para acumular erros de validacao e devolver feedback completo ao usuario.
-
-    const errors = {};
-    const quantity = Number(payload.quantity);
-
-    if (!payload.name) {
-      errors.name = ["O nome do item é obrigatório."];
-    } else if (payload.name.length < 2 || payload.name.length > 120) {
-      errors.name = ["O nome deve ter entre 2 e 120 caracteres."];
-    }
-
-    if (!INVENTORY_ITEM_TYPES.has(payload.itemType)) {
-      errors.itemType = ["Selecione um tipo válido para o material."];
-    }
-
-    if (!payload.categoryId && !payload.category) {
-      errors.category = ["Selecione uma categoria ou informe uma nova categoria."];
-    }
-
-    if (!payload.locationId && !payload.location) {
-      errors.location = ["Selecione um local ou informe um novo local."];
-    }
-
-    if (!Number.isInteger(quantity) || quantity < 0) {
-      errors.quantity = ["Informe uma quantidade inteira igual ou maior que zero."];
-    }
-
-    if (!payload.description) {
-      errors.description = ["A descrição é obrigatória."];
-    } else if (payload.description.length < 4 || payload.description.length > 240) {
-      errors.description = ["A descrição deve ter entre 4 e 240 caracteres."];
-    }
-
-    return {
-      errors,
-      normalized: {
-        ...payload,
-        quantity,
-      },
-    };
+    return validateInventoryPayloadShared(payload, INVENTORY_ITEM_TYPES);
   }
 
   // DETALHE: Valida nome de catalogos auxiliares (categoria/local) com regras comuns.
 
   function validateCatalogName(name, entityLabel = "nome") {
-    const normalized = String(name || "").trim();
-    // DETALHE: Objeto para acumular erros de validacao e devolver feedback completo ao usuario.
-
-    const errors = {};
-
-    if (!normalized) {
-      errors.name = [`O ${entityLabel} é obrigatório.`];
-    } else if (normalized.length < 2 || normalized.length > 80) {
-      errors.name = [`O ${entityLabel} deve ter entre 2 e 80 caracteres.`];
-    }
-
-    return {
-      normalized,
-      errors,
-    };
+    return validateCatalogNameShared(name, entityLabel);
   }
 
     // SECAO: rotas de autenticacao (login/logout).
@@ -1203,11 +1162,8 @@ app.get("/services", requireAuth, (req, res) => {
       const result = registerPresenceInWorkbook(req.body.cracha, req.body.evento);
       return res.json(result);
     } catch (error) {
-      console.error("Erro ao registrar presença:", error);
-      return res.status(500).json({
-        success: false,
-        error: "Erro interno ao registrar presença.",
-      });
+      logError(req, "Erro ao registrar presença:", error);
+      return sendApiError(req, res, 500, "Erro interno ao registrar presença.");
     }
   });
 
@@ -1231,9 +1187,7 @@ app.get("/relatorios", requireAuth, (req, res) => {
       return res.redirect("/relatorios");
     }
 
-    const canGenerate =
-      Boolean(req.currentUser?.is_admin)
-      || (currentMember?.is_active && currentMember.id === targetMember.id);
+    const canGenerate = canGenerateMonthlyReport(req, currentMember, targetMember);
     if (!canGenerate) {
       req.flash("warning", "Você não tem permissão para gerar esse relatório mensal.");
       return res.redirect(
@@ -1255,17 +1209,14 @@ app.get("/relatorios", requireAuth, (req, res) => {
         generatedByName: req.currentUser?.name || req.currentUser?.username || null,
       });
 
-      const safeMemberName = String(targetMember.name || "membro")
-        .replace(/[^\p{L}\p{N}._-]+/gu, "_")
-        .replace(/^_+|_+$/g, "");
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader(
         "Content-Disposition",
-        `attachment; filename="Relatorio_Mensal_${safeMemberName || "membro"}_${monthKey}.pdf"`,
+        `attachment; filename="${buildMonthlyPdfFilename(targetMember.name, monthKey)}"`,
       );
       return res.send(pdf);
     } catch (error) {
-      console.error("Erro ao gerar PDF mensal de relatório:", error);
+      logError(req, "Erro ao gerar PDF mensal de relatório:", error);
       req.flash("danger", `Erro ao gerar relatório mensal: ${error.message}`);
       return res.redirect(
         `/relatorios${buildReportsQuery({
@@ -1337,15 +1288,7 @@ app.get("/relatorios", requireAuth, (req, res) => {
       goalFormErrors.projectId = ["Este membro não participa do projeto selecionado."];
     }
 
-    if (!goalFormData.activity) {
-      goalFormErrors.activity = ["Informe a atividade da meta semanal."];
-    } else if (goalFormData.activity.length < 3 || goalFormData.activity.length > 180) {
-      goalFormErrors.activity = ["A atividade deve ter entre 3 e 180 caracteres."];
-    }
-
-    if (goalFormData.description.length > 2000) {
-      goalFormErrors.description = ["A descrição pode ter no máximo 2000 caracteres."];
-    }
+    Object.assign(goalFormErrors, validateWeekGoalForm(goalFormData).errors);
 
     if (!req.currentUser?.is_admin) {
       const currentMember = getCurrentMember(req);
@@ -1384,7 +1327,7 @@ app.get("/relatorios", requireAuth, (req, res) => {
       });
       req.flash("success", "Meta da semana adicionada com sucesso.");
     } catch (error) {
-      console.error("Erro ao criar meta semanal:", error);
+      logError(req, "Erro ao criar meta semanal:", error);
       req.flash("danger", `Erro ao criar meta semanal: ${error.message}`);
       return renderReportPage(req, res, {
         selectedMemberId: selectedMember.id,
@@ -1432,14 +1375,12 @@ app.get("/relatorios", requireAuth, (req, res) => {
     const isCompleted = Boolean(req.body.is_completed);
     const goalFormErrors = {};
 
-    if (!activity) {
-      goalFormErrors.activity = ["A atividade não pode ficar vazia."];
-    } else if (activity.length < 3 || activity.length > 180) {
-      goalFormErrors.activity = ["A atividade deve ter entre 3 e 180 caracteres."];
+    const validatedGoal = validateWeekGoalForm({ activity, description });
+    if (validatedGoal.errors.activity) {
+      goalFormErrors.activity = validatedGoal.errors.activity;
     }
-
-    if (description.length > 2000) {
-      goalFormErrors.description = ["A descrição pode ter no máximo 2000 caracteres."];
+    if (validatedGoal.errors.description) {
+      goalFormErrors.description = validatedGoal.errors.description;
     }
 
     if (Object.keys(goalFormErrors).length > 0) {
@@ -1459,7 +1400,7 @@ app.get("/relatorios", requireAuth, (req, res) => {
       });
       req.flash("success", "Meta semanal atualizada.");
     } catch (error) {
-      console.error("Erro ao atualizar meta semanal:", error);
+      logError(req, "Erro ao atualizar meta semanal:", error);
       req.flash("danger", `Erro ao atualizar meta semanal: ${error.message}`);
     }
 
@@ -1499,7 +1440,7 @@ app.get("/relatorios", requireAuth, (req, res) => {
       database.deleteReportWeekGoalWithAudit(goal.id, req.currentUser.id);
       req.flash("success", "Atividade concluída removida com sucesso.");
     } catch (error) {
-      console.error("Erro ao apagar meta concluída:", error);
+      logError(req, "Erro ao apagar meta concluída:", error);
       req.flash("danger", `Erro ao apagar atividade concluída: ${error.message}`);
     }
 
@@ -3102,19 +3043,7 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
   // DETALHE: Rota GET /almoxarifado/api/itens: consulta dados necessarios e monta resposta (HTML/JSON) para a tela solicitada.
 
   app.get("/almoxarifado/api/itens", requireAuth, (req, res) => {
-    return res.json(
-      database.listInventoryItems().map((item) => ({
-        id: item.id,
-        nome: item.name,
-        tipo: item.item_type,
-        descricao: item.description,
-        categoria: item.category,
-        categoria_id: item.category_id,
-        local: item.location,
-        local_id: item.location_id,
-        quantidade: item.amount,
-      })),
-    );
+    return res.json(database.listInventoryItems().map(mapInventoryApiItem));
   });
 
   // DETALHE: Inicio de bloco de rota declarada em multiplas linhas; revisar path e middlewares logo abaixo.
@@ -3135,7 +3064,7 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
       // DETALHE: Se houver erro de validacao, encerra cedo para evitar persistencia inconsistente.
 
       if (Object.keys(errors).length > 0) {
-        return res.status(400).json({ error: "Dados inválidos.", details: errors });
+        return sendApiError(req, res, 400, "Dados inválidos.", errors);
       }
 
       try {
@@ -3151,8 +3080,8 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
         });
         return res.status(201).json(item);
       } catch (error) {
-        console.error("Erro ao criar item via API:", error);
-        return res.status(500).json({ error: error.message });
+        logError(req, "Erro ao criar item via API:", error);
+        return sendApiError(req, res, 500, error.message);
       }
     },
   );
@@ -3172,7 +3101,7 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
 
       const itemId = parseId(req.params.id);
       if (!itemId) {
-        return res.status(400).json({ error: "Item inválido." });
+        return sendApiError(req, res, 400, "Item inválido.");
       }
 
       const parsed = parseInventoryPayload(req.body);
@@ -3180,7 +3109,7 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
       // DETALHE: Se houver erro de validacao, encerra cedo para evitar persistencia inconsistente.
 
       if (Object.keys(errors).length > 0) {
-        return res.status(400).json({ error: "Dados inválidos.", details: errors });
+        return sendApiError(req, res, 400, "Dados inválidos.", errors);
       }
 
       try {
@@ -3196,13 +3125,13 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
         });
 
         if (!updated) {
-          return res.status(404).json({ error: "Item não encontrado." });
+          return sendApiError(req, res, 404, "Item não encontrado.");
         }
 
         return res.json(updated);
       } catch (error) {
-        console.error("Erro ao atualizar item via API:", error);
-        return res.status(500).json({ error: error.message });
+        logError(req, "Erro ao atualizar item via API:", error);
+        return sendApiError(req, res, 500, error.message);
       }
     },
   );
@@ -3529,7 +3458,7 @@ app.use((req, res) => {
   });
 
   app.use((error, req, res, next) => {
-    console.error("Erro interno do servidor:", error);
+    logError(req, "Erro interno do servidor:", error);
     res.status(500).render("errors/500.html", {
       title: "Erro Interno",
       activeSection: "",

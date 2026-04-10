@@ -1,0 +1,28 @@
+function validateWeekGoalForm(formData = {}) {
+  const errors = {};
+  const activity = String(formData.activity || "").trim();
+  const description = String(formData.description || "").trim();
+
+  if (!activity) {
+    errors.activity = ["Informe a atividade da meta semanal."];
+  } else if (activity.length < 3 || activity.length > 180) {
+    errors.activity = ["A atividade deve ter entre 3 e 180 caracteres."];
+  }
+
+  if (description.length > 2000) {
+    errors.description = ["A descrição pode ter no máximo 2000 caracteres."];
+  }
+
+  return {
+    errors,
+    normalized: {
+      ...formData,
+      activity,
+      description,
+    },
+  };
+}
+
+module.exports = {
+  validateWeekGoalForm,
+};

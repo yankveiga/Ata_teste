@@ -6,11 +6,54 @@
  * - Alterar SECRET/porta impacta sessao de usuarios, execucao local e ambiente de producao.
  */
 const path = require("node:path");
+const fs = require("node:fs");
 
 // SECAO: resolucao do diretorio-base para montar caminhos absolutos do projeto.
 
 const baseDir = path.resolve(__dirname, "..");
 const defaultWorkbookPath = path.join(baseDir, "planilha_presenca.xlsx");
+const defaultEnvPath = path.join(baseDir, ".env");
+
+function unquoteEnvValue(value) {
+  if (!value) {
+    return value;
+  }
+  const startsWithQuote = value.startsWith('"') || value.startsWith("'");
+  const endsWithQuote = value.endsWith('"') || value.endsWith("'");
+  if (startsWithQuote && endsWithQuote && value.length >= 2) {
+    return value.slice(1, -1);
+  }
+  return value;
+}
+
+function loadEnvFile(envPath) {
+  if (!fs.existsSync(envPath)) {
+    return;
+  }
+
+  const content = fs.readFileSync(envPath, "utf-8");
+  content.split(/\r?\n/).forEach((line) => {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) {
+      return;
+    }
+
+    const separator = trimmed.indexOf("=");
+    if (separator <= 0) {
+      return;
+    }
+
+    const key = trimmed.slice(0, separator).trim();
+    const rawValue = trimmed.slice(separator + 1).trim();
+    if (!key || process.env[key] !== undefined) {
+      return;
+    }
+
+    process.env[key] = unquoteEnvValue(rawValue);
+  });
+}
+
+loadEnvFile(defaultEnvPath);
 
 function resolveFromBase(value, fallback) {
   const raw = String(value || "").trim();
