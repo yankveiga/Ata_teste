@@ -996,6 +996,9 @@ function deleteUser(userId) {
     db.prepare(
       "UPDATE inventory_loan SET returned_by_user_id = NULL WHERE returned_by_user_id = ?",
     ).run(userId);
+    db.prepare(
+      "DELETE FROM report_week_goal_deletion_log WHERE deleted_by_user_id = ?",
+    ).run(userId);
     db.prepare("DELETE FROM user WHERE id = ?").run(userId);
 
     return { deleted: true, user: current };

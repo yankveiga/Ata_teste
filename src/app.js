@@ -1336,9 +1336,16 @@ app.get("/relatorios", requireAuth, (req, res) => {
 
     if (!req.currentUser?.is_admin) {
       const currentMember = getCurrentMember(req);
-      if (!currentMember?.is_active || currentMember.id !== selectedMember.id) {
+      const isOwnGoal = Boolean(currentMember?.is_active && currentMember.id === selectedMember.id);
+      const canCreateAsCoordinator = Boolean(
+        currentMember?.is_active
+        && project
+        && database.isProjectCoordinator(project.id, currentMember.id),
+      );
+
+      if (!isOwnGoal && !canCreateAsCoordinator) {
         goalFormErrors.activity = [
-          "Usuário comum só pode adicionar metas para o próprio membro.",
+          "Sem permissão: somente admin, o próprio membro ou coordenador do projeto podem adicionar metas aqui.",
         ];
       }
     }

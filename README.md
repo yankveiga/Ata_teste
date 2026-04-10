@@ -188,6 +188,12 @@ O projeto já está preparado para rodar com Neon/Postgres diretamente.
 - `app/templates/`: templates Nunjucks
 - `app/static/`: CSS, JS e imagens
 
+## Documentação técnica completa
+
+Para manutenção detalhada (arquivo por arquivo, responsabilidades e onde adicionar funcionalidades), consulte:
+
+- `DOCUMENTACAO_TECNICA_COMPLETA.md`
+
 ## Mapa rápido (10 linhas)
 
 - Alterar tela de Relatórios: `app/templates/reports/index.html`

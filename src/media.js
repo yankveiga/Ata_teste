@@ -1,6 +1,16 @@
+/*
+ * ARQUIVO: src/media.js
+ * FUNCAO: integra armazenamento de imagens com Cloudinary (upload, remocao e deteccao de URLs remotas).
+ * IMPACTO DE MUDANCAS:
+ * - Alterar validacao de URL/public_id pode impedir remocao correta de imagens antigas.
+ * - Alterar configuracao de credenciais impacta upload de fotos de membros e logos de projetos.
+ * - Alterar comportamento de fallback pode quebrar fluxo local quando Cloudinary nao estiver configurado.
+ */
 const { v2: cloudinary } = require("cloudinary");
 
 const { config } = require("./config");
+
+// SECAO: inicializacao condicional do Cloudinary conforme variaveis de ambiente.
 
 const cloudinaryEnabled = Boolean(
   config.cloudinary.cloudName
@@ -16,6 +26,8 @@ if (cloudinaryEnabled) {
     secure: true,
   });
 }
+
+// SECAO: utilitarios de identificacao de asset remoto e parsing de URL Cloudinary.
 
 function isRemoteAssetUrl(value) {
   return /^https?:\/\//i.test(String(value || "").trim());
@@ -60,6 +72,8 @@ function extractPublicIdFromCloudinaryUrl(value) {
   }
 }
 
+// SECAO: operacoes principais de upload/remocao de imagem no Cloudinary.
+
 async function uploadImageFromPath(localPath, { folder = null } = {}) {
   if (!cloudinaryEnabled) {
     throw new Error("Cloudinary não configurado.");
@@ -93,6 +107,8 @@ async function deleteImageByUrl(value) {
   });
   return true;
 }
+
+// SECAO: API publica do modulo de media.
 
 module.exports = {
   isCloudinaryEnabled: () => cloudinaryEnabled,
