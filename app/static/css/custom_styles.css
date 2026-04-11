@@ -590,6 +590,20 @@ body.section-almox .form-control:focus {
   background: rgba(248, 250, 252, 0.82);
 }
 
+.checkbox-list-toolbar {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  font-weight: 700;
+  color: #2b3a53;
+}
+
+.checkbox-list-toolbar input[type="checkbox"] {
+  inline-size: 1rem;
+  block-size: 1rem;
+}
+
 .checkbox-list {
   list-style: none;
   padding: 0;

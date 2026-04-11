@@ -68,6 +68,10 @@
 
                 <div id="present-members-container" class="form-group">
                     <label class="form-label">Membros Presentes na Reunião (Ativos)</label>
+                    <div class="checkbox-list-toolbar">
+                        <input type="checkbox" id="mark-all-present">
+                        <label for="mark-all-present">Marcar todos como presentes</label>
+                    </div>
                     <div id="members-checkbox-list" class="checkbox-list-container">
                         {% if selectedProjectMembers.length %}
                             <ul class="checkbox-list">
@@ -131,25 +135,55 @@
         document.addEventListener('DOMContentLoaded', function() {
             const projectSelect = document.getElementById('project-select');
             const membersListDiv = document.getElementById('members-checkbox-list');
+            const markAllCheckbox = document.getElementById('mark-all-present');
             const placeholderText = '<p class="checkbox-list-placeholder">Selecione um projeto para carregar os membros.</p>';
             const loadingText = '<p class="checkbox-list-placeholder">Carregando membros...</p>';
 
             // SECAO: sincroniza checkbox de presenca com campo de justificativa de ausencia.
 
+            function getMemberCheckboxes() {
+                return Array.from(document.querySelectorAll('input[type="checkbox"][name="present_members"]'));
+            }
+
+            function toggleJustificationField(checkbox, shouldClear) {
+                const justificationInput = document.querySelector(`input[name="justification_${checkbox.value}"]`);
+                if (!justificationInput) {
+                    return;
+                }
+                justificationInput.disabled = checkbox.checked;
+                if (checkbox.checked && shouldClear) {
+                    justificationInput.value = '';
+                }
+            }
+
+            function updateMarkAllState() {
+                if (!markAllCheckbox) {
+                    return;
+                }
+                const checkboxes = getMemberCheckboxes();
+                if (!checkboxes.length) {
+                    markAllCheckbox.checked = false;
+                    markAllCheckbox.indeterminate = false;
+                    markAllCheckbox.disabled = true;
+                    return;
+                }
+                const selectedCount = checkboxes.filter((checkbox) => checkbox.checked).length;
+                markAllCheckbox.disabled = false;
+                markAllCheckbox.checked = selectedCount === checkboxes.length;
+                markAllCheckbox.indeterminate =
+                    selectedCount > 0 && selectedCount < checkboxes.length;
+            }
+
             function wireCheckboxBehaviour(scope) {
                 scope.querySelectorAll('input[type="checkbox"][name="present_members"]').forEach((checkbox) => {
-                    const justificationInput = scope.querySelector(`input[name="justification_${checkbox.value}"]`);
-                    if (!justificationInput) {
-                        return;
-                    }
+                    toggleJustificationField(checkbox, false);
 
                     checkbox.addEventListener('change', function() {
-                        justificationInput.disabled = this.checked;
-                        if (this.checked) {
-                            justificationInput.value = '';
-                        }
+                        toggleJustificationField(this, true);
+                        updateMarkAllState();
                     });
                 });
+                updateMarkAllState();
             }
 
             // SECAO: renderiza lista de membros recebida da API para o projeto atual.
@@ -184,13 +218,6 @@
                     justification.placeholder = 'Justificativa de Ausência (opcional)';
                     justification.className = 'form-control justification-input';
 
-                    checkbox.addEventListener('change', function() {
-                        justification.disabled = this.checked;
-                        if (this.checked) {
-                            justification.value = '';
-                        }
-                    });
-
                     item.appendChild(checkbox);
                     item.appendChild(label);
                     item.appendChild(justification);
@@ -198,6 +225,7 @@
                 });
 
                 membersListDiv.appendChild(list);
+                wireCheckboxBehaviour(list);
             }
 
             wireCheckboxBehaviour(document);
@@ -206,11 +234,23 @@
                 return;
             }
 
+            if (markAllCheckbox) {
+                markAllCheckbox.addEventListener('change', function() {
+                    getMemberCheckboxes().forEach((checkbox) => {
+                        checkbox.checked = this.checked;
+                        toggleJustificationField(checkbox, true);
+                    });
+                    updateMarkAllState();
+                });
+                updateMarkAllState();
+            }
+
             projectSelect.addEventListener('change', function() {
                 const projectId = this.value;
 
                 if (!projectId) {
                     membersListDiv.innerHTML = placeholderText;
+                    updateMarkAllState();
                     return;
                 }
 
@@ -227,6 +267,7 @@
                     .catch((error) => {
                         console.error('Erro ao buscar membros:', error);
                         membersListDiv.innerHTML = `<p class="form-error">Erro ao carregar membros. (${error.message}).</p>`;
+                        updateMarkAllState();
                     });
             });
         });
