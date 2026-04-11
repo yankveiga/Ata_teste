@@ -1,3 +1,10 @@
+/*
+ * ARQUIVO: src/routes/almox.js
+ * FUNCAO: registra rotas web e API interna do almoxarifado.
+ * IMPACTO DE MUDANCAS:
+ * - Alterar validacoes de estoque pode gerar inconsistencias de quantidade.
+ * - Alterar respostas JSON impacta scripts/frontend que dependem dessas APIs.
+ */
 function registerAlmoxRoutes(ctx) {
   const {
     app,

@@ -1,3 +1,9 @@
+/*
+ * ARQUIVO: src/validators/reportValidators.js
+ * FUNCAO: validacoes de entrada para metas semanais do modulo de relatorios.
+ * IMPACTO DE MUDANCAS:
+ * - Alterar limites de texto impacta criacao/edicao em formularios existentes.
+ */
 function validateWeekGoalForm(formData = {}) {
   const errors = {};
   const activity = String(formData.activity || "").trim();

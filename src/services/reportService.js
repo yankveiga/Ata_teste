@@ -1,3 +1,9 @@
+/*
+ * ARQUIVO: src/services/reportService.js
+ * FUNCAO: regras de negocio puras para relatorios.
+ * IMPACTO DE MUDANCAS:
+ * - Alterar verificacao de permissao mensal impacta seguranca de acesso aos PDFs.
+ */
 function canGenerateMonthlyReport(req, currentMember, targetMember) {
   return Boolean(
     req.currentUser?.is_admin

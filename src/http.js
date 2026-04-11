@@ -1,3 +1,9 @@
+/*
+ * ARQUIVO: src/http.js
+ * FUNCAO: padrao HTTP transversal (requestId, log de erro e erro JSON padrao).
+ * IMPACTO DE MUDANCAS:
+ * - Alterar formato de erro JSON impacta clientes e frontend que leem `error/details`.
+ */
 const crypto = require("node:crypto");
 
 function requestContextMiddleware(req, res, next) {

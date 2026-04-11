@@ -11,12 +11,18 @@ const { MessageChannel, Worker, receiveMessageOnPort } = require("node:worker_th
 const { config } = require("./config");
 const { firstNamesSummary } = require("./utils");
 
+// ESTADO GLOBAL: instancia unica do adaptador de banco para a aplicacao.
 let database;
+// ESTADO GLOBAL: ponte ativa entre thread principal e worker do Postgres.
 let bridgeState;
+// ESTADO GLOBAL: sequencia crescente para correlacao de mensagens SQL.
 let querySequence = 0;
+// ESTADO GLOBAL: buffer de espera usado no modo sincrono.
 const sleeper = new Int32Array(new SharedArrayBuffer(4));
+// CONSTANTE DE DOMINIO: timezone oficial usada em datas/horarios do sistema.
 const APP_TIMEZONE = process.env.APP_TIMEZONE || "America/Sao_Paulo";
 
+// FUNCAO: normalizeError.
 function normalizeError(payload) {
   if (!payload) {
     return null;
@@ -27,6 +33,7 @@ function normalizeError(payload) {
   return error;
 }
 
+// FUNCAO: toPostgresSql.
 function toPostgresSql(sql) {
   let index = 1;
   let inSingleQuote = false;
@@ -68,6 +75,7 @@ function toPostgresSql(sql) {
     .replace(/\bREFERENCES\s+user\b/gi, 'REFERENCES "user"');
 }
 
+// FUNCAO: createSyncBridge.
 function createSyncBridge() {
   if (bridgeState) {
     return bridgeState;
@@ -93,6 +101,7 @@ function createSyncBridge() {
     let channel = null;
     let connected = false;
 
+    // FUNCAO INTERNA DO WORKER: conecta no banco uma unica vez.
     async function ensureConnected() {
       if (!connected) {
         await client.connect();
@@ -101,6 +110,7 @@ function createSyncBridge() {
       }
     }
 
+    // FUNCAO INTERNA DO WORKER: executa SQL recebido e responde no canal.
     async function handle(message) {
       const { id, sql, params } = message;
       try {
@@ -130,6 +140,7 @@ function createSyncBridge() {
       }
     }
 
+    // EVENTO DO WORKER: recebe MessagePort inicial e habilita consumo de comandos.
     parentPort.on("message", (message) => {
       if (!message || !message.port) {
         return;
@@ -160,11 +171,13 @@ function createSyncBridge() {
   return bridgeState;
 }
 
+// FUNCAO: querySync.
 function querySync(sql, params = []) {
   const bridge = createSyncBridge();
   const id = ++querySequence;
   bridge.port.postMessage({ id, sql, params });
 
+  // LOOP SINCRONO: aguarda retorno do worker mantendo API simples para chamadas locais.
   while (true) {
     const ready = bridge.pending.get(id);
     if (ready) {
@@ -186,6 +199,7 @@ function querySync(sql, params = []) {
   }
 }
 
+// FUNCAO: createPreparedStatement.
 function createPreparedStatement(sql, inTransaction = false) {
   const transformedSql = toPostgresSql(sql);
   const execute = (params = []) =>
@@ -216,11 +230,14 @@ function createPreparedStatement(sql, inTransaction = false) {
   };
 }
 
+// FUNCAO: createDbAdapter.
 function createDbAdapter() {
   return {
+    // ADAPTADOR: executa SQL bruto (DDL/DML) sem retorno de linhas.
     exec(sql) {
       querySync(toPostgresSql(sql));
     },
+    // ADAPTADOR: devolve statement com operacoes run/get/all.
     prepare(sql) {
       return createPreparedStatement(sql);
     },
@@ -235,10 +252,12 @@ const REPORT_STATUSES = new Set(["completed", "in_progress", "blocked"]);
 
 // SECAO: normalizadores e utilitarios basicos usados antes de persistir dados.
 
+// FUNCAO: normalizeInventoryType.
 function normalizeInventoryType(value) {
   return INVENTORY_TYPES.has(value) ? value : "stock";
 }
 
+// FUNCAO: normalizeProjectColor.
 function normalizeProjectColor(value) {
   const normalized = String(value || "").trim();
   return /^#[0-9a-fA-F]{6}$/.test(normalized)
@@ -246,10 +265,12 @@ function normalizeProjectColor(value) {
     : DEFAULT_PROJECT_COLOR;
 }
 
+// FUNCAO: normalizeReportStatus.
 function normalizeReportStatus(value) {
   return REPORT_STATUSES.has(value) ? value : "in_progress";
 }
 
+// FUNCAO: toSqlDateTime.
 function toSqlDateTime(value) {
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) {
@@ -277,6 +298,7 @@ function toSqlDateTime(value) {
   return `${valueByType.year}-${valueByType.month}-${valueByType.day} ${valueByType.hour}:${valueByType.minute}:${valueByType.second}`;
 }
 
+// FUNCAO: addDaysToNow.
 function addDaysToNow(days) {
   const date = new Date();
   date.setDate(date.getDate() + days);
@@ -285,6 +307,7 @@ function addDaysToNow(days) {
 
 // SECAO: conexao PostgreSQL/Neon e garantia incremental de schema.
 
+// FUNCAO: getDb.
 function getDb() {
   if (!database) {
     database = createDbAdapter();
@@ -293,6 +316,7 @@ function getDb() {
   return database;
 }
 
+// FUNCAO: ensureColumn.
 function ensureColumn(tableName, columnName, definition) {
   const exists = querySync(
     `
@@ -311,6 +335,7 @@ function ensureColumn(tableName, columnName, definition) {
   }
 }
 
+// FUNCAO: ensureSchema.
 function ensureSchema() {
   const db = getDb();
 
@@ -610,6 +635,7 @@ function ensureSchema() {
 
 // SECAO: transacoes e mapeadores de linhas (SQL -> objetos de dominio).
 
+// FUNCAO: withTransaction.
 function withTransaction(callback) {
   const db = getDb();
   db.exec("BEGIN");
@@ -628,6 +654,7 @@ function withTransaction(callback) {
   }
 }
 
+// FUNCAO: mapMember.
 function mapMember(row) {
   if (!row) {
     return null;
@@ -641,6 +668,7 @@ function mapMember(row) {
   };
 }
 
+// FUNCAO: mapUser.
 function mapUser(row) {
   if (!row) {
     return null;
@@ -659,6 +687,7 @@ function mapUser(row) {
   };
 }
 
+// FUNCAO: mapProject.
 function mapProject(row) {
   if (!row) {
     return null;
@@ -671,6 +700,7 @@ function mapProject(row) {
   };
 }
 
+// FUNCAO: mapAta.
 function mapAta(row) {
   if (!row) {
     return null;
@@ -686,6 +716,7 @@ function mapAta(row) {
   };
 }
 
+// FUNCAO: mapReportEntry.
 function mapReportEntry(row) {
   if (!row) {
     return null;
@@ -723,6 +754,7 @@ function mapReportEntry(row) {
   };
 }
 
+// FUNCAO: mapReportWeekGoal.
 function mapReportWeekGoal(row) {
   if (!row) {
     return null;
@@ -762,6 +794,7 @@ function mapReportWeekGoal(row) {
   };
 }
 
+// FUNCAO: mapReportWeekGoalDeletionLog.
 function mapReportWeekGoalDeletionLog(row) {
   if (!row) {
     return null;
@@ -785,6 +818,7 @@ function mapReportWeekGoalDeletionLog(row) {
   };
 }
 
+// FUNCAO: mapInventoryCatalog.
 function mapInventoryCatalog(row) {
   if (!row) {
     return null;
@@ -796,6 +830,7 @@ function mapInventoryCatalog(row) {
   };
 }
 
+// FUNCAO: mapInventoryItem.
 function mapInventoryItem(row) {
   if (!row) {
     return null;
@@ -814,6 +849,7 @@ function mapInventoryItem(row) {
   };
 }
 
+// FUNCAO: mapInventoryLoan.
 function mapInventoryLoan(row) {
   if (!row) {
     return null;
@@ -853,6 +889,7 @@ function mapInventoryLoan(row) {
 
 // SECAO: operacoes de usuarios e vinculacao com membros.
 
+// FUNCAO: getUserById.
 function getUserById(id) {
   const row = getDb()
     .prepare(
@@ -875,6 +912,7 @@ function getUserById(id) {
   return mapUser(row);
 }
 
+// FUNCAO: getUserByUsername.
 function getUserByUsername(username) {
   const row = getDb()
     .prepare(
@@ -897,6 +935,7 @@ function getUserByUsername(username) {
   return mapUser(row);
 }
 
+// FUNCAO: listUsers.
 function listUsers() {
   return getDb()
     .prepare(
@@ -917,6 +956,7 @@ function listUsers() {
     .map(mapUser);
 }
 
+// FUNCAO: createUser.
 function createUser(
   username,
   passwordHash,
@@ -936,6 +976,7 @@ function createUser(
   return getUserById(result.lastInsertRowid);
 }
 
+// FUNCAO: setUserMemberLink.
 function setUserMemberLink(userId, memberId = null) {
   const db = getDb();
   const current = getUserById(userId);
@@ -947,6 +988,7 @@ function setUserMemberLink(userId, memberId = null) {
   return getUserById(userId);
 }
 
+// FUNCAO: updateUserPassword.
 function updateUserPassword(userId, passwordHash) {
   const current = getUserById(userId);
   if (!current) {
@@ -959,6 +1001,7 @@ function updateUserPassword(userId, passwordHash) {
   return getUserById(userId);
 }
 
+// FUNCAO: deleteUser.
 function deleteUser(userId) {
   return withTransaction((db) => {
     const current = getUserById(userId);
@@ -1007,6 +1050,7 @@ function deleteUser(userId) {
 
 // SECAO: tabelas auxiliares do almoxarifado (categorias e locais).
 
+// FUNCAO: listInventoryCategories.
 function listInventoryCategories() {
   return getDb()
     .prepare(
@@ -1020,6 +1064,7 @@ function listInventoryCategories() {
     .map(mapInventoryCatalog);
 }
 
+// FUNCAO: getInventoryCategoryById.
 function getInventoryCategoryById(id) {
   const row = getDb()
     .prepare(
@@ -1034,6 +1079,7 @@ function getInventoryCategoryById(id) {
   return mapInventoryCatalog(row);
 }
 
+// FUNCAO: createInventoryCategory.
 function createInventoryCategory(name) {
   const db = getDb();
   const result = db
@@ -1049,6 +1095,7 @@ function createInventoryCategory(name) {
   return getInventoryCategoryById(result.lastInsertRowid);
 }
 
+// FUNCAO: updateInventoryCategory.
 function updateInventoryCategory(id, name) {
   return withTransaction((db) => {
     const current = db
@@ -1078,6 +1125,7 @@ function updateInventoryCategory(id, name) {
   });
 }
 
+// FUNCAO: deleteInventoryCategory.
 function deleteInventoryCategory(id) {
   return withTransaction((db) => {
     const current = db
@@ -1107,6 +1155,7 @@ function deleteInventoryCategory(id) {
   });
 }
 
+// FUNCAO: listInventoryLocations.
 function listInventoryLocations() {
   return getDb()
     .prepare(
@@ -1120,6 +1169,7 @@ function listInventoryLocations() {
     .map(mapInventoryCatalog);
 }
 
+// FUNCAO: getInventoryLocationById.
 function getInventoryLocationById(id) {
   const row = getDb()
     .prepare(
@@ -1134,6 +1184,7 @@ function getInventoryLocationById(id) {
   return mapInventoryCatalog(row);
 }
 
+// FUNCAO: createInventoryLocation.
 function createInventoryLocation(name) {
   const db = getDb();
   const result = db
@@ -1149,6 +1200,7 @@ function createInventoryLocation(name) {
   return getInventoryLocationById(result.lastInsertRowid);
 }
 
+// FUNCAO: updateInventoryLocation.
 function updateInventoryLocation(id, name) {
   return withTransaction((db) => {
     const current = db
@@ -1178,6 +1230,7 @@ function updateInventoryLocation(id, name) {
   });
 }
 
+// FUNCAO: deleteInventoryLocation.
 function deleteInventoryLocation(id) {
   return withTransaction((db) => {
     const current = db
@@ -1207,6 +1260,7 @@ function deleteInventoryLocation(id) {
   });
 }
 
+// FUNCAO: resolveInventoryCatalogEntry.
 function resolveInventoryCatalogEntry({
   db,
   table,
@@ -1247,6 +1301,7 @@ function resolveInventoryCatalogEntry({
   });
 }
 
+// FUNCAO: trimCatalogValue.
 function trimCatalogValue(value) {
   if (value === undefined || value === null) {
     return "";
@@ -1257,6 +1312,7 @@ function trimCatalogValue(value) {
 
 // SECAO: operacoes de membros (cadastro, busca e desativacao).
 
+// FUNCAO: listActiveMembers.
 function listActiveMembers() {
   return getDb()
     .prepare(
@@ -1266,6 +1322,7 @@ function listActiveMembers() {
     .map(mapMember);
 }
 
+// FUNCAO: getMemberById.
 function getMemberById(id) {
   const row = getDb()
     .prepare("SELECT id, name, photo, is_active FROM member WHERE id = ?")
@@ -1274,6 +1331,7 @@ function getMemberById(id) {
   return row ? mapMember(row) : null;
 }
 
+// FUNCAO: getMemberByName.
 function getMemberByName(name) {
   const normalized = String(name || "").trim();
   if (!normalized) {
@@ -1294,6 +1352,7 @@ function getMemberByName(name) {
   return mapMember(row);
 }
 
+// FUNCAO: createMember.
 function createMember(name, photo = null) {
   const db = getDb();
   const result = db
@@ -1303,11 +1362,13 @@ function createMember(name, photo = null) {
   return getMemberById(result.lastInsertRowid);
 }
 
+// FUNCAO: updateMember.
 function updateMember(id, { name, photo }) {
   getDb().prepare("UPDATE member SET name = ?, photo = ? WHERE id = ?").run(name, photo, id);
   return getMemberById(id);
 }
 
+// FUNCAO: deactivateMember.
 function deactivateMember(id) {
   return withTransaction((db) => {
     db.prepare("UPDATE member SET is_active = 0 WHERE id = ?").run(id);
@@ -1318,6 +1379,7 @@ function deactivateMember(id) {
 
 // SECAO: operacoes de projetos e relacoes projeto-membro.
 
+// FUNCAO: listProjectsBasic.
 function listProjectsBasic() {
   return getDb()
     .prepare("SELECT id, name, logo, primary_color FROM project ORDER BY LOWER(name)")
@@ -1325,6 +1387,7 @@ function listProjectsBasic() {
     .map(mapProject);
 }
 
+// FUNCAO: getProjectMembers.
 function getProjectMembers(projectId, { activeOnly = false } = {}) {
   const where = activeOnly ? "AND m.is_active = 1" : "";
 
@@ -1344,6 +1407,7 @@ function getProjectMembers(projectId, { activeOnly = false } = {}) {
     .map(mapMember);
 }
 
+// FUNCAO: getProjectById.
 function getProjectById(id) {
   const projectRow = getDb()
     .prepare("SELECT id, name, logo, primary_color FROM project WHERE id = ?")
@@ -1369,10 +1433,12 @@ function getProjectById(id) {
   return project;
 }
 
+// FUNCAO: listProjectsWithMembers.
 function listProjectsWithMembers() {
   return listProjectsBasic().map((project) => getProjectById(project.id));
 }
 
+// FUNCAO: createProject.
 function createProject({ name, logo, primaryColor, memberIds, coordinatorIds = null }) {
   return withTransaction((db) => {
     const uniqueMemberIds = [...new Set(memberIds)];
@@ -1398,6 +1464,7 @@ function createProject({ name, logo, primaryColor, memberIds, coordinatorIds = n
   });
 }
 
+// FUNCAO: updateProject.
 function updateProject(
   id,
   { name, logo, primaryColor, memberIds, coordinatorIds = null },
@@ -1429,6 +1496,7 @@ function updateProject(
   });
 }
 
+// FUNCAO: listProjectsForMember.
 function listProjectsForMember(memberId) {
   return getDb()
     .prepare(
@@ -1444,6 +1512,7 @@ function listProjectsForMember(memberId) {
     .map(mapProject);
 }
 
+// FUNCAO: isProjectMember.
 function isProjectMember(projectId, memberId) {
   const row = getDb()
     .prepare(
@@ -1459,6 +1528,7 @@ function isProjectMember(projectId, memberId) {
   return Boolean(row?.ok);
 }
 
+// FUNCAO: isProjectCoordinator.
 function isProjectCoordinator(projectId, memberId) {
   const row = getDb()
     .prepare(
@@ -1474,6 +1544,7 @@ function isProjectCoordinator(projectId, memberId) {
   return Boolean(row?.ok);
 }
 
+// FUNCAO: deleteProject.
 function deleteProject(id) {
   return withTransaction((db) => {
     db.prepare(
@@ -1490,6 +1561,7 @@ function deleteProject(id) {
 
 // SECAO: operacoes de atas (consulta completa, criacao e exclusao).
 
+// FUNCAO: listRecentAtas.
 function listRecentAtas(limit = 5) {
   return getDb()
     .prepare(
@@ -1521,6 +1593,7 @@ function listRecentAtas(limit = 5) {
     }));
 }
 
+// FUNCAO: getAtaBaseById.
 function getAtaBaseById(id) {
   const row = getDb()
     .prepare(
@@ -1557,6 +1630,7 @@ function getAtaBaseById(id) {
   return ata;
 }
 
+// FUNCAO: getAtaPresentMembers.
 function getAtaPresentMembers(ataId) {
   return getDb()
     .prepare(
@@ -1572,6 +1646,7 @@ function getAtaPresentMembers(ataId) {
     .map(mapMember);
 }
 
+// FUNCAO: getAtaAbsentJustifications.
 function getAtaAbsentJustifications(ataId) {
   const rows = getDb()
     .prepare(
@@ -1596,6 +1671,7 @@ function getAtaAbsentJustifications(ataId) {
   };
 }
 
+// FUNCAO: getAtaById.
 function getAtaById(id) {
   const ata = getAtaBaseById(id);
   if (!ata) {
@@ -1616,6 +1692,7 @@ function getAtaById(id) {
   return ata;
 }
 
+// FUNCAO: createAta.
 function createAta({ projectId, meetingDateTime, notes, presentMemberIds, justifications }) {
   return withTransaction((db) => {
     const result = db
@@ -1651,6 +1728,7 @@ function createAta({ projectId, meetingDateTime, notes, presentMemberIds, justif
   });
 }
 
+// FUNCAO: deleteAta.
 function deleteAta(id) {
   return withTransaction((db) => {
     db.prepare("DELETE FROM ata_absent_justification WHERE ata_id = ?").run(id);
@@ -1661,6 +1739,7 @@ function deleteAta(id) {
 
 // SECAO: operacoes de relatorios semanais.
 
+// FUNCAO: createReportEntry.
 function createReportEntry({
   projectId,
   memberId,
@@ -1696,6 +1775,7 @@ function createReportEntry({
   return getReportEntryById(result.lastInsertRowid);
 }
 
+// FUNCAO: updateReportEntry.
 function updateReportEntry(id, { content, status = "in_progress" }) {
   const db = getDb();
   const existing = getReportEntryById(id);
@@ -1718,6 +1798,7 @@ function updateReportEntry(id, { content, status = "in_progress" }) {
   return getReportEntryById(id);
 }
 
+// FUNCAO: deleteReportEntry.
 function deleteReportEntry(id) {
   const existing = getReportEntryById(id);
   if (!existing) {
@@ -1728,6 +1809,7 @@ function deleteReportEntry(id) {
   return existing;
 }
 
+// FUNCAO: getReportEntryById.
 function getReportEntryById(id) {
   const row = getDb()
     .prepare(
@@ -1762,6 +1844,7 @@ function getReportEntryById(id) {
   return mapReportEntry(row);
 }
 
+// FUNCAO: listReportEntries.
 function listReportEntries({
   memberId = null,
   projectId = null,
@@ -1828,6 +1911,7 @@ function listReportEntries({
     .map(mapReportEntry);
 }
 
+// FUNCAO: listReportProjectsForMember.
 function listReportProjectsForMember(memberId, { weekStart = null, status = null } = {}) {
   const where = ["r.member_id = ?"];
   const params = [memberId];
@@ -1854,6 +1938,7 @@ function listReportProjectsForMember(memberId, { weekStart = null, status = null
     .map(mapProject);
 }
 
+// FUNCAO: listReportWeeksForMember.
 function listReportWeeksForMember(memberId, { projectId = null, status = null } = {}) {
   const where = ["member_id = ?"];
   const params = [memberId];
@@ -1879,6 +1964,7 @@ function listReportWeeksForMember(memberId, { projectId = null, status = null } 
     .map((row) => row.week_start);
 }
 
+// FUNCAO: listReportMembersSummary.
 function listReportMembersSummary() {
   return getDb()
     .prepare(
@@ -1909,6 +1995,7 @@ function listReportMembersSummary() {
     }));
 }
 
+// FUNCAO: createReportWeekGoal.
 function createReportWeekGoal({
   memberId,
   projectId,
@@ -1949,6 +2036,7 @@ function createReportWeekGoal({
   return getReportWeekGoalById(result.lastInsertRowid);
 }
 
+// FUNCAO: getReportWeekGoalById.
 function getReportWeekGoalById(id) {
   const row = getDb()
     .prepare(
@@ -1986,6 +2074,7 @@ function getReportWeekGoalById(id) {
   return mapReportWeekGoal(row);
 }
 
+// FUNCAO: updateReportWeekGoal.
 function updateReportWeekGoal(id, { activity, description, isCompleted = false }) {
   const existing = getReportWeekGoalById(id);
   if (!existing) {
@@ -2010,6 +2099,7 @@ function updateReportWeekGoal(id, { activity, description, isCompleted = false }
   return getReportWeekGoalById(id);
 }
 
+// FUNCAO: deleteReportWeekGoal.
 function deleteReportWeekGoal(id) {
   const existing = getReportWeekGoalById(id);
   if (!existing) {
@@ -2020,6 +2110,7 @@ function deleteReportWeekGoal(id) {
   return existing;
 }
 
+// FUNCAO: deleteReportWeekGoalWithAudit.
 function deleteReportWeekGoalWithAudit(id, deletedByUserId) {
   return withTransaction((db) => {
     const existing = getReportWeekGoalById(id);
@@ -2057,6 +2148,7 @@ function deleteReportWeekGoalWithAudit(id, deletedByUserId) {
   });
 }
 
+// FUNCAO: listReportWeekGoalDeletionLogsForMember.
 function listReportWeekGoalDeletionLogsForMember(
   memberId,
   { projectId = null, limit = 30 } = {},
@@ -2100,6 +2192,7 @@ function listReportWeekGoalDeletionLogsForMember(
     .map(mapReportWeekGoalDeletionLog);
 }
 
+// FUNCAO: listReportWeekGoalsForMember.
 function listReportWeekGoalsForMember(
   memberId,
   { projectId = null, currentWeekStart = null, limit = 200 } = {},
@@ -2156,6 +2249,7 @@ function listReportWeekGoalsForMember(
     });
 }
 
+// FUNCAO: listReportMonthGoalsForMember.
 function listReportMonthGoalsForMember(memberId, { monthKey, limit = 1200 } = {}) {
   const normalizedMonth = String(monthKey || "").trim();
   if (!/^\d{4}-\d{2}$/.test(normalizedMonth)) {
@@ -2201,6 +2295,7 @@ function listReportMonthGoalsForMember(memberId, { monthKey, limit = 1200 } = {}
 
 // SECAO: inventario e movimentacoes (retirada, emprestimo, prorrogacao e devolucao).
 
+// FUNCAO: listInventoryItems.
 function listInventoryItems({ type = null } = {}) {
   const normalizedType = type ? normalizeInventoryType(type) : null;
   const sql = normalizedType
@@ -2223,6 +2318,7 @@ function listInventoryItems({ type = null } = {}) {
   return rows.map(mapInventoryItem);
 }
 
+// FUNCAO: getInventoryItemById.
 function getInventoryItemById(id) {
   const row = getDb()
     .prepare(
@@ -2237,6 +2333,7 @@ function getInventoryItemById(id) {
   return mapInventoryItem(row);
 }
 
+// FUNCAO: createInventoryItem.
 function createInventoryItem({
   name,
   itemType = "stock",
@@ -2284,6 +2381,7 @@ function createInventoryItem({
   });
 }
 
+// FUNCAO: updateInventoryItem.
 function updateInventoryItem(
   id,
   {
@@ -2355,6 +2453,7 @@ function updateInventoryItem(
   });
 }
 
+// FUNCAO: deleteInventoryItem.
 function deleteInventoryItem(id) {
   return withTransaction((db) => {
     const item = db
@@ -2387,6 +2486,7 @@ function deleteInventoryItem(id) {
   });
 }
 
+// FUNCAO: withdrawInventoryItem.
 function withdrawInventoryItem({ nameOrCode, quantity, userId }) {
   return withTransaction((db) => {
     const item = db
@@ -2433,6 +2533,7 @@ function withdrawInventoryItem({ nameOrCode, quantity, userId }) {
   });
 }
 
+// FUNCAO: getInventoryLoanById.
 function getInventoryLoanById(id) {
   const row = getDb()
     .prepare(
@@ -2470,6 +2571,7 @@ function getInventoryLoanById(id) {
   return mapInventoryLoan(row);
 }
 
+// FUNCAO: borrowInventoryItem.
 function borrowInventoryItem({ nameOrCode, quantity, userId }) {
   return withTransaction((db) => {
     const item = db
@@ -2531,6 +2633,7 @@ function borrowInventoryItem({ nameOrCode, quantity, userId }) {
   });
 }
 
+// FUNCAO: extendInventoryLoan.
 function extendInventoryLoan({ loanId, extraDays, actorUserId }) {
   return withTransaction((db) => {
     const loan = db
@@ -2574,6 +2677,7 @@ function extendInventoryLoan({ loanId, extraDays, actorUserId }) {
   });
 }
 
+// FUNCAO: returnInventoryLoan.
 function returnInventoryLoan({ loanId, actorUserId }) {
   return withTransaction((db) => {
     const loan = db
@@ -2621,6 +2725,7 @@ function returnInventoryLoan({ loanId, actorUserId }) {
   });
 }
 
+// FUNCAO: listInventoryRequests.
 function listInventoryRequests(limit = null) {
   const sql = `
     SELECT
@@ -2656,6 +2761,7 @@ function listInventoryRequests(limit = null) {
   }));
 }
 
+// FUNCAO: listInventoryLoans.
 function listInventoryLoans({ status = null, limit = null } = {}) {
   const conditions = [];
   const params = [];
@@ -2734,6 +2840,7 @@ function listInventoryLoans({ status = null, limit = null } = {}) {
 
 // SECAO: agregacoes para dashboard do almoxarifado.
 
+// FUNCAO: getInventoryDashboardData.
 function getInventoryDashboardData() {
   const db = getDb();
   const summary = {
@@ -2793,6 +2900,7 @@ function getInventoryDashboardData() {
 }
 
 // SECAO: interface publica deste modulo para o restante da aplicacao.
+// OBSERVACAO: alteracoes de nomes exportados exigem ajuste imediato nos imports de rotas/servicos.
 
 module.exports = {
   createAta,

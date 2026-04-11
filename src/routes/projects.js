@@ -1,3 +1,10 @@
+/*
+ * ARQUIVO: src/routes/projects.js
+ * FUNCAO: registra rotas de listagem, criacao, edicao e exclusao de projetos.
+ * IMPACTO DE MUDANCAS:
+ * - Alterar vinculo de membros/coordenadores muda permissoes no restante do sistema.
+ * - Alterar fluxo de logo/cor impacta exibicao em listagens e relatorios.
+ */
 function registerProjectRoutes(ctx) {
   const {
     app,

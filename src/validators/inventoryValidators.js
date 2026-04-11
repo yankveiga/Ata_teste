@@ -1,3 +1,9 @@
+/*
+ * ARQUIVO: src/validators/inventoryValidators.js
+ * FUNCAO: validacoes de entrada para itens, categorias e locais do almoxarifado.
+ * IMPACTO DE MUDANCAS:
+ * - Alterar regras de validacao impacta formularios web e endpoints de API.
+ */
 function validateInventoryPayload(payload, validTypes = new Set(["stock", "patrimony"])) {
   const errors = {};
   const quantity = Number(payload.quantity);

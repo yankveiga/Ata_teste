@@ -1,3 +1,10 @@
+/*
+ * ARQUIVO: src/routes/reports.js
+ * FUNCAO: registra rotas de relatorios semanais e exportacao mensal em PDF.
+ * IMPACTO DE MUDANCAS:
+ * - Alterar regras de permissao afeta quem pode criar/editar/apagar metas.
+ * - Alterar validacao de metas impacta consistencia dos dados exibidos no quadro.
+ */
 function registerReportRoutes(ctx) {
   const {
     app,

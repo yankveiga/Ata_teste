@@ -1,3 +1,9 @@
+/*
+ * ARQUIVO: src/services/inventoryService.js
+ * FUNCAO: mapeamentos de payload para API do almoxarifado.
+ * IMPACTO DE MUDANCAS:
+ * - Alterar nomes/chaves quebra compatibilidade com consumidores do endpoint.
+ */
 function mapInventoryApiItem(item) {
   return {
     id: item.id,

@@ -1,3 +1,10 @@
+/*
+ * ARQUIVO: src/routes/atas.js
+ * FUNCAO: registra rotas de criacao, download e exclusao de atas.
+ * IMPACTO DE MUDANCAS:
+ * - Alterar validacoes de formulario pode bloquear criacao legitima de atas.
+ * - Alterar montagem de participantes/justificativas afeta auditoria de reunioes.
+ */
 function registerAtaRoutes(ctx) {
   const {
     app,

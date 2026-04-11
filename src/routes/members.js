@@ -1,3 +1,10 @@
+/*
+ * ARQUIVO: src/routes/members.js
+ * FUNCAO: registra rotas de membros (cadastro, edicao e desativacao).
+ * IMPACTO DE MUDANCAS:
+ * - Alterar validacoes afeta qualidade dos dados e integracao com usuarios/projetos.
+ * - Alterar fluxo de foto pode impactar armazenamento local/remoto das imagens.
+ */
 function registerMemberRoutes(ctx) {
   const {
     app,

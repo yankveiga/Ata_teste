@@ -1,3 +1,10 @@
+/*
+ * ARQUIVO: src/routes/auth.js
+ * FUNCAO: registra rotas de autenticacao, navegacao inicial e presenca.
+ * IMPACTO DE MUDANCAS:
+ * - Alterar campos/validacao de login afeta sessao de todos os usuarios.
+ * - Alterar retorno JSON de presenca impacta o frontend que consome a API.
+ */
 function registerAuthRoutes(ctx) {
   const {
     app,

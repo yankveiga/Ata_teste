@@ -61,9 +61,8 @@
             </a>
         </nav>
 
-        <section class="almox-tab-panel {{ 'is-active' if activeTab == 'overview' else '' }}"         {# SECAO: aba Visao Geral com indicadores e ultimas movimentacoes. #}
-
-data-tab-panel="overview">
+        {# SECAO: aba Visao Geral com indicadores e ultimas movimentacoes. #}
+        <section class="almox-tab-panel {{ 'is-active' if activeTab == 'overview' else '' }}" data-tab-panel="overview">
             <div class="almox-card-grid">
                 <article class="almox-stat-card">
                     <span class="almox-stat-label">Usuários cadastrados</span>
@@ -107,6 +106,7 @@ data-tab-panel="overview">
                 </article>
             </div>
 
+            {# BLOCO: leitura operacional imediata (retiradas e emprestimos em aberto). #}
             <div class="almox-two-column">
                 <article class="almox-panel">
                     <div class="almox-panel-header">
@@ -176,6 +176,7 @@ data-tab-panel="overview">
                 </article>
             </div>
 
+            {# BLOCO: contexto de usuarios e regras para uso seguro do modulo. #}
             <div class="almox-two-column">
                 <article class="almox-panel">
                     <div class="almox-panel-header">
@@ -231,9 +232,9 @@ data-tab-panel="overview">
             </div>
         </section>
 
-        <section class="almox-tab-panel {{ 'is-active' if activeTab == 'users' else '' }}"         {# SECAO: aba Usuarios para vinculos de acesso e historico de uso. #}
-
-data-tab-panel="users">
+        {# SECAO: aba Usuarios para vinculos de acesso e historico de uso. #}
+        <section class="almox-tab-panel {{ 'is-active' if activeTab == 'users' else '' }}" data-tab-panel="users">
+            {# BLOCO: administracao de usuarios (vinculo, senha e exclusao). #}
             <div class="almox-two-column">
                 <article class="almox-panel">
                     <div class="almox-panel-header">
@@ -272,6 +273,7 @@ data-tab-panel="users">
                                             </td>
                                             {% if currentUser.is_admin %}
                                                 <td>
+                                                    {# FORM: vincula ou remove vinculo entre usuario e membro. #}
                                                     <form action="{{ urlFor('almox_home') }}/users/link/{{ user.id }}" method="post" class="inline-form">
                                                         <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
                                                         <input type="hidden" name="tab" value="users">
@@ -290,6 +292,7 @@ data-tab-panel="users">
                                                     </form>
                                                     <details class="almox-user-actions">
                                                         <summary>Mais ações</summary>
+                                                        {# FORM: redefine senha manualmente para recuperacao de acesso. #}
                                                         <form action="{{ urlFor('almox_home') }}/users/reset-password/{{ user.id }}" method="post" class="inline-form">
                                                             <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
                                                             <input type="hidden" name="tab" value="users">
@@ -297,6 +300,7 @@ data-tab-panel="users">
                                                             <button type="submit" class="secondary-button">Redefinir senha</button>
                                                         </form>
                                                         {% if currentUser.id != user.id %}
+                                                            {# FORM: exclui perfil de usuario (acao administrativa). #}
                                                             <form action="{{ urlFor('almox_home') }}/users/delete/{{ user.id }}" method="post" onsubmit="return confirm('Deseja excluir o usuário @{{ user.username }}?');">
                                                                 <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
                                                                 <input type="hidden" name="tab" value="users">
@@ -325,6 +329,7 @@ data-tab-panel="users">
                     </div>
 
                     {% if currentUser.is_admin %}
+                        {# FORM: cria um novo usuario de acesso ao portal. #}
                         <form action="{{ urlFor('almox_home') }}/users/create" method="post" class="stacked-form">
                             <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
                             <input type="hidden" name="tab" value="users">
@@ -379,9 +384,9 @@ data-tab-panel="users">
             </div>
         </section>
 
-        <section class="almox-tab-panel {{ 'is-active' if activeTab == 'stock' else '' }}"         {# SECAO: aba Estoque com catalogo, quantidades e filtros. #}
-
-data-tab-panel="stock">
+        {# SECAO: aba Estoque com catalogo, quantidades e filtros. #}
+        <section class="almox-tab-panel {{ 'is-active' if activeTab == 'stock' else '' }}" data-tab-panel="stock">
+            {# BLOCO: tabela principal de itens com filtros e exclusao. #}
             <article class="almox-panel">
                 <div class="almox-panel-header">
                     <div>
@@ -433,6 +438,7 @@ data-tab-panel="stock">
                                         <td>{{ item.description }}</td>
                                         {% if currentUser.is_admin %}
                                             <td>
+                                                {# FORM: remove item do inventario atual. #}
                                                 <form action="/almoxarifado/inventory/delete/{{ item.id }}" method="post" onsubmit="return confirm('Deseja remover o produto {{ item.name }} do estoque?');">
                                                     <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
                                                     <input type="hidden" name="tab" value="stock">
@@ -451,9 +457,9 @@ data-tab-panel="stock">
             </article>
         </section>
 
-        <section class="almox-tab-panel {{ 'is-active' if activeTab == 'manage' else '' }}"         {# SECAO: aba Cadastro para criacao/edicao de itens, categorias e locais. #}
-
-data-tab-panel="manage">
+        {# SECAO: aba Cadastro para criacao/edicao de itens, categorias e locais. #}
+        <section class="almox-tab-panel {{ 'is-active' if activeTab == 'manage' else '' }}" data-tab-panel="manage">
+            {# BLOCO: cadastro principal de materiais e painel de resumo. #}
             <div class="almox-two-column">
                 <article class="almox-panel">
                     <div class="almox-panel-header">
@@ -464,6 +470,7 @@ data-tab-panel="manage">
                     </div>
 
                     {% if currentUser.is_admin %}
+                        {# FORM: cria item de estoque/patrimonio com categoria e local. #}
                         <form action="/almoxarifado/inventory/create" method="post" class="stacked-form">
                             <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
                             <input type="hidden" name="tab" value="manage">
@@ -573,6 +580,7 @@ data-tab-panel="manage">
                 </article>
             </div>
 
+            {# BLOCO: catalogos auxiliares (categorias e locais) usados nos formularios. #}
             <div class="almox-catalog-grid">
                 <article class="almox-panel">
                     <div class="almox-panel-header">
@@ -583,6 +591,7 @@ data-tab-panel="manage">
                     </div>
 
                     {% if currentUser.is_admin %}
+                        {# FORM: cria categoria reutilizavel para classificacao de material. #}
                         <form action="/almoxarifado/categories/create" method="post" class="stacked-form compact-form">
                             <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
                             <label>
@@ -600,6 +609,7 @@ data-tab-panel="manage">
                                 <li>
                                     <span>{{ category.name }}</span>
                                     {% if currentUser.is_admin %}
+                                        {# FORM: exclui categoria existente quando permitido. #}
                                         <form action="/almoxarifado/categories/delete/{{ category.id }}" method="post" onsubmit="return confirm('Deseja remover a categoria {{ category.name }}?');">
                                             <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
                                             <button type="submit" class="ghost-danger-button">Excluir</button>
@@ -622,6 +632,7 @@ data-tab-panel="manage">
                     </div>
 
                     {% if currentUser.is_admin %}
+                        {# FORM: cria local fisico para organizacao de materiais. #}
                         <form action="/almoxarifado/locations/create" method="post" class="stacked-form compact-form">
                             <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
                             <label>
@@ -639,6 +650,7 @@ data-tab-panel="manage">
                                 <li>
                                     <span>{{ location.name }}</span>
                                     {% if currentUser.is_admin %}
+                                        {# FORM: exclui local do catalogo de armazenamento. #}
                                         <form action="/almoxarifado/locations/delete/{{ location.id }}" method="post" onsubmit="return confirm('Deseja remover o local {{ location.name }}?');">
                                             <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
                                             <button type="submit" class="ghost-danger-button">Excluir</button>
@@ -654,9 +666,9 @@ data-tab-panel="manage">
             </div>
         </section>
 
-        <section class="almox-tab-panel {{ 'is-active' if activeTab == 'withdraw' else '' }}"         {# SECAO: aba Retiradas para consumo imediato de itens de estoque. #}
-
-data-tab-panel="withdraw">
+        {# SECAO: aba Retiradas para consumo imediato de itens de estoque. #}
+        <section class="almox-tab-panel {{ 'is-active' if activeTab == 'withdraw' else '' }}" data-tab-panel="withdraw">
+            {# BLOCO: retirada de consumiveis e referencia de saldo atual. #}
             <div class="almox-two-column">
                 <article class="almox-panel">
                     <div class="almox-panel-header">
@@ -666,6 +678,7 @@ data-tab-panel="withdraw">
                         </div>
                     </div>
 
+                    {# FORM: baixa quantidade de item consumivel por retirada. #}
                     <form action="/almoxarifado/inventory/withdraw" method="post" class="stacked-form">
                         <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
                         <input type="hidden" name="tab" value="withdraw">
@@ -726,9 +739,9 @@ data-tab-panel="withdraw">
             </div>
         </section>
 
-        <section class="almox-tab-panel {{ 'is-active' if activeTab == 'borrow' else '' }}"         {# SECAO: aba Emprestimos com previsao de devolucao e controle de quantidade. #}
-
-data-tab-panel="borrow">
+        {# SECAO: aba Emprestimos com previsao de devolucao e controle de quantidade. #}
+        <section class="almox-tab-panel {{ 'is-active' if activeTab == 'borrow' else '' }}" data-tab-panel="borrow">
+            {# BLOCO: emprestimo de patrimonio e consulta de disponibilidade. #}
             <div class="almox-two-column">
                 <article class="almox-panel">
                     <div class="almox-panel-header">
@@ -738,6 +751,7 @@ data-tab-panel="borrow">
                         </div>
                     </div>
 
+                    {# FORM: registra emprestimo com devolucao prevista automatica. #}
                     <form action="/almoxarifado/inventory/borrow" method="post" class="stacked-form">
                         <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
                         <input type="hidden" name="tab" value="borrow">
@@ -802,9 +816,9 @@ data-tab-panel="borrow">
             </div>
         </section>
 
-        <section class="almox-tab-panel {{ 'is-active' if activeTab == 'borrowed' else '' }}"         {# SECAO: aba Itens Emprestados para acompanhamento e devolucao/prorrogacao. #}
-
-data-tab-panel="borrowed">
+        {# SECAO: aba Itens Emprestados para acompanhamento e devolucao/prorrogacao. #}
+        <section class="almox-tab-panel {{ 'is-active' if activeTab == 'borrowed' else '' }}" data-tab-panel="borrowed">
+            {# BLOCO: acompanhamento de emprestimos ativos e acoes de controle. #}
             <article class="almox-panel">
                 <div class="almox-panel-header">
                     <div>
@@ -857,6 +871,7 @@ data-tab-panel="borrowed">
                                         <td>
                                             <div class="action-stack">
                                                 {% if currentUser.is_admin %}
+                                                    {# FORM: prorroga prazo de devolucao de um emprestimo. #}
                                                     <form action="/almoxarifado/loans/extend/{{ loan.id }}" method="post" class="inline-form">
                                                         <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
                                                         <input type="hidden" name="tab" value="borrowed">
@@ -866,6 +881,7 @@ data-tab-panel="borrowed">
                                                 {% endif %}
 
                                                 {% if currentUser.is_admin or currentUser.id == loan.user_id %}
+                                                    {# FORM: registra devolucao e encerra emprestimo ativo. #}
                                                     <form action="/almoxarifado/loans/return/{{ loan.id }}" method="post">
                                                         <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
                                                         <input type="hidden" name="tab" value="borrowed">
@@ -886,6 +902,7 @@ data-tab-panel="borrowed">
                 {% endif %}
             </article>
 
+            {# BLOCO: historico de devolucoes ja concluídas. #}
             <article class="almox-panel">
                 <div class="almox-panel-header">
                     <div>
@@ -927,9 +944,9 @@ data-tab-panel="borrowed">
             </article>
         </section>
 
-        <section class="almox-tab-panel {{ 'is-active' if activeTab == 'requests' else '' }}"         {# SECAO: aba Solicitacoes e historico consolidado de movimentacoes. #}
-
-data-tab-panel="requests">
+        {# SECAO: aba Solicitacoes e historico consolidado de movimentacoes. #}
+        <section class="almox-tab-panel {{ 'is-active' if activeTab == 'requests' else '' }}" data-tab-panel="requests">
+            {# BLOCO: historico consolidado de retiradas de estoque. #}
             <article class="almox-panel">
                 <div class="almox-panel-header">
                     <div>
