@@ -1,0 +1,352 @@
+{#
+  TEMPLATE: planner/index.html
+  FUNCAO: planner em calendario mensal com agenda lateral e criacao de tarefas.
+#}
+{% extends "base.html" %}
+
+{% block content %}
+    <div class="planner-ui-shell">
+        <div class="planner-ui-toolbar content-panel">
+            <div class="planner-ui-toolbar-left">
+                <h1>Planner</h1>
+                <p>
+                    {% if plannerViewMode == 'project' %}
+                        Visual do projeto {% if selectedProject %}<strong>{{ selectedProject.name }}</strong>{% endif %}
+                    {% else %}
+                        Visual individual {% if selectedMember %}<strong>{{ selectedMember.name }}</strong>{% endif %}
+                    {% endif %}
+                </p>
+            </div>
+            <div class="planner-ui-toolbar-right">
+                <a
+                    href="{{ urlFor('planner') }}?view=project{% if selectedProject %}&project_id={{ selectedProject.id }}{% endif %}&month={{ plannerMonth }}&day={{ selectedDay }}"
+                    class="planner-ui-pill {{ 'is-active' if plannerViewMode == 'project' else '' }}"
+                >Projeto</a>
+                <a
+                    href="{{ urlFor('planner') }}?view=member{% if selectedMember %}&member_id={{ selectedMember.id }}{% endif %}&month={{ plannerMonth }}&day={{ selectedDay }}"
+                    class="planner-ui-pill {{ 'is-active' if plannerViewMode == 'member' else '' }}"
+                >Individual</a>
+            </div>
+        </div>
+
+        <section class="planner-ui-top-actions content-panel">
+            <div class="planner-ui-top-actions-right">
+                {% if plannerViewMode == 'project' and projectOptions.length %}
+                    <form method="get" action="{{ urlFor('planner') }}" class="planner-mini-form">
+                        <input type="hidden" name="view" value="project">
+                        <input type="hidden" name="month" value="{{ plannerMonth }}">
+                        <input type="hidden" name="day" value="{{ selectedDay }}">
+                        <label class="sr-only" for="planner_project_id">Projeto</label>
+                        <select id="planner_project_id" name="project_id" class="form-control planner-mini-select" onchange="this.form.submit()">
+                            {% for project in projectOptions %}
+                                <option value="{{ project.id }}" {% if selectedProject and selectedProject.id == project.id %}selected{% endif %}>
+                                    {{ project.name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </form>
+                {% endif %}
+
+                {% if plannerViewMode == 'member' and currentUser.is_admin and memberOptions.length %}
+                    <form method="get" action="{{ urlFor('planner') }}" class="planner-mini-form">
+                        <input type="hidden" name="view" value="member">
+                        <input type="hidden" name="month" value="{{ plannerMonth }}">
+                        <input type="hidden" name="day" value="{{ selectedDay }}">
+                        <label class="sr-only" for="planner_member_id">Membro</label>
+                        <select id="planner_member_id" name="member_id" class="form-control planner-mini-select planner-mini-select-member" onchange="this.form.submit()">
+                            {% for member in memberOptions %}
+                                <option value="{{ member.id }}" {% if selectedMember and selectedMember.id == member.id %}selected{% endif %}>
+                                    {{ member.name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </form>
+                {% endif %}
+
+                {% if canCreatePlannerTask %}
+                    <div class="planner-create-compact {% if plannerFormErrors.projectId or plannerFormErrors.memberId or plannerFormErrors.title or plannerFormErrors.dueAt %}is-open{% endif %}" id="planner_create_box">
+                        <button
+                            type="button"
+                            class="planner-create-button"
+                            id="planner_create_toggle"
+                            aria-expanded="{{ 'true' if plannerFormErrors.projectId or plannerFormErrors.memberId or plannerFormErrors.title or plannerFormErrors.dueAt else 'false' }}"
+                            aria-controls="planner_create_popover"
+                        >
+                            + Nova tarefa
+                        </button>
+                        <div class="planner-create-popover" id="planner_create_popover" {% if not (plannerFormErrors.projectId or plannerFormErrors.memberId or plannerFormErrors.title or plannerFormErrors.dueAt) %}hidden{% endif %}>
+                            <form action="/planner/tasks/create" method="post" class="portal-form-grid" novalidate>
+                                <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+                                <input type="hidden" name="view_mode" value="{{ plannerViewMode }}">
+                                <input type="hidden" name="return_project_id" value="{{ selectedProject.id if selectedProject else '' }}">
+                                <input type="hidden" name="return_member_id" value="{{ selectedMember.id if selectedMember else '' }}">
+                                <input type="hidden" name="return_month" value="{{ plannerMonth }}">
+                                <input type="hidden" name="return_day" value="{{ selectedDay }}">
+
+                                <div class="form-group">
+                                    <label class="form-label" for="planner_form_project_id">Projeto</label>
+                                    <select id="planner_form_project_id" name="project_id" class="form-control" data-selected-member-id="{{ plannerFormData.memberId }}">
+                                        <option value="">Selecione</option>
+                                        {% for project in createProjectOptions %}
+                                            <option value="{{ project.id }}" {% if plannerFormData.projectId == (project.id ~ '') %}selected{% endif %}>
+                                                {{ project.name }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                    {% if plannerFormErrors.projectId %}
+                                        <ul class="form-error-list">
+                                            {% for error in plannerFormErrors.projectId %}<li>{{ error }}</li>{% endfor %}
+                                        </ul>
+                                    {% endif %}
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label" for="planner_form_member_id">Membro do Projeto</label>
+                                    <select id="planner_form_member_id" name="member_id" class="form-control">
+                                        <option value="">Selecione</option>
+                                        {% for member in createMemberOptions %}
+                                            <option value="{{ member.id }}" {% if plannerFormData.memberId == (member.id ~ '') %}selected{% endif %}>
+                                                {{ member.name }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                    {% if plannerFormErrors.memberId %}
+                                        <ul class="form-error-list">
+                                            {% for error in plannerFormErrors.memberId %}<li>{{ error }}</li>{% endfor %}
+                                        </ul>
+                                    {% endif %}
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label" for="planner_form_due_at">Data e Horário</label>
+                                    <input
+                                        id="planner_form_due_at"
+                                        name="due_at"
+                                        type="datetime-local"
+                                        class="form-control"
+                                        value="{{ plannerFormData.dueAt }}"
+                                    >
+                                    {% if plannerFormErrors.dueAt %}
+                                        <ul class="form-error-list">
+                                            {% for error in plannerFormErrors.dueAt %}<li>{{ error }}</li>{% endfor %}
+                                        </ul>
+                                    {% endif %}
+                                </div>
+
+                                <div class="form-group form-group-full">
+                                    <label class="form-label" for="planner_form_title">Título</label>
+                                    <input id="planner_form_title" name="title" class="form-control" maxlength="180" value="{{ plannerFormData.title }}">
+                                    {% if plannerFormErrors.title %}
+                                        <ul class="form-error-list">
+                                            {% for error in plannerFormErrors.title %}<li>{{ error }}</li>{% endfor %}
+                                        </ul>
+                                    {% endif %}
+                                </div>
+
+                                <div class="form-group form-group-full">
+                                    <label class="form-label" for="planner_form_description">Descrição</label>
+                                    <textarea id="planner_form_description" name="description" rows="3" class="form-control">{{ plannerFormData.description }}</textarea>
+                                </div>
+
+                                <div class="form-actions">
+                                    <button type="submit" class="btn-submit">Salvar</button>
+                                    <button type="button" class="btn-cancel" id="planner_create_close">Fechar</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        </section>
+
+        <div class="planner-calendar-wrapper content-panel {% if plannerViewMode == 'project' %}planner-calendar-project{% endif %}" {% if plannerViewMode == 'project' and selectedProject %}style="--planner-project-color: {{ selectedProject.primary_color }};"{% endif %}>
+            <section class="planner-calendar-main">
+                <header class="planner-calendar-header">
+                    <div class="planner-calendar-title">
+                        <h2>{{ plannerMonthLabel }}</h2>
+                        <p>Calendário mensal do Planner</p>
+                    </div>
+                    <div class="planner-calendar-month-nav">
+                        <form method="get" action="{{ urlFor('planner') }}" class="planner-month-jump-form">
+                            <input type="hidden" name="view" value="{{ plannerViewMode }}">
+                            {% if selectedProject %}<input type="hidden" name="project_id" value="{{ selectedProject.id }}">{% endif %}
+                            {% if selectedMember %}<input type="hidden" name="member_id" value="{{ selectedMember.id }}">{% endif %}
+                            <input type="hidden" name="day" value="{{ selectedDay }}">
+                            <label for="planner_month_input" class="sr-only">Mês</label>
+                            <input id="planner_month_input" class="form-control planner-month-input" type="month" name="month" value="{{ plannerMonth }}" onchange="this.form.submit()">
+                        </form>
+                        <a href="{{ urlFor('planner') }}?view={{ plannerViewMode }}{% if selectedProject %}&project_id={{ selectedProject.id }}{% endif %}{% if selectedMember %}&member_id={{ selectedMember.id }}{% endif %}&month={{ currentMonthKey }}&day={{ todayDateKey }}" class="planner-calendar-today-btn">Hoje</a>
+                        <a href="{{ urlFor('planner') }}?view={{ plannerViewMode }}{% if selectedProject %}&project_id={{ selectedProject.id }}{% endif %}{% if selectedMember %}&member_id={{ selectedMember.id }}{% endif %}&month={{ prevMonthKey }}&day={{ selectedDay }}" class="planner-calendar-nav-btn" aria-label="Mês anterior">‹</a>
+                        <a href="{{ urlFor('planner') }}?view={{ plannerViewMode }}{% if selectedProject %}&project_id={{ selectedProject.id }}{% endif %}{% if selectedMember %}&member_id={{ selectedMember.id }}{% endif %}&month={{ nextMonthKey }}&day={{ selectedDay }}" class="planner-calendar-nav-btn" aria-label="Próximo mês">›</a>
+                    </div>
+                </header>
+
+                <div class="planner-calendar-grid">
+                    {% for weekday in calendarWeekdays %}
+                        <span class="planner-calendar-weekday">{{ weekday }}</span>
+                    {% endfor %}
+
+                    {% for cell in calendarCells %}
+                        <a
+                            href="{{ urlFor('planner') }}?view={{ plannerViewMode }}{% if selectedProject %}&project_id={{ selectedProject.id }}{% endif %}{% if selectedMember %}&member_id={{ selectedMember.id }}{% endif %}&month={{ plannerMonth }}&day={{ cell.dateKey }}"
+                            class="planner-calendar-cell {{ 'is-outside' if not cell.inCurrentMonth else '' }} {{ 'is-today' if cell.isToday else '' }} {{ 'is-selected' if selectedDay == cell.dateKey else '' }}"
+                        >
+                            <strong>{{ cell.dayNumber }}</strong>
+                            {% if cell.tasks.length %}
+                                <ul>
+                                    {% for task in cell.tasks %}
+                                        <li>
+                                            <span class="planner-calendar-mini-dot" style="background-color: {{ task.project.primary_color }};"></span>
+                                            {{ task.title }}
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            {% else %}
+                                <span class="planner-calendar-empty">-</span>
+                            {% endif %}
+                            {% if cell.taskCount > 2 %}
+                                <small>+{{ cell.taskCount - 2 }} tarefas</small>
+                            {% endif %}
+                        </a>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <aside class="planner-calendar-side">
+                <header class="planner-calendar-side-head">
+                    <h3>Agenda</h3>
+                    <p>{{ selectedDay | formatDate }}</p>
+                </header>
+                <div class="planner-calendar-side-body">
+                    {% if selectedDayTasks.length %}
+                        {% for task in selectedDayTasks %}
+                            <article class="planner-side-task" style="--task-color: {{ task.project.primary_color }};">
+                                <strong>{{ task.title }}</strong>
+                                <small>{{ task.project.name }}</small>
+                                <small>{{ task.due_at | formatDateTime }}</small>
+                                <div class="planner-side-task-member">
+                                    <span class="planner-ui-avatar">
+                                        {% if task.member.photo %}
+                                            <img src="{{ mediaUrl(task.member.photo) }}" alt="Foto de {{ task.member.name }}">
+                                        {% else %}
+                                            <ion-icon name="person-outline"></ion-icon>
+                                        {% endif %}
+                                    </span>
+                                    <span>{{ task.member.name }}</span>
+                                </div>
+                                {% if task.can_delete %}
+                                    <form action="/planner/tasks/{{ task.id }}/delete" method="post" class="planner-side-task-actions">
+                                        <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+                                        <input type="hidden" name="view_mode" value="{{ plannerViewMode }}">
+                                        <input type="hidden" name="return_project_id" value="{{ selectedProject.id if selectedProject else '' }}">
+                                        <input type="hidden" name="return_member_id" value="{{ selectedMember.id if selectedMember else '' }}">
+                                        <input type="hidden" name="return_month" value="{{ plannerMonth }}">
+                                        <input type="hidden" name="return_day" value="{{ selectedDay }}">
+                                        <button type="submit" class="planner-side-task-delete">Excluir</button>
+                                    </form>
+                                {% endif %}
+                            </article>
+                        {% endfor %}
+                    {% else %}
+                        <p class="ui-empty-state">Nenhuma tarefa para este dia.</p>
+                    {% endif %}
+                </div>
+            </aside>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const projectSelect = document.getElementById('planner_form_project_id');
+            const memberSelect = document.getElementById('planner_form_member_id');
+            const createBox = document.getElementById('planner_create_box');
+            const createToggle = document.getElementById('planner_create_toggle');
+            const createPopover = document.getElementById('planner_create_popover');
+            const createClose = document.getElementById('planner_create_close');
+
+            function setCreateOpen(open) {
+                if (!createBox || !createToggle || !createPopover) {
+                    return;
+                }
+                createBox.classList.toggle('is-open', open);
+                createToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+                if (open) {
+                    createPopover.removeAttribute('hidden');
+                } else {
+                    createPopover.setAttribute('hidden', 'hidden');
+                }
+            }
+
+            if (createToggle && createPopover) {
+                createToggle.addEventListener('click', function() {
+                    const isOpen = createBox && createBox.classList.contains('is-open');
+                    setCreateOpen(!isOpen);
+                });
+                if (createClose) {
+                    createClose.addEventListener('click', function() {
+                        setCreateOpen(false);
+                    });
+                }
+                document.addEventListener('click', function(event) {
+                    if (!createBox || !createBox.classList.contains('is-open')) {
+                        return;
+                    }
+                    if (!createBox.contains(event.target)) {
+                        setCreateOpen(false);
+                    }
+                });
+            }
+
+            if (!projectSelect || !memberSelect) {
+                return;
+            }
+
+            function renderMembers(members) {
+                const selectedMemberId = String(projectSelect.dataset.selectedMemberId || '');
+                memberSelect.innerHTML = '';
+                const placeholder = document.createElement('option');
+                placeholder.value = '';
+                placeholder.textContent = 'Selecione';
+                memberSelect.appendChild(placeholder);
+
+                members.forEach((member) => {
+                    const option = document.createElement('option');
+                    option.value = String(member.id);
+                    option.textContent = member.name;
+                    if (selectedMemberId && selectedMemberId === String(member.id)) {
+                        option.selected = true;
+                    }
+                    memberSelect.appendChild(option);
+                });
+            }
+
+            function loadMembers(projectId) {
+                if (!projectId) {
+                    renderMembers([]);
+                    return;
+                }
+
+                fetch(`/api/project/${projectId}/members`)
+                    .then((response) => {
+                        if (!response.ok) {
+                            throw new Error('Falha ao carregar membros do projeto.');
+                        }
+                        return response.json();
+                    })
+                    .then((payload) => {
+                        renderMembers(payload.members || []);
+                    })
+                    .catch(() => {
+                        renderMembers([]);
+                    });
+            }
+
+            projectSelect.addEventListener('change', function() {
+                projectSelect.dataset.selectedMemberId = '';
+                loadMembers(this.value);
+            });
+        });
+    </script>
+{% endblock %}

@@ -14,8 +14,7 @@ Deploy: **Render**
 
 ```bash
 npm install
-cp .env.example .env
-# preencher DATABASE_URL e SECRET_KEY
+# preencher .env (DATABASE_URL e SECRET_KEY)
 npm run create-user
 npm start
 ```
@@ -26,13 +25,12 @@ Acesso local: `http://127.0.0.1:3000`
 
 - `DATABASE_URL`
 - `SECRET_KEY`
+- `SESSION_MAX_AGE_HOURS=1`
 - `APP_TIMEZONE=America/Sao_Paulo`
 - `CLOUDINARY_CLOUD_NAME`
 - `CLOUDINARY_API_KEY`
 - `CLOUDINARY_API_SECRET`
 - `CLOUDINARY_FOLDER`
-
-Referência completa: `.env.example`
 
 ## Deploy (resumo)
 

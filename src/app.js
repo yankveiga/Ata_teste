@@ -332,7 +332,7 @@ app.use(
       httpOnly: true,
       sameSite: "lax",
       secure: config.nodeEnv === "production",
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      maxAge: config.sessionIdleMaxAgeMs,
     }),
   );
 
@@ -344,6 +344,12 @@ app.use(
   app.use((req, res, next) => {
     ensureCsrfToken(req);
     req.flash = (category, message) => addFlash(req, category, message);
+    const sessionExpiresAt = Number(req.session?.authExpiresAt || 0);
+    if (req.session?.userId && (!sessionExpiresAt || Date.now() >= sessionExpiresAt)) {
+      req.session.userId = null;
+      req.session.authExpiresAt = null;
+      req.flash("info", "Sua sessão expirou. Faça login novamente.");
+    }
     req.currentUser = req.session?.userId
       ? database.getUserById(req.session.userId)
       : null;

@@ -71,6 +71,20 @@
   color: #6d28d9;
 }
 
+html.theme-dark .role-chip-admin,
+body.theme-dark .role-chip-admin {
+  background: rgba(42, 78, 156, 0.58);
+  color: #dbe8ff;
+  border: 1px solid rgba(120, 151, 224, 0.45);
+}
+
+html.theme-dark .role-chip-common,
+body.theme-dark .role-chip-common {
+  background: rgba(66, 45, 126, 0.6);
+  color: #e5dcff;
+  border: 1px solid rgba(146, 122, 220, 0.44);
+}
+
 .guest-content {
   max-width: 1120px;
   margin: 0 auto;
@@ -208,6 +222,114 @@ summary:focus-visible {
   box-shadow: 0 28px 48px rgba(91, 33, 182, 0.2);
 }
 
+/* SECAO: modo escuro global (aplicado em toda a aplicacao autenticada). */
+
+html.theme-dark .flash-success,
+body.theme-dark .flash-success {
+  background: rgba(22, 101, 52, 0.32);
+  color: #baf7cd;
+  border-color: rgba(34, 197, 94, 0.35);
+}
+
+html.theme-dark .flash-danger,
+body.theme-dark .flash-danger {
+  background: rgba(127, 29, 29, 0.4);
+  color: #fecaca;
+  border-color: rgba(248, 113, 113, 0.36);
+}
+
+html.theme-dark .flash-info,
+body.theme-dark .flash-info {
+  background: rgba(30, 64, 175, 0.34);
+  color: #dbeafe;
+  border-color: rgba(96, 165, 250, 0.34);
+}
+
+html.theme-dark .flash-warning,
+body.theme-dark .flash-warning {
+  background: rgba(120, 53, 15, 0.4);
+  color: #fde68a;
+  border-color: rgba(245, 158, 11, 0.38);
+}
+
+html.theme-dark .page-header h1,
+body.theme-dark .page-header h1,
+html.theme-dark .panel-header h2,
+body.theme-dark .panel-header h2,
+html.theme-dark .form-label,
+body.theme-dark .form-label {
+  color: #e8eeff;
+}
+
+html.theme-dark .page-header .lead,
+body.theme-dark .page-header .lead,
+html.theme-dark .panel-header p,
+body.theme-dark .panel-header p,
+html.theme-dark .form-hint,
+body.theme-dark .form-hint,
+html.theme-dark .member-list-cell,
+body.theme-dark .member-list-cell {
+  color: #a8b6d9;
+}
+
+html.theme-dark .content-panel,
+body.theme-dark .content-panel,
+html.theme-dark .module-tab-link,
+body.theme-dark .module-tab-link,
+html.theme-dark .page-badge,
+body.theme-dark .page-badge,
+html.theme-dark .btn-cancel,
+body.theme-dark .btn-cancel,
+html.theme-dark .ui-empty-state,
+body.theme-dark .ui-empty-state,
+html.theme-dark .ui-loading-state,
+body.theme-dark .ui-loading-state {
+  background: rgba(23, 34, 59, 0.84);
+  border-color: rgba(113, 131, 177, 0.32);
+  color: #dbe5ff;
+  box-shadow: 0 20px 36px rgba(2, 6, 23, 0.44);
+}
+
+html.theme-dark .module-tab-link,
+body.theme-dark .module-tab-link {
+  color: #c8d4f1;
+}
+
+html.theme-dark .styled-table th,
+html.theme-dark .styled-table td,
+body.theme-dark .styled-table th,
+body.theme-dark .styled-table td {
+  border-bottom-color: rgba(113, 131, 177, 0.3);
+  color: #d5e0fa;
+}
+
+html.theme-dark .styled-table thead th,
+body.theme-dark .styled-table thead th {
+  color: #9eb1d9;
+}
+
+html.theme-dark .styled-table tbody tr:hover,
+body.theme-dark .styled-table tbody tr:hover {
+  background: rgba(66, 93, 158, 0.22);
+}
+
+html.theme-dark .form-control,
+html.theme-dark .form-control-file,
+body.theme-dark .form-control,
+body.theme-dark .form-control-file {
+  background: rgba(14, 23, 43, 0.92);
+  border-color: rgba(113, 131, 177, 0.32);
+  color: #e6edff;
+}
+
+html.theme-dark .form-control:focus,
+html.theme-dark .form-control-file:focus,
+body.theme-dark .form-control:focus,
+body.theme-dark .form-control-file:focus {
+  border-color: rgba(124, 153, 241, 0.62);
+  box-shadow: 0 0 0 4px rgba(94, 129, 226, 0.2);
+}
+
 body.section-presenca .panel-header h2 {
   color: #6d28d9;
 }
@@ -329,6 +451,588 @@ body.section-reports .report-entries-panel .panel-header {
   background: linear-gradient(180deg, rgba(49, 112, 57, 0.12), rgba(49, 112, 57, 0.03));
 }
 
+/* SECAO: tema especifico do modulo Planner. */
+
+body.section-planner .page-header {
+  margin-bottom: 14px;
+}
+
+.planner-ui-shell {
+  display: grid;
+  gap: 16px;
+}
+
+.planner-ui-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 16px 18px;
+}
+
+.planner-ui-toolbar h1 {
+  margin: 0;
+  font-size: clamp(1.4rem, 2vw, 1.9rem);
+  color: #173046;
+}
+
+.planner-ui-toolbar p {
+  margin: 5px 0 0;
+  color: #5a677c;
+}
+
+.planner-ui-toolbar-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.planner-ui-pill {
+  text-decoration: none;
+  font-weight: 800;
+  padding: 0.55rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  color: #4e6078;
+  background: rgba(255, 255, 255, 0.75);
+}
+
+.planner-ui-pill.is-active {
+  color: #f8fbff;
+  background: linear-gradient(135deg, #2d7886, #5099a6);
+  border-color: transparent;
+}
+
+
+.planner-ui-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(226, 232, 240, 0.85);
+  color: #3f556e;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+}
+
+.planner-ui-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.planner-ui-avatar ion-icon {
+  font-size: 0.95rem;
+}
+
+.planner-ui-top-actions {
+  padding: 10px 12px;
+  position: relative;
+  z-index: 40;
+  overflow: visible;
+}
+
+.planner-ui-top-actions-right {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.planner-mini-form {
+  min-width: 0;
+}
+
+.planner-mini-select {
+  min-width: 220px;
+  max-width: 320px;
+  min-height: 38px;
+  padding: 0.45rem 0.75rem;
+  border-radius: 12px;
+}
+
+.planner-mini-select-member {
+  min-width: 250px;
+}
+
+.planner-create-compact {
+  position: relative;
+  z-index: 45;
+}
+
+.planner-create-button {
+  list-style: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 0.35rem 0.72rem;
+  border-radius: 10px;
+  font-weight: 800;
+  font-size: 0.83rem;
+  color: #f8fbff;
+  background: linear-gradient(135deg, #2d7886, #5099a6);
+  border: 1px solid transparent;
+}
+
+.planner-create-button:hover {
+  filter: brightness(1.03);
+}
+
+.planner-create-popover {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  width: min(700px, 92vw);
+  z-index: 30;
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 14px;
+  box-shadow: 0 18px 34px rgba(15, 23, 42, 0.18);
+  padding: 12px;
+}
+
+.planner-create-popover[hidden] {
+  display: none;
+}
+
+.planner-calendar-wrapper {
+  padding: 14px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 12px;
+  background: linear-gradient(180deg, rgba(251, 252, 255, 0.96), rgba(245, 248, 252, 0.94));
+  position: relative;
+  z-index: 1;
+}
+
+.planner-calendar-project {
+  border-color: color-mix(in srgb, var(--planner-project-color, #3d8a97) 35%, #cbd5e1);
+}
+
+.planner-calendar-main {
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 16px;
+  background: rgba(248, 250, 255, 0.95);
+  padding: 12px;
+}
+
+.planner-calendar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.planner-calendar-title h2 {
+  margin: 0;
+  color: #1d334b;
+  font-size: 1.22rem;
+  text-transform: capitalize;
+}
+
+.planner-calendar-title p {
+  margin: 4px 0 0;
+  color: #63758d;
+  font-size: 0.84rem;
+}
+
+.planner-calendar-month-nav {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.planner-month-jump-form {
+  margin: 0;
+}
+
+.planner-month-input {
+  min-height: 34px;
+  min-width: 140px;
+  border-radius: 10px;
+  padding: 0.35rem 0.55rem;
+  font-size: 0.84rem;
+}
+
+.planner-calendar-today-btn {
+  min-height: 34px;
+  padding: 0.3rem 0.64rem;
+  border-radius: 10px;
+  text-decoration: none;
+  border: 1px solid rgba(45, 120, 134, 0.3);
+  color: #1f5069;
+  background: rgba(237, 250, 253, 0.92);
+  font-weight: 700;
+  font-size: 0.8rem;
+  display: inline-flex;
+  align-items: center;
+}
+
+.planner-calendar-nav-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  color: #4e6078;
+  background: #fff;
+  font-size: 1.2rem;
+}
+
+.planner-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.planner-calendar-weekday {
+  font-size: 0.74rem;
+  color: #6a7b91;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0 2px 3px;
+}
+
+.planner-calendar-cell {
+  text-decoration: none;
+  color: inherit;
+  min-height: 96px;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(255, 255, 255, 0.94);
+  padding: 8px;
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
+}
+
+.planner-calendar-cell:hover {
+  transform: translateY(-1px);
+  border-color: rgba(45, 120, 134, 0.36);
+  box-shadow: 0 12px 22px rgba(36, 62, 96, 0.12);
+}
+
+.planner-calendar-cell strong {
+  color: #21364f;
+  font-size: 0.95rem;
+}
+
+.planner-calendar-cell ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.planner-calendar-cell li {
+  font-size: 0.72rem;
+  color: #4f627a;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.planner-calendar-mini-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.planner-calendar-cell small {
+  font-size: 0.7rem;
+  color: #60758b;
+}
+
+.planner-calendar-cell.is-outside {
+  opacity: 0.5;
+}
+
+.planner-calendar-cell.is-selected {
+  border-color: rgba(45, 120, 134, 0.5);
+  box-shadow: inset 0 0 0 1px rgba(45, 120, 134, 0.2);
+}
+
+.planner-calendar-cell.is-today {
+  background: linear-gradient(180deg, rgba(232, 245, 255, 0.96), rgba(255, 255, 255, 0.96));
+}
+
+.planner-calendar-empty {
+  color: #a2afbf;
+  font-size: 0.7rem;
+}
+
+.planner-calendar-side {
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 16px;
+  background: rgba(243, 247, 253, 0.95);
+  padding: 12px;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 8px;
+  max-height: 710px;
+  position: sticky;
+  top: 86px;
+}
+
+.planner-calendar-side-head h3 {
+  margin: 0;
+  color: #20344b;
+}
+
+.planner-calendar-side-head p {
+  margin: 3px 0 0;
+  color: #63758d;
+  font-size: 0.84rem;
+}
+
+.planner-calendar-side-body {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.planner-side-task {
+  border-left: 4px solid var(--task-color, #5a91a6);
+  border-radius: 10px;
+  padding: 8px 9px;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.planner-side-task strong {
+  display: block;
+  color: #1f364f;
+}
+
+.planner-side-task small {
+  display: block;
+  color: #60758b;
+  font-size: 0.76rem;
+}
+
+.planner-side-task-member {
+  margin-top: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #31445a;
+}
+
+.planner-side-task-actions {
+  margin-top: 8px;
+}
+
+.planner-side-task-delete {
+  border: 1px solid rgba(220, 38, 38, 0.3);
+  border-radius: 999px;
+  background: rgba(254, 226, 226, 0.95);
+  color: #b91c1c;
+  padding: 0.34rem 0.75rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.planner-side-task-delete:hover {
+  filter: brightness(0.98);
+}
+
+/* SECAO: modo escuro do Planner (visual inspirado em suites modernas de planejamento). */
+
+body.theme-dark.section-planner .content-panel {
+  background: linear-gradient(180deg, rgba(16, 20, 37, 0.94), rgba(13, 16, 31, 0.94));
+  border-color: rgba(108, 123, 168, 0.28);
+  box-shadow: 0 20px 40px rgba(2, 6, 23, 0.55);
+}
+
+body.theme-dark.section-planner .planner-ui-toolbar h1 {
+  color: #eef2ff;
+}
+
+body.theme-dark.section-planner .planner-ui-toolbar p {
+  color: #aeb9d7;
+}
+
+body.theme-dark.section-planner .planner-ui-pill {
+  background: rgba(36, 43, 72, 0.86);
+  color: #cad5f4;
+  border-color: rgba(131, 146, 188, 0.35);
+}
+
+body.theme-dark.section-planner .planner-ui-pill.is-active {
+  background: linear-gradient(135deg, #4c68b6, #6f8ee8);
+  color: #f5f8ff;
+}
+
+body.theme-dark.section-planner .planner-mini-select,
+body.theme-dark.section-planner .planner-month-input,
+body.theme-dark.section-planner .planner-create-popover .form-control,
+body.theme-dark.section-planner .planner-create-popover textarea {
+  background: rgba(22, 28, 50, 0.94);
+  color: #e8eeff;
+  border-color: rgba(114, 128, 168, 0.42);
+}
+
+body.theme-dark.section-planner .planner-create-popover {
+  background: linear-gradient(180deg, rgba(16, 21, 39, 0.98), rgba(12, 15, 31, 0.98));
+  border-color: rgba(114, 128, 168, 0.38);
+}
+
+body.theme-dark.section-planner .planner-calendar-wrapper {
+  background: linear-gradient(135deg, rgba(11, 15, 31, 0.96), rgba(18, 27, 50, 0.94));
+}
+
+body.theme-dark.section-planner .planner-calendar-main {
+  background: rgba(19, 26, 46, 0.94);
+  border-color: rgba(108, 123, 168, 0.32);
+}
+
+body.theme-dark.section-planner .planner-calendar-title h2 {
+  color: #eff4ff;
+}
+
+body.theme-dark.section-planner .planner-calendar-title p {
+  color: #aeb9d7;
+}
+
+body.theme-dark.section-planner .planner-calendar-weekday {
+  color: #a4b0d3;
+}
+
+body.theme-dark.section-planner .planner-calendar-cell {
+  background: rgba(34, 41, 66, 0.88);
+  border-color: rgba(113, 128, 169, 0.34);
+}
+
+body.theme-dark.section-planner .planner-calendar-cell strong {
+  color: #ecf1ff;
+}
+
+body.theme-dark.section-planner .planner-calendar-cell li,
+body.theme-dark.section-planner .planner-calendar-cell small {
+  color: #b8c3e1;
+}
+
+body.theme-dark.section-planner .planner-calendar-cell:hover {
+  border-color: rgba(132, 152, 214, 0.58);
+  box-shadow: 0 14px 24px rgba(8, 11, 24, 0.48);
+}
+
+body.theme-dark.section-planner .planner-calendar-cell.is-selected {
+  border-color: rgba(124, 153, 241, 0.78);
+  box-shadow: inset 0 0 0 1px rgba(124, 153, 241, 0.38);
+}
+
+body.theme-dark.section-planner .planner-calendar-cell.is-today {
+  background: linear-gradient(180deg, rgba(47, 60, 96, 0.94), rgba(35, 44, 72, 0.92));
+}
+
+body.theme-dark.section-planner .planner-calendar-nav-btn,
+body.theme-dark.section-planner .planner-calendar-today-btn {
+  background: rgba(36, 43, 72, 0.9);
+  color: #d2dcf7;
+  border-color: rgba(130, 146, 190, 0.42);
+}
+
+body.theme-dark.section-planner .planner-calendar-side {
+  background: rgba(17, 23, 43, 0.94);
+  border-color: rgba(108, 123, 168, 0.34);
+}
+
+body.theme-dark.section-planner .planner-calendar-side-head h3 {
+  color: #ecf1ff;
+}
+
+body.theme-dark.section-planner .planner-calendar-side-head p {
+  color: #aeb9d7;
+}
+
+body.theme-dark.section-planner .planner-side-task {
+  background: rgba(29, 36, 58, 0.92);
+  border-color: rgba(113, 128, 169, 0.32);
+}
+
+body.theme-dark.section-planner .planner-side-task strong {
+  color: #f1f5ff;
+}
+
+body.theme-dark.section-planner .planner-side-task small,
+body.theme-dark.section-planner .planner-side-task-member {
+  color: #b6c2df;
+}
+
+body.theme-dark.section-planner .planner-side-task-delete {
+  background: rgba(115, 39, 39, 0.86);
+  border-color: rgba(229, 118, 118, 0.45);
+  color: #ffd8d8;
+}
+
+@media (max-width: 1200px) {
+  .planner-calendar-wrapper {
+    grid-template-columns: 1fr;
+  }
+
+  .planner-create-popover {
+    position: fixed;
+    top: 80px;
+    right: 14px;
+    left: 14px;
+    width: auto;
+  }
+}
+
+@media (max-width: 980px) {
+  .planner-ui-toolbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .planner-ui-top-actions-right {
+    justify-content: flex-start;
+  }
+
+  .planner-mini-select,
+  .planner-mini-select-member {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .planner-mini-form {
+    width: 100%;
+  }
+
+  .planner-calendar-grid {
+    gap: 6px;
+  }
+
+  .planner-calendar-side {
+    position: static;
+  }
+
+  .planner-calendar-cell {
+    min-height: 82px;
+    padding: 6px;
+  }
+}
+
 /* SECAO: componentes do modulo Presenca (botao e caixa de retorno). */
 
 .presence-submit {
@@ -380,6 +1084,42 @@ body.section-almox .form-control {
 body.section-almox .form-control:focus {
   border-color: rgba(202, 138, 4, 0.8);
   box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.22);
+}
+
+body.theme-dark.section-reports .content-panel {
+  background: linear-gradient(180deg, rgba(20, 32, 24, 0.82), rgba(15, 24, 18, 0.86));
+  border-color: rgba(64, 115, 75, 0.42);
+  box-shadow: 0 22px 42px rgba(4, 12, 8, 0.5);
+}
+
+body.theme-dark.section-reports .page-header h1,
+body.theme-dark.section-reports .panel-header h2 {
+  color: #d1f3d9;
+}
+
+body.theme-dark.section-reports .page-header .lead,
+body.theme-dark.section-reports .panel-header p {
+  color: #99c8a6;
+}
+
+body.theme-dark.section-presenca .content-panel.presence-panel {
+  background: linear-gradient(180deg, rgba(45, 24, 84, 0.86), rgba(23, 16, 41, 0.9));
+  border-color: rgba(139, 92, 246, 0.4);
+  box-shadow: 0 24px 42px rgba(10, 6, 20, 0.52);
+}
+
+body.theme-dark.section-presenca .panel-header h2 {
+  color: #d9c6ff;
+}
+
+body.theme-dark.section-presenca .panel-header p {
+  color: #b9a4e8;
+}
+
+body.theme-dark.section-almox .form-control {
+  background: rgba(52, 33, 11, 0.86);
+  border-color: rgba(180, 121, 39, 0.45);
+  color: #f6debc;
 }
 
 /* SECAO: estrutura padrao dos paineis (header/body) e acoes principais. */
@@ -1540,6 +2280,79 @@ body.section-almox .form-control:focus {
   border-color: rgba(249, 115, 22, 0.28);
 }
 
+/* SECAO: refinamento dark mode do modulo Relatorios (cards e caixas internas). */
+
+body.theme-dark.section-reports .report-member-photo-card,
+body.theme-dark.section-reports .report-member-project-chip,
+body.theme-dark.section-reports .report-goal-item,
+body.theme-dark.section-reports .report-entry-item,
+body.theme-dark.section-reports .report-member-list li a,
+body.theme-dark.section-reports .report-deletion-log-list li,
+body.theme-dark.section-reports .checkbox-list li,
+body.theme-dark.section-reports .checkbox-list-placeholder,
+body.theme-dark.section-reports .project-logo-preview,
+body.theme-dark.section-reports .member-photo-field,
+body.theme-dark.section-reports .member-select-panel,
+body.theme-dark.section-reports .checkbox-list-container {
+  background: rgba(20, 31, 24, 0.86);
+  border-color: rgba(75, 131, 88, 0.36);
+  color: #d7f0dd;
+  box-shadow: 0 12px 24px rgba(2, 9, 5, 0.42);
+}
+
+body.theme-dark.section-reports .report-member-photo-card.is-active {
+  background: rgba(40, 88, 50, 0.36);
+  border-color: rgba(96, 176, 112, 0.52);
+}
+
+body.theme-dark.section-reports .report-member-photo-name,
+body.theme-dark.section-reports .report-entry-item p,
+body.theme-dark.section-reports .report-goal-description-col p,
+body.theme-dark.section-reports .report-member-projects strong,
+body.theme-dark.section-reports .report-kanban-empty,
+body.theme-dark.section-reports .report-goal-activity-col small,
+body.theme-dark.section-reports .report-deletion-log-list li small {
+  color: #b5d8bc;
+}
+
+body.theme-dark.section-reports .report-member-photo-avatar,
+body.theme-dark.section-reports .report-member-avatar,
+body.theme-dark.section-reports .member-photo-preview {
+  background: rgba(14, 22, 17, 0.9);
+  border-color: rgba(88, 138, 99, 0.42);
+  color: #c3e2ca;
+}
+
+body.theme-dark.section-reports .report-monthly-export-form,
+body.theme-dark.section-reports .report-kanban-column,
+body.theme-dark.section-reports .report-goal-create-activity,
+body.theme-dark.section-reports .report-goal-create-description,
+body.theme-dark.section-reports .report-goal-grid-header,
+body.theme-dark.section-reports .report-goal-completed-details > summary,
+body.theme-dark.section-reports .report-goal-create-details > summary {
+  background: rgba(23, 41, 28, 0.84);
+  border-color: rgba(78, 136, 91, 0.36);
+  color: #d1ebd7;
+}
+
+body.theme-dark.section-reports .report-kanban-overdue {
+  background: rgba(64, 26, 26, 0.82);
+  border-color: rgba(203, 85, 85, 0.44);
+}
+
+body.theme-dark.section-reports .report-goal-item.is-overdue {
+  background: rgba(87, 35, 35, 0.84);
+  border-color: rgba(214, 96, 96, 0.48);
+}
+
+body.theme-dark.section-reports .report-goal-project-tag,
+body.theme-dark.section-reports .report-goal-section-count,
+body.theme-dark.section-reports .report-scrum-chip {
+  background: rgba(42, 81, 50, 0.46);
+  border-color: rgba(96, 167, 111, 0.5);
+  color: #ccead3;
+}
+
 /* SECAO: home do Gestor de Atas (hero, resumo e lista recente). */
 
 .ata-hero {
@@ -1614,6 +2427,24 @@ body.section-almox .form-control:focus {
   margin-top: 8px;
   color: #718198;
   line-height: 1.6;
+}
+
+body.theme-dark.section-home .ata-summary-card {
+  background: rgba(18, 28, 48, 0.92);
+  border-color: rgba(112, 130, 176, 0.34);
+  box-shadow: 0 20px 36px rgba(2, 6, 23, 0.5);
+}
+
+body.theme-dark.section-home .ata-summary-label {
+  color: #b7c7ea;
+}
+
+body.theme-dark.section-home .ata-summary-card strong {
+  color: #9fc0ff;
+}
+
+body.theme-dark.section-home .ata-summary-card small {
+  color: #9fb2dc;
 }
 
 .recent-atas-list {

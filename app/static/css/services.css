@@ -19,7 +19,7 @@
 }
 
 /* SECAO: card-base reutilizado para cada modulo.
-   Mudar este bloco afeta todos os cards (atas, almoxarifado, presenca e relatorios). */
+   Mudar este bloco afeta todos os cards (atas, almoxarifado, planner, presenca e relatorios). */
 
 .service-card {
   position: relative;
@@ -57,6 +57,10 @@
   background: radial-gradient(circle, #a855f7, transparent 70%);
 }
 
+.service-card-planner::after {
+  background: radial-gradient(circle, #0f766e, transparent 70%);
+}
+
 .service-card-reports::after {
   background: radial-gradient(circle, #434C1A, transparent 70%);
 }
@@ -88,6 +92,10 @@
 
 .service-card-presenca .service-card-icon {
   background: linear-gradient(135deg, #5b21b6, #a855f7);
+}
+
+.service-card-planner .service-card-icon {
+  background: linear-gradient(135deg, #0f766e, #14b8a6);
 }
 
 .service-card-reports .service-card-icon {
@@ -161,6 +169,29 @@
   background: linear-gradient(135deg, #6d28d9, #a855f7);
 }
 
+.service-card-planner {
+  background: linear-gradient(
+    180deg,
+    rgba(226, 248, 246, 0.94),
+    rgba(207, 241, 237, 0.84)
+  );
+  border-color: rgba(15, 118, 110, 0.3);
+  box-shadow: 0 28px 40px rgba(15, 118, 110, 0.16);
+}
+
+.service-card-planner h2 {
+  color: #0b4f4a;
+}
+
+.service-card-planner p,
+.service-card-planner .service-feature-list {
+  color: #225f5a;
+}
+
+.service-card-planner .service-card-link {
+  background: linear-gradient(135deg, #0f766e, #0ea5a0);
+}
+
 /* SECAO: variacao tematica do card Relatorios. */
 
 .service-card-reports {
@@ -193,4 +224,63 @@
   .service-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* SECAO: modo escuro da Central de Servicos (cards e textos). */
+
+body.theme-dark.section-services .service-card {
+  background: linear-gradient(180deg, rgba(19, 27, 46, 0.94), rgba(14, 21, 38, 0.94));
+  border-color: rgba(108, 126, 171, 0.34);
+  box-shadow: 0 24px 42px rgba(2, 6, 23, 0.52);
+}
+
+body.theme-dark.section-services .service-card h2 {
+  color: #ecf2ff;
+}
+
+body.theme-dark.section-services .service-card p,
+body.theme-dark.section-services .service-feature-list {
+  color: #b4c4e8;
+}
+
+body.theme-dark.section-services .service-card-almox {
+  background: linear-gradient(180deg, rgba(36, 27, 16, 0.94), rgba(23, 18, 12, 0.94));
+  border-color: rgba(255, 172, 76, 0.36);
+}
+
+body.theme-dark.section-services .service-card-almox h2 {
+  color: #ffe4bf;
+}
+
+body.theme-dark.section-services .service-card-almox p,
+body.theme-dark.section-services .service-card-almox .service-feature-list {
+  color: #e8c89f;
+}
+
+body.theme-dark.section-services .service-card-planner {
+  background: linear-gradient(180deg, rgba(17, 38, 38, 0.94), rgba(12, 27, 28, 0.94));
+  border-color: rgba(58, 162, 150, 0.35);
+}
+
+body.theme-dark.section-services .service-card-planner h2 {
+  color: #c6f2ec;
+}
+
+body.theme-dark.section-services .service-card-planner p,
+body.theme-dark.section-services .service-card-planner .service-feature-list {
+  color: #a8ddd7;
+}
+
+body.theme-dark.section-services .service-card-reports {
+  background: linear-gradient(180deg, rgba(20, 38, 24, 0.94), rgba(12, 25, 16, 0.94));
+  border-color: rgba(92, 160, 102, 0.34);
+}
+
+body.theme-dark.section-services .service-card-reports h2 {
+  color: #d2efd8;
+}
+
+body.theme-dark.section-services .service-card-reports p,
+body.theme-dark.section-services .service-card-reports .service-feature-list {
+  color: #afd7b7;
 }

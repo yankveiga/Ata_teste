@@ -73,6 +73,11 @@ const config = {
   sessionSecret:
     process.env.SECRET_KEY ||
     "uma-chave-secreta-muito-dificil-de-adivinhar",
+  sessionMaxAgeHours: Math.max(
+    1,
+    Number.parseInt(process.env.SESSION_MAX_AGE_HOURS || "1", 10) || 1,
+  ),
+  sessionIdleMaxAgeMs: 0,
   presenceWorkbookPath: resolveFromBase(
     process.env.PRESENCE_WORKBOOK_PATH,
     defaultWorkbookPath,
@@ -93,6 +98,8 @@ const config = {
   viewsDir: path.join(baseDir, "app", "templates"),
   uploadDir: path.join(baseDir, "app", "static", "uploads"),
 };
+
+config.sessionIdleMaxAgeMs = config.sessionMaxAgeHours * 60 * 60 * 1000;
 
 // SECAO: exportacao da configuracao consumida por app, banco e scripts.
 

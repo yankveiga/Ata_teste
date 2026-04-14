@@ -504,6 +504,117 @@
   font-size: 0.92rem;
 }
 
+/* SECAO: modo escuro do modulo Almoxarifado (refino de contraste e superfícies). */
+
+body.theme-dark.section-almox .almox-page {
+  --almox-accent: #ffb347;
+  --almox-accent-dark: #ff9700;
+  --almox-accent-strong: #ffb24d;
+  --almox-accent-soft: rgba(255, 163, 46, 0.2);
+  --almox-accent-border: rgba(255, 166, 60, 0.36);
+  --almox-surface: rgba(16, 24, 40, 0.94);
+  --almox-surface-alt: rgba(10, 16, 30, 0.96);
+  --almox-text: #e7edff;
+  --almox-muted: #b4c3e6;
+  --almox-line: rgba(115, 132, 177, 0.32);
+}
+
+body.theme-dark.section-almox .almox-header {
+  background:
+    radial-gradient(circle at top right, rgba(255, 196, 113, 0.22), transparent 38%),
+    linear-gradient(135deg, #1d243f 0%, #2a3456 44%, #915805 100%);
+  color: #f4f8ff;
+  box-shadow: 0 24px 42px rgba(2, 8, 23, 0.52);
+}
+
+body.theme-dark.section-almox .almox-eyebrow,
+body.theme-dark.section-almox .almox-lead {
+  color: #d6def3;
+}
+
+body.theme-dark.section-almox .almox-secondary-link {
+  background: rgba(18, 26, 44, 0.84);
+  color: #f4c579;
+  border-color: rgba(255, 175, 68, 0.36);
+}
+
+body.theme-dark.section-almox .almox-tab-link {
+  background: rgba(17, 25, 42, 0.92);
+  border-color: rgba(105, 123, 167, 0.34);
+  color: #c7d5f6;
+}
+
+body.theme-dark.section-almox .almox-tab-link.is-active {
+  background: linear-gradient(135deg, #9c6305, #d48608);
+  color: #fff7e8;
+}
+
+body.theme-dark.section-almox .almox-stat-card,
+body.theme-dark.section-almox .almox-panel {
+  background: rgba(14, 22, 38, 0.95);
+  border-color: rgba(102, 121, 168, 0.34);
+  box-shadow: 0 16px 30px rgba(2, 8, 20, 0.5);
+}
+
+body.theme-dark.section-almox .almox-stat-label,
+body.theme-dark.section-almox .almox-panel-header h2,
+body.theme-dark.section-almox .simple-list strong,
+body.theme-dark.section-almox .summary-list strong {
+  color: #e7edff;
+}
+
+body.theme-dark.section-almox .almox-stat-card small,
+body.theme-dark.section-almox .almox-panel-header p,
+body.theme-dark.section-almox .simple-list span,
+body.theme-dark.section-almox .summary-list span,
+body.theme-dark.section-almox .empty-state,
+body.theme-dark.section-almox .muted-note {
+  color: #b7c6e8;
+}
+
+body.theme-dark.section-almox .almox-table thead th {
+  color: #9fb3df;
+}
+
+body.theme-dark.section-almox .almox-note-panel {
+  background:
+    linear-gradient(180deg, rgba(24, 34, 56, 0.96), rgba(14, 22, 38, 0.96)),
+    rgba(14, 22, 38, 0.96);
+  border-color: rgba(112, 130, 176, 0.38);
+}
+
+body.theme-dark.section-almox .secondary-button,
+body.theme-dark.section-almox .readonly-box,
+body.theme-dark.section-almox .inline-message,
+body.theme-dark.section-almox .almox-note-box,
+body.theme-dark.section-almox .muted-note,
+body.theme-dark.section-almox .almox-user-actions {
+  background: rgba(18, 26, 44, 0.88);
+  border-color: rgba(255, 166, 60, 0.32);
+  color: #d6e2ff;
+}
+
+body.theme-dark.section-almox .inline-message-error,
+body.theme-dark.section-almox .ghost-danger-button,
+body.theme-dark.section-almox .stock-badge-empty,
+body.theme-dark.section-almox .loan-status-overdue {
+  background: rgba(115, 39, 39, 0.84);
+  color: #ffd8d8;
+  border-color: rgba(229, 118, 118, 0.45);
+}
+
+body.theme-dark.section-almox .item-type-stock {
+  background: rgba(52, 63, 121, 0.58);
+  color: #d7e0ff;
+}
+
+body.theme-dark.section-almox .item-type-patrimony,
+body.theme-dark.section-almox .loan-status-active,
+body.theme-dark.section-almox .stock-badge-available {
+  background: rgba(117, 74, 10, 0.72);
+  color: #ffe1b2;
+}
+
 /* SECAO: responsividade geral do modulo.
    Ajusta grade de cards, colunas e alinhamentos para telas menores. */
 

@@ -22,6 +22,16 @@
     <link rel="stylesheet" href="{{ urlFor('static', { filename: 'css/admin_dashboard_style.css' }) }}">
     <link rel="stylesheet" href="{{ urlFor('static', { filename: 'css/custom_styles.css' }) }}">
     <link rel="icon" type="image/png" href="{{ urlFor('static', { filename: 'uploads/icone.png' }) }}">
+    <script>
+        (function() {
+            try {
+                var mode = localStorage.getItem('portal_theme_mode');
+                if (mode === 'dark') {
+                    document.documentElement.classList.add('theme-dark');
+                }
+            } catch (error) {}
+        })();
+    </script>
 
     {% block styles %}{% endblock %}
 
@@ -72,6 +82,13 @@
                     </a>
                 </li>
 
+                <li class="{{ 'hovered' if activeSection == 'planner' else '' }}">
+                    <a href="{{ urlFor('planner') }}">
+                        <span class="icon"><ion-icon name="calendar-outline"></ion-icon></span>
+                        <span class="title">Planner</span>
+                    </a>
+                </li>
+
                 <li class="{{ 'hovered' if activeSection == 'presenca' else '' }}">
                     <a href="{{ urlFor('presenca') }}">
                         <span class="icon"><ion-icon name="barcode-outline"></ion-icon></span>
@@ -91,6 +108,19 @@
                         <span class="icon"><ion-icon name="log-out-outline"></ion-icon></span>
                         <span class="title">Sair</span>
                     </a>
+                </li>
+
+                <li class="nav-theme-item">
+                    <button
+                        type="button"
+                        class="nav-theme-button"
+                        id="global_theme_toggle"
+                        aria-pressed="false"
+                        aria-label="Alternar tema"
+                        title="Alternar tema"
+                    >
+                        <span class="nav-theme-icon"><ion-icon name="moon-outline"></ion-icon></span>
+                    </button>
                 </li>
             </ul>
         </div>
@@ -127,6 +157,52 @@
     </div>
 
     <script src="{{ urlFor('static', { filename: 'js/admin_dashboard_script.js' }) }}"></script>
+    <script>
+        (function() {
+            var STORAGE_KEY = 'portal_theme_mode';
+            var toggleButton = document.getElementById('global_theme_toggle');
+
+            function applyTheme(mode, animate) {
+                var isDark = mode === 'dark';
+                document.documentElement.classList.toggle('theme-dark', isDark);
+                document.body.classList.toggle('theme-dark', isDark);
+
+                if (animate) {
+                    document.body.classList.add('theme-transition');
+                    window.setTimeout(function() {
+                        document.body.classList.remove('theme-transition');
+                    }, 380);
+                }
+
+                if (!toggleButton) {
+                    return;
+                }
+                toggleButton.setAttribute('aria-pressed', isDark ? 'true' : 'false');
+                toggleButton.setAttribute('aria-label', isDark ? 'Mudar para tema claro' : 'Mudar para tema escuro');
+                toggleButton.setAttribute('title', isDark ? 'Mudar para tema claro' : 'Mudar para tema escuro');
+                toggleButton.innerHTML = isDark
+                    ? '<span class="nav-theme-icon"><ion-icon name="sunny-outline"></ion-icon></span>'
+                    : '<span class="nav-theme-icon"><ion-icon name="moon-outline"></ion-icon></span>';
+            }
+
+            var saved = null;
+            try {
+                saved = localStorage.getItem(STORAGE_KEY);
+            } catch (error) {}
+
+            applyTheme(saved === 'dark' ? 'dark' : 'light', false);
+
+            if (toggleButton) {
+                toggleButton.addEventListener('click', function() {
+                    var nextMode = document.body.classList.contains('theme-dark') ? 'light' : 'dark';
+                    try {
+                        localStorage.setItem(STORAGE_KEY, nextMode);
+                    } catch (error) {}
+                    applyTheme(nextMode, true);
+                });
+            }
+        })();
+    </script>
     {% endif %}
 
     {# SECAO: scripts de infraestrutura e scripts especificos injetados por pagina. #}
