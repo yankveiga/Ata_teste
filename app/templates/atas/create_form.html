@@ -97,9 +97,9 @@
                                 {% endfor %}
                             </ul>
                         {% elif selectedProject %}
-                            <p class="checkbox-list-placeholder">Este projeto não possui membros associados.</p>
+                            <p class="checkbox-list-placeholder ui-empty-state">Este projeto não possui membros associados.</p>
                         {% else %}
-                            <p class="checkbox-list-placeholder">Selecione um projeto para carregar os membros.</p>
+                            <p class="checkbox-list-placeholder ui-empty-state">Selecione um projeto para carregar os membros.</p>
                         {% endif %}
                     </div>
                     {% if errors.present_members %}
@@ -136,8 +136,17 @@
             const projectSelect = document.getElementById('project-select');
             const membersListDiv = document.getElementById('members-checkbox-list');
             const markAllCheckbox = document.getElementById('mark-all-present');
-            const placeholderText = '<p class="checkbox-list-placeholder">Selecione um projeto para carregar os membros.</p>';
-            const loadingText = '<p class="checkbox-list-placeholder">Carregando membros...</p>';
+            const placeholderText = '<p class="checkbox-list-placeholder ui-empty-state">Selecione um projeto para carregar os membros.</p>';
+            const loadingText = `
+                <div class="ui-loading-state ui-loading-skeleton" aria-live="polite">
+                    Carregando membros...
+                    <ul class="ui-skeleton-list" aria-hidden="true">
+                        <li class="ui-skeleton-item"></li>
+                        <li class="ui-skeleton-item"></li>
+                        <li class="ui-skeleton-item"></li>
+                    </ul>
+                </div>
+            `;
 
             // SECAO: sincroniza checkbox de presenca com campo de justificativa de ausencia.
 
@@ -192,7 +201,7 @@
                 membersListDiv.innerHTML = '';
 
                 if (!members.length) {
-                    membersListDiv.innerHTML = '<p class="checkbox-list-placeholder">Este projeto não possui membros associados.</p>';
+                    membersListDiv.innerHTML = '<p class="checkbox-list-placeholder ui-empty-state">Este projeto não possui membros associados.</p>';
                     return;
                 }
 
@@ -255,6 +264,7 @@
                 }
 
                 membersListDiv.innerHTML = loadingText;
+                membersListDiv.setAttribute('aria-busy', 'true');
 
                 fetch(`/api/project/${projectId}/members`)
                     .then((response) => {
@@ -268,6 +278,9 @@
                         console.error('Erro ao buscar membros:', error);
                         membersListDiv.innerHTML = `<p class="form-error">Erro ao carregar membros. (${error.message}).</p>`;
                         updateMarkAllState();
+                    })
+                    .finally(() => {
+                        membersListDiv.removeAttribute('aria-busy');
                     });
             });
         });

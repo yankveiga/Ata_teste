@@ -1,96 +1,64 @@
-MAPA RÁPIDO DO PROJETO (onde editar cada coisa)
-===============================================
+MAPA RÁPIDO DO PROJETO (onde alterar cada coisa)
+=================================================
 
-AMBIENTE E DEPLOY (Render + Neon + Cloudinary)
-==============================================
+REGRA: quer alterar X -> abra os arquivos da linha correspondente.
 
-- Variáveis de ambiente centralizadas: src/config.js
-- Exemplo de variáveis: .env.example
-- Guia de deploy e ambiente: README.md
-- Arquivo de deploy Render: render.yaml
+1) RELATÓRIOS
+- Tela: app/templates/reports/index.html
+- Estilo: app/static/css/custom_styles.css
+- Regras/permissões: src/routes/reports.js
+- Serviço: src/services/reportService.js
+- Validação: src/validators/reportValidators.js
+- Persistência/ordenação: src/database.js
 
-Banco de dados Neon
-- Conexão por URL: variável DATABASE_URL
-- Schema e consultas do banco: src/database.js
-- Inicialização do schema no boot: server.js -> database.ensureSchema()
+2) ATAS
+- Home/lista: app/templates/home.html
+- Formulário: app/templates/atas/create_form.html
+- Rotas: src/routes/atas.js
+- PDF: src/pdf.js
+- Persistência: src/database.js
 
-Imagens (fotos de membros e logos de projetos)
-- Integração com Cloudinary: src/media.js
-- Regras de upload/remoção e fallback local: src/app.js
-- Exibição de imagem (URL remota ou /static/uploads): global mediaUrl em src/app.js
+3) MEMBROS
+- Lista: app/templates/members/list.html
+- Formulário: app/templates/members/form.html
+- Rotas: src/routes/members.js
+- Persistência: src/database.js
 
-Onde a imagem aparece na interface:
-- Membros (form): app/templates/members/form.html
-- Relatórios (foto de membros): app/templates/reports/index.html
-- Projetos (form): app/templates/projects/form.html
-- Projetos (lista): app/templates/projects/list.html
+4) PROJETOS
+- Lista: app/templates/projects/list.html
+- Formulário: app/templates/projects/form.html
+- Rotas: src/routes/projects.js
+- Persistência: src/database.js
 
-1) RELATÓRIOS (TELA)
-- Conteúdo/layout principal: app/templates/reports/index.html
-- Estilos visuais da tela de relatórios: app/static/css/custom_styles.css
-- Rotas e regras de relatórios/metas: src/routes/reports.js
-- Regras de serviço (PDF mensal/permissão): src/services/reportService.js
-- Validações de metas: src/validators/reportValidators.js
-- Persistência e consultas de metas/relatórios: src/database.js
+5) ALMOXARIFADO
+- Tela principal: app/templates/almoxarifado/index.html
+- Estilo: app/static/css/almoxarifado.css
+- Rotas/API: src/routes/almox.js
+- Serviço: src/services/inventoryService.js
+- Validação: src/validators/inventoryValidators.js
+- Persistência: src/database.js
 
-2) BASE / NAVEGAÇÃO GERAL
-- Estrutura base da página (menu lateral, includes, scripts): app/templates/base.html
-- Navegação por abas do módulo Atas: app/templates/partials/atas_tabs.html
+6) PRESENÇA
+- Tela: app/templates/presenca/index.html
+- Rotas: src/routes/auth.js
+- Planilha: PRESENCE_WORKBOOK_PATH (env)
 
-3) MÓDULO MEMBROS
-- Lista de membros: app/templates/members/list.html
-- Formulário de membro: app/templates/members/form.html
-- Rotas e validações de membro: src/routes/members.js
-- Tabela/CRUD de membro: src/database.js
+7) LAYOUT GLOBAL
+- Base HTML/menu: app/templates/base.html
+- Estilo shell: app/static/css/admin_dashboard_style.css
+- Componentes compartilhados/A11y: app/static/css/custom_styles.css
 
-4) MÓDULO PROJETOS
-- Lista de projetos: app/templates/projects/list.html
-- Formulário de projetos: app/templates/projects/form.html
-- Rotas e validações de projetos: src/routes/projects.js
-- Tabela/CRUD de projetos e vínculo projeto-membro: src/database.js
+8) AUTH / SESSÃO / CSRF
+- Composição e middlewares: src/app.js
+- Login/logout: src/routes/auth.js
+- Helpers utilitários: src/utils.js
 
-5) MÓDULO ATAS
-- Home do módulo Atas: app/templates/home.html
-- Criar ata: app/templates/atas/create_form.html
-- Geração de PDF: src/pdf.js
-- Rotas de atas: src/routes/atas.js
-- Persistência de atas/presença/justificativas: src/database.js
+9) UPLOADS (fotos/logos)
+- Integração Cloudinary: src/media.js
+- Fluxo de upload nas rotas: src/app.js + src/routes/*
+- Exibição das mídias: templates com mediaUrl(...)
 
-6) AUTENTICAÇÃO E UTILITÁRIOS
-- Login (template): app/templates/login.html
-- Login/logout e presença: src/routes/auth.js
-- Composição de app, middlewares e injeção de contexto: src/app.js
-- Funções utilitárias (csrf, formatos, uploads, rotas nomeadas): src/utils.js
-- Configurações gerais (paths, porta, banco): src/config.js
-- HTTP padrão (requestId + erro JSON): src/http.js
-
-7) CSS (VISUAL)
-- CSS principal do portal (customizações e módulos): app/static/css/custom_styles.css
-- Estrutura base do dashboard: app/static/css/admin_dashboard_style.css
-- Página de serviços: app/static/css/services.css
-- Login: app/static/css/login.css
-- Almoxarifado: app/static/css/almoxarifado.css
-
-8) ARQUIVOS-CHAVE PARA AJUSTES RÁPIDOS
-- "Quero mudar a cor/estilo do relatório": app/static/css/custom_styles.css
-- "Quero mudar o HTML do relatório": app/templates/reports/index.html
-- "Quero mudar regra de permissão no relatório": src/routes/reports.js e src/services/reportService.js
-- "Quero mudar lógica de atraso/prioridade": src/database.js
-
-9) DICA DE FLUXO
-- Mudanças de interface: template + CSS
-- Mudanças de regra de negócio: src/routes/*.js + src/services/*.js + database.js
-- Mudanças de persistência/ordenação: database.js
-
-11) ESTRUTURA MODULAR DE ROTAS (ATUAL)
-- Auth/Serviços/Presença: src/routes/auth.js
-- Relatórios: src/routes/reports.js
-- Membros: src/routes/members.js
-- Projetos: src/routes/projects.js
-- Atas: src/routes/atas.js
-- Almoxarifado + API interna: src/routes/almox.js
-
-10) CHECKLIST RÁPIDO (PRODUÇÃO)
-- Subiu no Render e deu erro de banco: revisar DATABASE_URL (Neon) em Render > Environment.
-- Fotos não aparecem: configurar CLOUDINARY_* e reenviar fotos/logos antigos.
-- Primeiro acesso admin: usar BOOTSTRAP_ADMIN=true apenas no primeiro boot; depois voltar para false.
+10) PRODUÇÃO
+- Variáveis e paths: src/config.js
+- Deploy Render: render.yaml
+- Operação: RUNBOOK_PRODUCAO.md

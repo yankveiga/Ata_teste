@@ -39,7 +39,7 @@
             <button type="submit" class="btn-primary-action presence-submit">Registrar Presença</button>
         </form>
 
-        <div id="resultado" class="presence-result" style="margin-top: 20px;"></div>
+        <div id="resultado" class="presence-result" role="status" aria-live="polite" aria-atomic="true" style="margin-top: 20px;"></div>
     </div>
 </section>
 
@@ -58,6 +58,9 @@ function renderResultado(message, kind) {
     resultado.className = 'presence-result';
     if (kind) {
         resultado.classList.add('presence-result-' + kind);
+    }
+    if (kind === 'info') {
+        resultado.classList.add('ui-loading-state', 'ui-loading-skeleton');
     }
     resultado.innerHTML = '<p>' + message + '</p>';
 }

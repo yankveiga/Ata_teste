@@ -63,14 +63,14 @@
                             <span class="meeting-time">{{ ata.meeting_datetime | formatDateTime }}</span>
                         </div>
                         <div class="ata-actions">
-                            <a href="{{ urlFor('download_ata_pdf', { id: ata.id }) }}" title="Baixar PDF" class="btn-download">
+                            <a href="{{ urlFor('download_ata_pdf', { id: ata.id }) }}" title="Baixar PDF" class="btn-download" aria-label="Baixar ata em PDF do projeto {{ ata.project.name }}">
                                 <ion-icon name="download-outline"></ion-icon>
                             </a>
 
                             {% if ata.canDelete %}
                                 <form action="{{ urlFor('delete_ata', { id: ata.id }) }}" method="POST" class="inline-action-form" onsubmit="return confirm('Tem certeza que deseja excluir esta ata? Esta ação não pode ser desfeita.');">
                                     <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
-                                    <button type="submit" title="Excluir Ata" class="btn-delete">
+                                    <button type="submit" title="Excluir Ata" class="btn-delete" aria-label="Excluir ata do projeto {{ ata.project.name }}">
                                          <ion-icon name="trash-outline"></ion-icon>
                                     </button>
                                 </form>
@@ -80,7 +80,7 @@
                 {% endfor %}
             </ul>
         {% else %}
-            <p class="ata-empty-state">Nenhuma ata foi criada ainda.</p>
+            <p class="ata-empty-state ui-empty-state">Nenhuma ata foi criada ainda.</p>
         {% endif %}
         </div>
     </section>

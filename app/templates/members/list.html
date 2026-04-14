@@ -55,12 +55,12 @@
                                 <td>{{ member.name }}</td>
                                 {% if currentUser.is_admin %}
                                     <td class="actions-cell">
-                                        <a href="{{ urlFor('edit_member', { id: member.id }) }}" class="btn-icon btn-edit" title="Editar">
+                                        <a href="{{ urlFor('edit_member', { id: member.id }) }}" class="btn-icon btn-edit" title="Editar" aria-label="Editar membro {{ member.name }}">
                                             <ion-icon name="create-outline"></ion-icon>
                                         </a>
                                         <form action="{{ urlFor('delete_member', { id: member.id }) }}" method="POST" class="inline-action-form" onsubmit="return confirm('Tem certeza que deseja excluir o membro \'{{ member.name }}\'? Esta ação não pode ser desfeita.');">
                                             <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
-                                            <button type="submit" class="btn-icon btn-delete" title="Excluir">
+                                            <button type="submit" class="btn-icon btn-delete" title="Excluir" aria-label="Excluir membro {{ member.name }}">
                                                 <ion-icon name="trash-outline"></ion-icon>
                                             </button>
                                         </form>
@@ -71,15 +71,13 @@
                     </tbody>
                 </table>
             {% else %}
-                <div class="flash-messages">
-                    <li class="flash-info">
-                        {% if currentUser.is_admin %}
-                            Nenhum membro cadastrado ainda. <a href="{{ urlFor('add_member') }}" class="inline-link-strong">Adicione o primeiro!</a>
-                        {% else %}
-                            Nenhum membro cadastrado ainda.
-                        {% endif %}
-                    </li>
-                </div>
+                <p class="ui-empty-state">
+                    {% if currentUser.is_admin %}
+                        Nenhum membro cadastrado ainda. <a href="{{ urlFor('add_member') }}" class="inline-link-strong">Adicione o primeiro.</a>
+                    {% else %}
+                        Nenhum membro cadastrado ainda.
+                    {% endif %}
+                </p>
             {% endif %}
         </div>
     </div>

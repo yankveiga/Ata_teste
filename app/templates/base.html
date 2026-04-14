@@ -31,6 +31,7 @@
 {# SECAO: estrutura principal da pagina e escolha entre shell autenticado e modo visitante. #}
 
 <body class="{% if currentUser %}portal-shell section-{{ activeSection or 'services' }}{% else %}guest-shell{% endif %}">
+    <a href="#main-content" class="skip-link">Pular para o conteúdo principal</a>
     {% if currentUser %}
     <div class="container">
         {# SECAO: navegacao lateral com atalhos por modulo e controle de perfil. #}
@@ -106,14 +107,14 @@
                     {{ currentUser.name }} · {{ 'Administrador' if currentUser.is_admin else 'Comum' }}
                 </div>
             </div>
-            <main class="content-wrapper">
+            <main id="main-content" class="content-wrapper" tabindex="-1">
     {% else %}
-    <main class="content-wrapper guest-content">
+    <main id="main-content" class="content-wrapper guest-content" tabindex="-1">
     {% endif %}
         {% if flashMessages.length %}
-            <ul class="flash-messages">
+            <ul class="flash-messages" aria-live="polite" aria-atomic="true">
             {% for flash in flashMessages %}
-                <li class="flash-{{ flash.category }}">{{ flash.message }}</li>
+                <li class="flash-{{ flash.category }}" role="alert">{{ flash.message }}</li>
             {% endfor %}
             </ul>
         {% endif %}

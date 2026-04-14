@@ -44,7 +44,7 @@
                             >
                                 <span class="report-member-photo-avatar" aria-hidden="true">
                                     {% if member.photo %}
-                                        <img src="{{ mediaUrl(member.photo) }}" alt="">
+                                        <img src="{{ mediaUrl(member.photo) }}" alt="Foto de {{ member.name }}">
                                     {% else %}
                                         <ion-icon name="person-outline"></ion-icon>
                                     {% endif %}
@@ -55,7 +55,7 @@
                     {% endfor %}
                 </ul>
             {% else %}
-                <p class="text-muted">Nenhum membro encontrado.</p>
+                <p class="ui-empty-state">Nenhum membro encontrado.</p>
             {% endif %}
         </div>
     </section>
@@ -153,7 +153,7 @@
                                                 <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
                                                 <div class="report-goal-activity-col">
                                                     <label class="report-goal-checkline">
-                                                        <input type="checkbox" name="is_completed" value="1" {% if goal.is_completed %}checked{% endif %}>
+                                                        <input type="checkbox" name="is_completed" value="1" aria-label="Marcar meta {{ goal.activity }} como concluída" {% if goal.is_completed %}checked{% endif %}>
                                                         <input type="text" name="activity" value="{{ goal.activity }}" class="form-control">
                                                     </label>
                                                     <small>
@@ -172,7 +172,7 @@
                                             <div class="report-goal-row report-goal-row-readonly report-goal-row-kanban">
                                                 <div class="report-goal-activity-col">
                                                     <div class="report-goal-checkline">
-                                                        <input type="checkbox" disabled {% if goal.is_completed %}checked{% endif %}>
+                                                        <input type="checkbox" disabled aria-label="Meta {{ goal.activity }} somente leitura" {% if goal.is_completed %}checked{% endif %}>
                                                         <strong>{{ goal.activity }}</strong>
                                                     </div>
                                                     <small>
@@ -189,7 +189,7 @@
                                 {% endfor %}
                             </ul>
                         {% else %}
-                            <p class="report-kanban-empty">Nenhuma em andamento.</p>
+                            <p class="report-kanban-empty ui-empty-state">Nenhuma em andamento.</p>
                         {% endif %}
                     </section>
 
@@ -219,7 +219,7 @@
                                                 {% if currentUser.is_admin or goal.can_delete_completed %}
                                                     <form action="/relatorios/goals/{{ goal.id }}/delete#report-goals-panel" method="post" class="report-goal-delete-form" onsubmit="return confirm('Deseja apagar esta atividade concluída?');">
                                                         <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
-                                                        <button type="submit" class="report-goal-delete-button">Apagar atividade</button>
+                                                        <button type="submit" class="report-goal-delete-button" aria-label="Apagar atividade concluída {{ goal.activity }}">Apagar atividade</button>
                                                     </form>
                                                 {% endif %}
                                             </div>
@@ -228,7 +228,7 @@
                                 {% endfor %}
                             </ul>
                         {% else %}
-                            <p class="report-kanban-empty">Nenhuma encerrada ainda.</p>
+                            <p class="report-kanban-empty ui-empty-state">Nenhuma encerrada ainda.</p>
                         {% endif %}
                     </section>
 
@@ -246,7 +246,7 @@
                                                 <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
                                                 <div class="report-goal-activity-col">
                                                     <label class="report-goal-checkline">
-                                                        <input type="checkbox" name="is_completed" value="1" {% if goal.is_completed %}checked{% endif %}>
+                                                        <input type="checkbox" name="is_completed" value="1" aria-label="Marcar meta atrasada {{ goal.activity }} como concluída" {% if goal.is_completed %}checked{% endif %}>
                                                         <input type="text" name="activity" value="{{ goal.activity }}" class="form-control">
                                                     </label>
                                                     <small>
@@ -266,7 +266,7 @@
                                             <div class="report-goal-row report-goal-row-readonly report-goal-row-kanban">
                                                 <div class="report-goal-activity-col">
                                                     <div class="report-goal-checkline">
-                                                        <input type="checkbox" disabled {% if goal.is_completed %}checked{% endif %}>
+                                                        <input type="checkbox" disabled aria-label="Meta atrasada {{ goal.activity }} somente leitura" {% if goal.is_completed %}checked{% endif %}>
                                                         <strong>{{ goal.activity }}</strong>
                                                     </div>
                                                     <small>
@@ -284,7 +284,7 @@
                                 {% endfor %}
                             </ul>
                         {% else %}
-                            <p class="report-kanban-empty">Nenhuma atrasada.</p>
+                            <p class="report-kanban-empty ui-empty-state">Nenhuma atrasada.</p>
                         {% endif %}
                     </section>
                 </div>
@@ -305,7 +305,7 @@
                             {% endfor %}
                         </ul>
                     {% else %}
-                        <p class="text-muted">Nenhuma atividade foi apagada até agora.</p>
+                        <p class="ui-empty-state">Nenhuma atividade foi apagada até agora.</p>
                     {% endif %}
                 </details>
 
@@ -340,7 +340,7 @@
                             <div class="report-goal-create-row">
                                 <div class="report-goal-create-activity">
                                     <label class="report-goal-checkline" for="goal_activity">
-                                        <input id="goal_is_completed" type="checkbox" name="is_completed" value="1" {% if goalFormData.isCompleted %}checked{% endif %}>
+                                        <input id="goal_is_completed" type="checkbox" name="is_completed" value="1" aria-label="Meta concluída" {% if goalFormData.isCompleted %}checked{% endif %}>
                                         <input id="goal_activity" name="activity" class="form-control" value="{{ goalFormData.activity }}" placeholder="Ex.: Falar com o professor Fulano">
                                     </label>
                                     {% if goalFormErrors.activity %}
@@ -368,7 +368,7 @@
                     </details>
                 {% endif %}
             {% else %}
-                <p class="text-muted">Selecione um membro para exibir as metas da semana.</p>
+                <p class="ui-empty-state">Selecione um membro para exibir as metas da semana.</p>
             {% endif %}
         </div>
     </section>
