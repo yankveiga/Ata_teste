@@ -56,6 +56,27 @@ function registerAuthRoutes(ctx) {
     sendApiError,
   } = ctx;
 
+  function canDeletePlannerTask(req, task) {
+    if (!task) {
+      return false;
+    }
+
+    if (req.currentUser?.is_admin) {
+      return true;
+    }
+
+    const currentMember = getCurrentMember(req);
+    if (!currentMember?.is_active) {
+      return false;
+    }
+
+    if (Number(task.assigned_member_id) === Number(currentMember.id)) {
+      return true;
+    }
+
+    return canManageProject(req, task.project);
+  }
+
 app.get("/login", (req, res) => {
     if (req.currentUser) {
       return res.redirect(urlFor("services"));
@@ -317,7 +338,7 @@ app.get("/services", requireAuth, (req, res) => {
       : defaultSelectedDay;
     const selectedDayTasks = (tasksByDay[selectedDay] || []).map((task) => ({
       ...task,
-      can_delete: canManageProject(req, task.project),
+      can_delete: canDeletePlannerTask(req, task),
     }));
     const prevMonthDate = new Date(Date.UTC(monthYear, monthIndex - 1, 1));
     const nextMonthDate = new Date(Date.UTC(monthYear, monthIndex + 1, 1));
@@ -528,7 +549,7 @@ app.get("/services", requireAuth, (req, res) => {
       return res.redirect(`${urlFor("planner")}${fallbackQuery}`);
     }
 
-    if (!canManageProject(req, task.project)) {
+    if (!canDeletePlannerTask(req, task)) {
       req.flash("danger", "Você não tem permissão para excluir esta tarefa.");
       return res.redirect(`${urlFor("planner")}${fallbackQuery}`);
     }

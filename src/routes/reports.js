@@ -1,6 +1,6 @@
 /*
  * ARQUIVO: src/routes/reports.js
- * FUNCAO: registra rotas de relatorios semanais e exportacao mensal em PDF.
+ * FUNCAO: registra rotas de relatorios quinzenais e exportacao mensal em PDF.
  * IMPACTO DE MUDANCAS:
  * - Alterar regras de permissao afeta quem pode criar/editar/apagar metas.
  * - Alterar validacao de metas impacta consistencia dos dados exibidos no quadro.
@@ -88,7 +88,7 @@ app.get("/relatorios", requireAuth, (req, res) => {
     if (!ensureValidCsrf(req, res)) {
       return;
     }
-    req.flash("info", "O registro semanal agora é feito em \"Metas da Semana\".");
+    req.flash("info", "O registro quinzenal agora é feito em \"Metas da Quinzena\".");
     return res.redirect("/relatorios#report-goals-panel");
   });
 
@@ -98,7 +98,7 @@ app.get("/relatorios", requireAuth, (req, res) => {
     if (!ensureValidCsrf(req, res)) {
       return;
     }
-    req.flash("info", "A edição semanal agora é feita em \"Metas da Semana\".");
+    req.flash("info", "A edição quinzenal agora é feita em \"Metas da Quinzena\".");
     return res.redirect("/relatorios#report-goals-panel");
   });
 
@@ -108,11 +108,11 @@ app.get("/relatorios", requireAuth, (req, res) => {
     if (!ensureValidCsrf(req, res)) {
       return;
     }
-    req.flash("info", "A remoção semanal agora é feita em \"Metas da Semana\".");
+    req.flash("info", "A remoção quinzenal agora é feita em \"Metas da Quinzena\".");
     return res.redirect("/relatorios#report-goals-panel");
   });
 
-  // DETALHE: Rota POST /relatorios/goals/create: cria meta semanal para membro/projeto selecionados.
+  // DETALHE: Rota POST /relatorios/goals/create: cria meta quinzenal para membro/projeto selecionados.
 
   app.post("/relatorios/goals/create", requireAuth, (req, res) => {
     if (!ensureValidCsrf(req, res)) {
@@ -133,7 +133,7 @@ app.get("/relatorios", requireAuth, (req, res) => {
       ? database.getMemberById(selectedMemberId)
       : null;
     if (!selectedMember) {
-      req.flash("warning", "Membro inválido para cadastrar meta da semana.");
+      req.flash("warning", "Membro inválido para cadastrar meta da quinzena.");
       return res.redirect("/relatorios");
     }
 
@@ -181,10 +181,10 @@ app.get("/relatorios", requireAuth, (req, res) => {
         description: goalFormData.description,
         isCompleted: goalFormData.isCompleted,
       });
-      req.flash("success", "Meta da semana adicionada com sucesso.");
+      req.flash("success", "Meta da quinzena adicionada com sucesso.");
     } catch (error) {
-      logError(req, "Erro ao criar meta semanal:", error);
-      req.flash("danger", `Erro ao criar meta semanal: ${error.message}`);
+      logError(req, "Erro ao criar meta quinzenal:", error);
+      req.flash("danger", `Erro ao criar meta quinzenal: ${error.message}`);
       return renderReportPage(req, res, {
         selectedMemberId: selectedMember.id,
         selectedProjectId: project?.id || null,
@@ -200,7 +200,7 @@ app.get("/relatorios", requireAuth, (req, res) => {
     );
   });
 
-  // DETALHE: Rota POST /relatorios/goals/:id/update: atualiza atividade/descricao/status de uma meta semanal.
+  // DETALHE: Rota POST /relatorios/goals/:id/update: atualiza atividade/descricao/status de uma meta quinzenal.
 
   app.post("/relatorios/goals/:id/update", requireAuth, (req, res) => {
     if (!ensureValidCsrf(req, res)) {
@@ -210,7 +210,7 @@ app.get("/relatorios", requireAuth, (req, res) => {
     const goalId = parseId(req.params.id);
     const goal = goalId ? database.getReportWeekGoalById(goalId) : null;
     if (!goal) {
-      req.flash("warning", "Meta semanal não encontrada.");
+      req.flash("warning", "Meta quinzenal não encontrada.");
       return res.redirect("/relatorios");
     }
 
@@ -218,7 +218,7 @@ app.get("/relatorios", requireAuth, (req, res) => {
       memberId: goal.member_id,
       projectId: goal.project_id,
     })) {
-      req.flash("warning", "Sem permissão para editar esta meta semanal.");
+      req.flash("warning", "Sem permissão para editar esta meta quinzenal.");
       return res.redirect(
         `/relatorios${buildReportsQuery({
           memberId: goal.member_id,
@@ -254,10 +254,10 @@ app.get("/relatorios", requireAuth, (req, res) => {
         description,
         isCompleted,
       });
-      req.flash("success", "Meta semanal atualizada.");
+      req.flash("success", "Meta quinzenal atualizada.");
     } catch (error) {
-      logError(req, "Erro ao atualizar meta semanal:", error);
-      req.flash("danger", `Erro ao atualizar meta semanal: ${error.message}`);
+      logError(req, "Erro ao atualizar meta quinzenal:", error);
+      req.flash("danger", `Erro ao atualizar meta quinzenal: ${error.message}`);
     }
 
     return res.redirect(
@@ -275,7 +275,7 @@ app.get("/relatorios", requireAuth, (req, res) => {
     const goalId = parseId(req.params.id);
     const goal = goalId ? database.getReportWeekGoalById(goalId) : null;
     if (!goal) {
-      req.flash("warning", "Meta semanal não encontrada.");
+      req.flash("warning", "Meta quinzenal não encontrada.");
       return res.redirect("/relatorios");
     }
 

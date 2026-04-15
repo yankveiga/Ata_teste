@@ -127,31 +127,16 @@ function normalizeProjectColor(value, fallback = DEFAULT_PROJECT_COLOR) {
   return /^#[0-9a-fA-F]{6}$/.test(normalized) ? normalized.toLowerCase() : fallback;
 }
 
-// DETALHE: Calcula o inicio da semana (segunda-feira UTC) usado nos relatorios semanais.
+// DETALHE: Calcula o inicio da quinzena (dia 1 ou 16) usado nos relatorios quinzenais.
 
 function getCurrentWeekStartDate() {
   const now = new Date();
-  const weekdayToOffset = {
-    Mon: 0,
-    Tue: -1,
-    Wed: -2,
-    Thu: -3,
-    Fri: -4,
-    Sat: -5,
-    Sun: -6,
-  };
   const parts = getDatePartsInTimeZone(now, REPORTS_TIMEZONE);
-  const offset = weekdayToOffset[parts.weekday] ?? 0;
-  const baseUtc = new Date(Date.UTC(parts.year, parts.month - 1, parts.day));
-  baseUtc.setUTCDate(baseUtc.getUTCDate() + offset);
-  return formatYmd(
-    baseUtc.getUTCFullYear(),
-    baseUtc.getUTCMonth() + 1,
-    baseUtc.getUTCDate(),
-  );
+  const fortnightStartDay = parts.day <= 15 ? 1 : 16;
+  return formatYmd(parts.year, parts.month, fortnightStartDay);
 }
 
-// DETALHE: Converte data recebida para a segunda-feira da semana correspondente.
+// DETALHE: Converte data recebida para o inicio da quinzena correspondente.
 
 function normalizeWeekStartDate(value) {
   const text = String(value || "").trim();
@@ -164,24 +149,9 @@ function normalizeWeekStartDate(value) {
     return null;
   }
 
-  const weekdayToOffset = {
-    Mon: 0,
-    Tue: -1,
-    Wed: -2,
-    Thu: -3,
-    Fri: -4,
-    Sat: -5,
-    Sun: -6,
-  };
   const parts = getDatePartsInTimeZone(date, REPORTS_TIMEZONE);
-  const offset = weekdayToOffset[parts.weekday] ?? 0;
-  const baseUtc = new Date(Date.UTC(parts.year, parts.month - 1, parts.day));
-  baseUtc.setUTCDate(baseUtc.getUTCDate() + offset);
-  return formatYmd(
-    baseUtc.getUTCFullYear(),
-    baseUtc.getUTCMonth() + 1,
-    baseUtc.getUTCDate(),
-  );
+  const fortnightStartDay = parts.day <= 15 ? 1 : 16;
+  return formatYmd(parts.year, parts.month, fortnightStartDay);
 }
 
 // DETALHE: Normaliza status do relatorio e aplica fallback seguro quando vier invalido.

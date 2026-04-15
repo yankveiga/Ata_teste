@@ -22,6 +22,7 @@ function registerAlmoxRoutes(ctx) {
     validateInventoryPayload,
     validateCatalogName,
     isUniqueConstraintError,
+    canManageProject,
     canCreateAtaForProject,
     logError,
     sendApiError,
@@ -1159,7 +1160,7 @@ app.get("/api/project/:project_id/members", requireAuth, (req, res) => {
       return sendApiError(req, res, 404, "Projeto não encontrado.");
     }
 
-    if (!canCreateAtaForProject(req, project)) {
+    if (!canCreateAtaForProject(req, project) && !canManageProject(req, project)) {
       return sendApiError(req, res, 403, "Você não tem acesso aos membros deste projeto.");
     }
 
