@@ -435,7 +435,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   forms.forEach((form) => {
     const checkbox = form.querySelector('input[type="checkbox"][name="is_completed"]');
-    const description = form.querySelector('.js-goal-auto-save-description');
+    const textFields = Array.from(form.querySelectorAll('input[type="text"][name="activity"], textarea[name="description"]'));
 
     if (checkbox) {
       checkbox.dataset.initialChecked = checkbox.checked ? '1' : '0';
@@ -454,9 +454,9 @@ document.addEventListener('DOMContentLoaded', function() {
       });
     }
 
-    if (description) {
-      description.dataset.initialValue = description.value;
-      description.addEventListener('change', function() {
+    textFields.forEach((field) => {
+      field.dataset.initialValue = field.value;
+      field.addEventListener('change', function() {
         const initial = this.dataset.initialValue || '';
         if (this.value === initial) {
           return;
@@ -468,7 +468,7 @@ document.addEventListener('DOMContentLoaded', function() {
           },
         });
       });
-    }
+    });
   });
 });
 </script>
