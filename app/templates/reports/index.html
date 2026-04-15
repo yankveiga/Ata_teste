@@ -389,50 +389,6 @@ document.addEventListener('DOMContentLoaded', function() {
     return;
   }
 
-  const confirmBox = document.createElement('div');
-  confirmBox.className = 'report-inline-confirm';
-  confirmBox.hidden = true;
-  confirmBox.innerHTML = `
-    <span class="report-inline-confirm-text">Confirma a alteração?</span>
-    <button type="button" class="report-inline-confirm-yes">Confirmar</button>
-    <button type="button" class="report-inline-confirm-no">Cancelar</button>
-  `;
-  document.body.appendChild(confirmBox);
-
-  const yesButton = confirmBox.querySelector('.report-inline-confirm-yes');
-  const noButton = confirmBox.querySelector('.report-inline-confirm-no');
-  let pendingAction = null;
-
-  function hideConfirm() {
-    confirmBox.hidden = true;
-    pendingAction = null;
-  }
-
-  function showConfirm(action) {
-    pendingAction = action;
-    confirmBox.hidden = false;
-  }
-
-  yesButton.addEventListener('click', function() {
-    if (!pendingAction) {
-      hideConfirm();
-      return;
-    }
-    const action = pendingAction;
-    hideConfirm();
-    action.confirm();
-  });
-
-  noButton.addEventListener('click', function() {
-    if (!pendingAction) {
-      hideConfirm();
-      return;
-    }
-    const action = pendingAction;
-    hideConfirm();
-    action.cancel();
-  });
-
   forms.forEach((form) => {
     const checkbox = form.querySelector('input[type="checkbox"][name="is_completed"]');
     const textFields = Array.from(form.querySelectorAll('input[type="text"][name="activity"], textarea[name="description"]'));
@@ -444,13 +400,13 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!changed) {
           return;
         }
-        showConfirm({
-          confirm: () => form.requestSubmit(),
-          cancel: () => {
-            const initial = this.dataset.initialChecked === '1';
-            this.checked = initial;
-          },
-        });
+        const confirmed = window.confirm('Confirma a alteração?');
+        if (confirmed) {
+          form.requestSubmit();
+          return;
+        }
+        const initial = this.dataset.initialChecked === '1';
+        this.checked = initial;
       });
     }
 
@@ -461,12 +417,12 @@ document.addEventListener('DOMContentLoaded', function() {
         if (this.value === initial) {
           return;
         }
-        showConfirm({
-          confirm: () => form.requestSubmit(),
-          cancel: () => {
-            this.value = initial;
-          },
-        });
+        const confirmed = window.confirm('Confirma a alteração?');
+        if (confirmed) {
+          form.requestSubmit();
+          return;
+        }
+        this.value = initial;
       });
     });
   });
