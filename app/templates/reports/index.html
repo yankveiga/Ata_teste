@@ -8,7 +8,7 @@
 {% extends "base.html" %}
 
 {% block content %}
- <nav class="module-tab-nav report-tabs-nav" aria-label="Navegao de Relatorios">
+ <nav class="module-tab-nav report-tabs-nav" aria-label="Navegação de Relatórios">
  <a href="#report-member-selector" class="module-tab-link is-active">
  <ion-icon name="people-outline"></ion-icon>
  Membros
@@ -21,8 +21,8 @@
 
  <div class="page-header page-header-split">
  <div>
- <h1>Relatorios Quinzenais</h1>
- <p class="lead">Selecione um membro e acompanhe as metas quinzenais por atividade e descricao.</p>
+ <h1>Relatórios Quinzenais</h1>
+ <p class="lead">Selecione um membro e acompanhe as metas quinzenais por atividade e descrição.</p>
  </div>
  </div>
 
@@ -66,7 +66,7 @@
  <h2>Metas da Quinzena</h2>
  <p>
  {% if selectedMember %}
- Atrasadas ficam no topo em vermelho. Prioridade automtica pelos itens mais antigos no concludos.
+ Atrasadas ficam no topo em vermelho. Prioridade automática pelos itens mais antigos não concluídos.
  {% else %}
  Selecione um membro para visualizar e organizar as metas da quinzena.
  {% endif %}
@@ -79,6 +79,14 @@
  <strong>Projetos do membro</strong>
  <ul class="report-member-project-chip-list">
  {% for project in reportProjectOptions %}
+ <li>
+ <a
+ href="/relatorios?member_id={{ selectedMember.id }}#report-goals-panel"
+ class="report-member-project-chip {{ 'is-active' if not selectedProjectId else '' }}"
+ >
+ Todos
+ </a>
+ </li>
  <li>
  <a
  href="/relatorios?member_id={{ selectedMember.id }}&project_id={{ project.id }}#report-goals-panel"
@@ -115,7 +123,7 @@
  {% endif %}
  </div>
  <div class="form-group">
- <label class="form-label" for="monthly_report_month">Ms</label>
+ <label class="form-label" for="monthly_report_month">Mês</label>
  <input
  id="monthly_report_month"
  name="month"
@@ -126,7 +134,7 @@
  >
  </div>
  <div class="form-group report-monthly-export-actions">
- <button type="submit" class="btn-submit">Gerar Relatrio do Ms (PDF)</button>
+ <button type="submit" class="btn-submit">Gerar Relatório do Mês (PDF)</button>
  </div>
  </form>
  {% endif %}
@@ -141,7 +149,7 @@
  <div class="report-kanban-board">
  <section class="report-kanban-column report-kanban-open">
  <header class="report-kanban-column-header">
- <h4>Em Execuo</h4>
+ <h4>Em Execução</h4>
  <span>{{ openPendingGoals.length }}</span>
  </header>
  {% if openPendingGoals.length %}
@@ -149,11 +157,12 @@
  {% for goal in openPendingGoals %}
  <li class="report-goal-item" style="--goal-project-color: {{ goal.project.primary_color }}; background-color: {{ goal.project.primary_color }}14; border-color: {{ goal.project.primary_color }}44;">
  {% if goal.can_manage %}
- <form action="/relatorios/goals/{{ goal.id }}/update#report-goals-panel" method="post" class="report-goal-row report-goal-row-kanban" novalidate>
+ <form action="/relatorios/goals/{{ goal.id }}/update#report-goals-panel" method="post" class="report-goal-row report-goal-row-kanban js-goal-auto-save-form" novalidate>
  <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+ <input type="hidden" name="return_project_id" value="{{ selectedProjectId if selectedProjectId else '' }}">
  <div class="report-goal-activity-col">
  <label class="report-goal-checkline">
- <input type="checkbox" name="is_completed" value="1" aria-label="Marcar meta {{ goal.activity }} como concluda" {% if goal.is_completed %}checked{% endif %}>
+ <input type="checkbox" name="is_completed" value="1" aria-label="Marcar meta {{ goal.activity }} como concluída" {% if goal.is_completed %}checked{% endif %}>
  <input type="text" name="activity" value="{{ goal.activity }}" class="form-control">
  </label>
  <small>
@@ -162,10 +171,7 @@
  </small>
  </div>
  <div class="report-goal-description-col">
- <textarea name="description" rows="3" class="form-control">{{ goal.description }}</textarea>
- <div class="form-actions">
- <button type="submit" class="btn-submit report-goal-save-button">Salvar</button>
- </div>
+ <textarea name="description" rows="3" class="form-control js-goal-auto-save-description">{{ goal.description }}</textarea>
  </div>
  </form>
  {% else %}
@@ -181,7 +187,7 @@
  </small>
  </div>
  <div class="report-goal-description-col">
- <p>{{ goal.description if goal.description else 'Sem descricao registrada.' }}</p>
+ <p>{{ goal.description if goal.description else 'Sem descrição registrada.' }}</p>
  </div>
  </div>
  {% endif %}
@@ -211,15 +217,15 @@
  <small>
  <span class="report-goal-project-tag"><span class="report-goal-project-dot" aria-hidden="true"></span>{{ goal.project.name }}</span>
  <span> Quinzena {{ goal.week_start | formatDate }}</span>
- {% if goal.completed_at %}<span class="report-goal-done-at">Concluda em {{ goal.completed_at | formatDateTime }}</span>{% endif %}
+ {% if goal.completed_at %}<span class="report-goal-done-at">Concluída em {{ goal.completed_at | formatDateTime }}</span>{% endif %}
  </small>
  </div>
  <div class="report-goal-description-col">
- <p>{{ goal.description if goal.description else 'Sem descricao registrada.' }}</p>
+ <p>{{ goal.description if goal.description else 'Sem descrição registrada.' }}</p>
  {% if currentUser.is_admin or goal.can_delete_completed %}
- <form action="/relatorios/goals/{{ goal.id }}/delete#report-goals-panel" method="post" class="report-goal-delete-form" onsubmit="return confirm('Deseja apagar esta atividade concluda?');">
+ <form action="/relatorios/goals/{{ goal.id }}/delete#report-goals-panel" method="post" class="report-goal-delete-form" onsubmit="return confirm('Deseja apagar esta atividade concluída?');">
  <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
- <button type="submit" class="report-goal-delete-button" aria-label="Apagar atividade concluda {{ goal.activity }}">Apagar atividade</button>
+ <button type="submit" class="report-goal-delete-button" aria-label="Apagar atividade concluída {{ goal.activity }}">Apagar atividade</button>
  </form>
  {% endif %}
  </div>
@@ -244,9 +250,10 @@
  {% if goal.can_manage %}
  <form action="/relatorios/goals/{{ goal.id }}/update#report-goals-panel" method="post" class="report-goal-row report-goal-row-kanban" novalidate>
  <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+ <input type="hidden" name="return_project_id" value="{{ selectedProjectId if selectedProjectId else '' }}">
  <div class="report-goal-activity-col">
  <label class="report-goal-checkline">
- <input type="checkbox" name="is_completed" value="1" aria-label="Marcar meta atrasada {{ goal.activity }} como concluda" {% if goal.is_completed %}checked{% endif %}>
+ <input type="checkbox" name="is_completed" value="1" aria-label="Marcar meta atrasada {{ goal.activity }} como concluída" {% if goal.is_completed %}checked{% endif %}>
  <input type="text" name="activity" value="{{ goal.activity }}" class="form-control">
  </label>
  <small>
@@ -276,7 +283,7 @@
  </small>
  </div>
  <div class="report-goal-description-col">
- <p>{{ goal.description if goal.description else 'Sem descricao registrada.' }}</p>
+ <p>{{ goal.description if goal.description else 'Sem descrição registrada.' }}</p>
  </div>
  </div>
  {% endif %}
@@ -290,7 +297,7 @@
  </div>
 
  <details class="report-goal-completed-details" {% if deletionLogs.length %}open{% endif %}>
- <summary>Histrico de excluses de atividades</summary>
+ <summary>Histórico de exclusões de atividades</summary>
  {% if deletionLogs.length %}
  <ul class="report-deletion-log-list">
  {% for log in deletionLogs %}
@@ -305,7 +312,7 @@
  {% endfor %}
  </ul>
  {% else %}
- <p class="ui-empty-state">Nenhuma atividade foi apagada at agora.</p>
+ <p class="ui-empty-state">Nenhuma atividade foi apagada até agora.</p>
  {% endif %}
  </details>
 
@@ -334,13 +341,13 @@
 
  <div class="report-goal-grid-header" role="presentation">
  <span>Atividades</span>
- <span>Descricao</span>
+ <span>Descrição</span>
  </div>
 
  <div class="report-goal-create-row">
  <div class="report-goal-create-activity">
  <label class="report-goal-checkline" for="goal_activity">
- <input id="goal_is_completed" type="checkbox" name="is_completed" value="1" aria-label="Meta concluda" {% if goalFormData.isCompleted %}checked{% endif %}>
+ <input id="goal_is_completed" type="checkbox" name="is_completed" value="1" aria-label="Meta concluída" {% if goalFormData.isCompleted %}checked{% endif %}>
  <input id="goal_activity" name="activity" class="form-control" value="{{ goalFormData.activity }}" placeholder="Ex.: Falar com o professor Fulano">
  </label>
  {% if goalFormErrors.activity %}
@@ -348,11 +355,11 @@
  {% for error in goalFormErrors.activity %}<li>{{ error }}</li>{% endfor %}
  </ul>
  {% endif %}
- <small class="form-hint">Marque o checkbox se j estiver concluda.</small>
+ <small class="form-hint">Marque o checkbox se já estiver concluída.</small>
  </div>
  <div class="report-goal-create-description">
- <label class="form-label" for="goal_description">Descricao (Opcional)</label>
- <textarea id="goal_description" name="description" rows="3" class="form-control" placeholder="Feita parcialmente, dificuldades, prximos passos...">{{ goalFormData.description }}</textarea>
+ <label class="form-label" for="goal_description">Descrição (Opcional)</label>
+ <textarea id="goal_description" name="description" rows="3" class="form-control" placeholder="Feita parcialmente, dificuldades, próximos passos...">{{ goalFormData.description }}</textarea>
  {% if goalFormErrors.description %}
  <ul class="errors form-error-list">
  {% for error in goalFormErrors.description %}<li>{{ error }}</li>{% endfor %}
@@ -372,4 +379,97 @@
  {% endif %}
  </div>
  </section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const forms = Array.from(document.querySelectorAll('.js-goal-auto-save-form'));
+  if (!forms.length) {
+    return;
+  }
+
+  const confirmBox = document.createElement('div');
+  confirmBox.className = 'report-inline-confirm';
+  confirmBox.hidden = true;
+  confirmBox.innerHTML = `
+    <span class="report-inline-confirm-text">Confirma a alteração?</span>
+    <button type="button" class="report-inline-confirm-yes">Confirmar</button>
+    <button type="button" class="report-inline-confirm-no">Cancelar</button>
+  `;
+  document.body.appendChild(confirmBox);
+
+  const yesButton = confirmBox.querySelector('.report-inline-confirm-yes');
+  const noButton = confirmBox.querySelector('.report-inline-confirm-no');
+  let pendingAction = null;
+
+  function hideConfirm() {
+    confirmBox.hidden = true;
+    pendingAction = null;
+  }
+
+  function showConfirm(action) {
+    pendingAction = action;
+    confirmBox.hidden = false;
+  }
+
+  yesButton.addEventListener('click', function() {
+    if (!pendingAction) {
+      hideConfirm();
+      return;
+    }
+    const action = pendingAction;
+    hideConfirm();
+    action.confirm();
+  });
+
+  noButton.addEventListener('click', function() {
+    if (!pendingAction) {
+      hideConfirm();
+      return;
+    }
+    const action = pendingAction;
+    hideConfirm();
+    action.cancel();
+  });
+
+  forms.forEach((form) => {
+    const checkbox = form.querySelector('input[type="checkbox"][name="is_completed"]');
+    const description = form.querySelector('.js-goal-auto-save-description');
+
+    if (checkbox) {
+      checkbox.dataset.initialChecked = checkbox.checked ? '1' : '0';
+      checkbox.addEventListener('change', function() {
+        const changed = (this.checked ? '1' : '0') !== (this.dataset.initialChecked || '0');
+        if (!changed) {
+          return;
+        }
+        showConfirm({
+          confirm: () => form.requestSubmit(),
+          cancel: () => {
+            const initial = this.dataset.initialChecked === '1';
+            this.checked = initial;
+          },
+        });
+      });
+    }
+
+    if (description) {
+      description.dataset.initialValue = description.value;
+      description.addEventListener('change', function() {
+        const initial = this.dataset.initialValue || '';
+        if (this.value === initial) {
+          return;
+        }
+        showConfirm({
+          confirm: () => form.requestSubmit(),
+          cancel: () => {
+            this.value = initial;
+          },
+        });
+      });
+    }
+  });
+});
+</script>
 {% endblock %}

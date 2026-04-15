@@ -1635,6 +1635,29 @@ body.theme-dark.section-atas .justification-input:disabled {
   object-fit: cover;
 }
 
+body.theme-dark.section-members .member-photo-field,
+body.theme-dark.section-projects .member-select-panel,
+body.theme-dark.section-projects .project-logo-preview {
+  background: rgba(20, 31, 48, 0.86);
+  border: 1px solid rgba(88, 111, 158, 0.34);
+}
+
+body.theme-dark.section-projects .member-select-list li {
+  border-bottom-color: rgba(88, 111, 158, 0.3);
+}
+
+body.theme-dark.section-projects .member-role-row,
+body.theme-dark.section-projects .coordinator-inline {
+  color: #d8e2fb;
+}
+
+body.theme-dark.section-members .member-photo-preview,
+body.theme-dark.section-projects .project-logo-preview img {
+  background: rgba(11, 18, 33, 0.9);
+  border-color: rgba(88, 111, 158, 0.42);
+  color: #c6d4f7;
+}
+
 .member-photo-inputs {
   min-width: min(100%, 300px);
   flex: 1;
@@ -2036,6 +2059,47 @@ body.theme-dark.section-atas .justification-input:disabled {
   font-size: 0.84rem;
 }
 
+.report-inline-confirm {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  z-index: 1200;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(49, 112, 57, 0.34);
+  background: rgba(245, 252, 246, 0.97);
+  color: #1f5130;
+  box-shadow: 0 10px 24px rgba(17, 56, 24, 0.18);
+}
+
+.report-inline-confirm-text {
+  font-size: 0.87rem;
+  font-weight: 700;
+}
+
+.report-inline-confirm-yes,
+.report-inline-confirm-no {
+  border: 0;
+  border-radius: 10px;
+  padding: 0.42rem 0.72rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.report-inline-confirm-yes {
+  background: #317039;
+  color: #fff;
+}
+
+.report-inline-confirm-no {
+  background: rgba(148, 163, 184, 0.28);
+  color: #334155;
+}
+
 .report-goal-list-completed .report-goal-item {
   opacity: 0.95;
 }
@@ -2386,6 +2450,18 @@ body.theme-dark.section-reports .report-kanban-overdue {
 body.theme-dark.section-reports .report-goal-item.is-overdue {
   background: rgba(87, 35, 35, 0.84);
   border-color: rgba(214, 96, 96, 0.48);
+}
+
+body.theme-dark.section-reports .report-inline-confirm {
+  background: rgba(20, 31, 24, 0.95);
+  border-color: rgba(75, 131, 88, 0.42);
+  color: #d7f0dd;
+  box-shadow: 0 12px 24px rgba(2, 9, 5, 0.52);
+}
+
+body.theme-dark.section-reports .report-inline-confirm-no {
+  background: rgba(51, 65, 85, 0.6);
+  color: #d5e0fa;
 }
 
 body.theme-dark.section-reports .report-goal-project-tag,

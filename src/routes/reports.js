@@ -209,6 +209,7 @@ app.get("/relatorios", requireAuth, (req, res) => {
 
     const goalId = parseId(req.params.id);
     const goal = goalId ? database.getReportWeekGoalById(goalId) : null;
+    const returnProjectId = parseId(req.body.return_project_id);
     if (!goal) {
       req.flash("warning", "Meta quinzenal não encontrada.");
       return res.redirect("/relatorios");
@@ -222,6 +223,7 @@ app.get("/relatorios", requireAuth, (req, res) => {
       return res.redirect(
         `/relatorios${buildReportsQuery({
           memberId: goal.member_id,
+          projectId: returnProjectId || null,
         })}#report-goals-panel`,
       );
     }
@@ -244,6 +246,7 @@ app.get("/relatorios", requireAuth, (req, res) => {
       return res.redirect(
         `/relatorios${buildReportsQuery({
           memberId: goal.member_id,
+          projectId: returnProjectId || null,
         })}#report-goals-panel`,
       );
     }
@@ -263,6 +266,7 @@ app.get("/relatorios", requireAuth, (req, res) => {
     return res.redirect(
       `/relatorios${buildReportsQuery({
         memberId: goal.member_id,
+        projectId: returnProjectId || null,
       })}#report-goals-panel`,
     );
   });
