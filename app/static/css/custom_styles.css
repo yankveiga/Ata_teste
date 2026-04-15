@@ -2124,6 +2124,15 @@ body.theme-dark.section-projects .project-logo-preview img {
   color: #1f5130;
 }
 
+.report-goal-create-details-inline {
+  margin-left: auto;
+}
+
+.report-goal-create-details-inline[open] {
+  width: 100%;
+  margin-left: 0;
+}
+
 .report-goal-section-count {
   display: inline-flex;
   align-items: center;

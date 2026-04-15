@@ -142,6 +142,64 @@
  {% if selectedMember %}
  <div class="report-goal-section-header">
  <h3>Quadro Scrum da Quinzena</h3>
+ {% if canCreateGoalsForSelectedMember %}
+ <details class="report-goal-create-details report-goal-create-details-inline" {% if goalFormErrors.projectId or goalFormErrors.activity or goalFormErrors.description %}open{% endif %}>
+ <summary>Adicionar Nova Meta da Quinzena</summary>
+ <form action="/relatorios/goals/create#report-goals-panel" method="post" class="portal-form-grid report-goal-create-form" novalidate>
+ <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+ <input type="hidden" name="member_id" value="{{ selectedMember.id }}">
+ <div class="form-group form-group-full">
+ <label class="form-label" for="goal_project_id">Projeto</label>
+ <select id="goal_project_id" name="project_id" class="form-control">
+ <option value="">Selecione um projeto</option>
+ {% for project in reportProjectOptions %}
+ <option value="{{ project.id }}" {% if goalFormData.projectId == (project.id ~ '') or goalFormData.projectId == project.id %}selected{% endif %}>
+ {{ project.name }}
+ </option>
+ {% endfor %}
+ </select>
+ {% if goalFormErrors.projectId %}
+ <ul class="errors form-error-list">
+ {% for error in goalFormErrors.projectId %}<li>{{ error }}</li>{% endfor %}
+ </ul>
+ {% endif %}
+ </div>
+
+ <div class="report-goal-grid-header" role="presentation">
+ <span>Atividades</span>
+ <span>Descrição</span>
+ </div>
+
+ <div class="report-goal-create-row">
+ <div class="report-goal-create-activity">
+ <label class="report-goal-checkline" for="goal_activity">
+ <input id="goal_is_completed" type="checkbox" name="is_completed" value="1" aria-label="Meta concluída" {% if goalFormData.isCompleted %}checked{% endif %}>
+ <input id="goal_activity" name="activity" class="form-control" value="{{ goalFormData.activity }}" placeholder="Ex.: Falar com o professor Fulano">
+ </label>
+ {% if goalFormErrors.activity %}
+ <ul class="errors form-error-list">
+ {% for error in goalFormErrors.activity %}<li>{{ error }}</li>{% endfor %}
+ </ul>
+ {% endif %}
+ <small class="form-hint">Marque o checkbox se já estiver concluída.</small>
+ </div>
+ <div class="report-goal-create-description">
+ <label class="form-label" for="goal_description">Descrição (Opcional)</label>
+ <textarea id="goal_description" name="description" rows="3" class="form-control" placeholder="Feita parcialmente, dificuldades, próximos passos...">{{ goalFormData.description }}</textarea>
+ {% if goalFormErrors.description %}
+ <ul class="errors form-error-list">
+ {% for error in goalFormErrors.description %}<li>{{ error }}</li>{% endfor %}
+ </ul>
+ {% endif %}
+ <small class="form-hint">Pode deixar em branco e completar depois.</small>
+ </div>
+ </div>
+ <div class="form-actions">
+ <button type="submit" class="btn-submit">Adicionar Meta</button>
+ </div>
+ </form>
+ </details>
+ {% endif %}
  </div>
  <div class="report-scrum-strip">
  <span class="report-scrum-chip">Sprint da quinzena: {{ currentWeekStart | formatDate }}</span>
@@ -316,64 +374,6 @@
  {% endif %}
  </details>
 
- {% if canCreateGoalsForSelectedMember %}
- <details class="report-goal-create-details" {% if goalFormErrors.projectId or goalFormErrors.activity or goalFormErrors.description %}open{% endif %}>
- <summary>Adicionar Nova Meta Da Quinzena</summary>
- <form action="/relatorios/goals/create#report-goals-panel" method="post" class="portal-form-grid report-goal-create-form" novalidate>
- <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
- <input type="hidden" name="member_id" value="{{ selectedMember.id }}">
- <div class="form-group form-group-full">
- <label class="form-label" for="goal_project_id">Projeto</label>
- <select id="goal_project_id" name="project_id" class="form-control">
- <option value="">Selecione um projeto</option>
- {% for project in reportProjectOptions %}
- <option value="{{ project.id }}" {% if goalFormData.projectId == (project.id ~ '') or goalFormData.projectId == project.id %}selected{% endif %}>
- {{ project.name }}
- </option>
- {% endfor %}
- </select>
- {% if goalFormErrors.projectId %}
- <ul class="errors form-error-list">
- {% for error in goalFormErrors.projectId %}<li>{{ error }}</li>{% endfor %}
- </ul>
- {% endif %}
- </div>
-
- <div class="report-goal-grid-header" role="presentation">
- <span>Atividades</span>
- <span>Descrição</span>
- </div>
-
- <div class="report-goal-create-row">
- <div class="report-goal-create-activity">
- <label class="report-goal-checkline" for="goal_activity">
- <input id="goal_is_completed" type="checkbox" name="is_completed" value="1" aria-label="Meta concluída" {% if goalFormData.isCompleted %}checked{% endif %}>
- <input id="goal_activity" name="activity" class="form-control" value="{{ goalFormData.activity }}" placeholder="Ex.: Falar com o professor Fulano">
- </label>
- {% if goalFormErrors.activity %}
- <ul class="errors form-error-list">
- {% for error in goalFormErrors.activity %}<li>{{ error }}</li>{% endfor %}
- </ul>
- {% endif %}
- <small class="form-hint">Marque o checkbox se já estiver concluída.</small>
- </div>
- <div class="report-goal-create-description">
- <label class="form-label" for="goal_description">Descrição (Opcional)</label>
- <textarea id="goal_description" name="description" rows="3" class="form-control" placeholder="Feita parcialmente, dificuldades, próximos passos...">{{ goalFormData.description }}</textarea>
- {% if goalFormErrors.description %}
- <ul class="errors form-error-list">
- {% for error in goalFormErrors.description %}<li>{{ error }}</li>{% endfor %}
- </ul>
- {% endif %}
- <small class="form-hint">Pode deixar em branco e completar depois.</small>
- </div>
- </div>
- <div class="form-actions">
- <button type="submit" class="btn-submit">Adicionar Meta</button>
- </div>
- </form>
- </details>
- {% endif %}
  {% else %}
  <p class="ui-empty-state">Selecione um membro para exibir as metas da quinzena.</p>
  {% endif %}
