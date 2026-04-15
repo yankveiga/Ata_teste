@@ -81,14 +81,6 @@
  {% for project in reportProjectOptions %}
  <li>
  <a
- href="/relatorios?member_id={{ selectedMember.id }}#report-goals-panel"
- class="report-member-project-chip {{ 'is-active' if not selectedProjectId else '' }}"
- >
- Todos
- </a>
- </li>
- <li>
- <a
  href="/relatorios?member_id={{ selectedMember.id }}&project_id={{ project.id }}#report-goals-panel"
  class="report-member-project-chip {{ 'is-active' if selectedProjectId == project.id else '' }}"
  >
@@ -101,6 +93,14 @@
  </a>
  </li>
  {% endfor %}
+ <li>
+ <a
+ href="/relatorios?member_id={{ selectedMember.id }}#report-goals-panel"
+ class="report-member-project-chip {{ 'is-active' if not selectedProjectId else '' }}"
+ >
+ Todos
+ </a>
+ </li>
  </ul>
  </div>
  {% endif %}
