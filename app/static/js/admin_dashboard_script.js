@@ -27,8 +27,32 @@ list.forEach((item) => item.addEventListener("mouseover", activeLink));
 let toggle = document.querySelector(".toggle");
 let navigation = document.querySelector(".navigation");
 let main = document.querySelector(".main");
+let toggleIcon = toggle ? toggle.querySelector("ion-icon") : null;
 
-toggle.onclick = function () {
-  navigation.classList.toggle("active");
-  main.classList.toggle("active");
-};
+function syncNavigationState() {
+  if (!navigation || !main) {
+    return;
+  }
+  const isOpen = navigation.classList.contains("active");
+  document.body.classList.toggle("nav-open", isOpen);
+  if (toggleIcon) {
+    toggleIcon.setAttribute("name", isOpen ? "close-outline" : "menu-outline");
+  }
+}
+
+function syncScrollState() {
+  const isScrolled = window.scrollY > 18;
+  document.body.classList.toggle("scrolled-down", isScrolled);
+}
+
+if (toggle && navigation && main) {
+  toggle.onclick = function () {
+    navigation.classList.toggle("active");
+    main.classList.toggle("active");
+    syncNavigationState();
+  };
+}
+
+syncNavigationState();
+syncScrollState();
+window.addEventListener("scroll", syncScrollState, { passive: true });

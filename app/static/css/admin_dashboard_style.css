@@ -282,7 +282,7 @@ a {
 .topbar {
   position: sticky;
   top: 0;
-  z-index: 60;
+  z-index: 140;
   width: 100%;
   display: flex;
   justify-content: space-between;
@@ -292,6 +292,8 @@ a {
 }
 
 .toggle {
+  position: relative;
+  z-index: 150;
   width: 52px;
   height: 52px;
   display: inline-flex;
@@ -379,6 +381,18 @@ body.theme-dark .nav-theme-item .nav-theme-button {
   .topbar {
     padding-right: 18px;
     padding-left: 18px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+    margin-bottom: 8px;
+    background: rgba(255, 252, 247, 0.94);
+    border-bottom: 1px solid rgba(148, 163, 184, 0.24);
+    backdrop-filter: blur(12px);
+  }
+
+  html.theme-dark .topbar,
+  body.theme-dark .topbar {
+    background: rgba(12, 18, 33, 0.94);
+    border-bottom-color: rgba(112, 130, 176, 0.34);
   }
 }
 
@@ -394,6 +408,7 @@ body.theme-dark .nav-theme-item .nav-theme-button {
 
   .topbar {
     flex-wrap: wrap;
+    gap: 10px;
   }
 
   .content-wrapper {
@@ -403,5 +418,26 @@ body.theme-dark .nav-theme-item .nav-theme-button {
   .user-info-topbar {
     width: 100%;
     justify-content: flex-start;
+    transition: opacity 180ms ease, max-height 180ms ease, padding 180ms ease, margin 180ms ease;
+  }
+
+  body.scrolled-down .user-info-topbar {
+    opacity: 0;
+    pointer-events: none;
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    margin: 0;
+    overflow: hidden;
+  }
+
+  body.nav-open .user-info-topbar {
+    opacity: 0;
+    pointer-events: none;
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    margin: 0;
+    overflow: hidden;
   }
 }

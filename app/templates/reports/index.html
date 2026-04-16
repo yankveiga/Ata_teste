@@ -281,7 +281,7 @@
  <div class="report-goal-description-col">
  <p>{{ goal.description if goal.description else 'Sem descrição registrada.' }}</p>
  {% if currentUser.is_admin or goal.can_delete_completed %}
- <form action="/relatorios/goals/{{ goal.id }}/delete#report-goals-panel" method="post" class="report-goal-delete-form" onsubmit="return confirm('Deseja apagar esta atividade concluída?');">
+ <form action="/relatorios/goals/{{ goal.id }}/delete#report-goals-panel" method="post" class="report-goal-delete-form js-report-delete-form">
  <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
  <button type="submit" class="report-goal-delete-button" aria-label="Apagar atividade concluída {{ goal.activity }}">Apagar atividade</button>
  </form>
@@ -306,7 +306,7 @@
  {% for goal in overduePendingGoals %}
  <li class="report-goal-item is-overdue" style="--goal-project-color: {{ goal.project.primary_color }};">
  {% if goal.can_manage %}
- <form action="/relatorios/goals/{{ goal.id }}/update#report-goals-panel" method="post" class="report-goal-row report-goal-row-kanban" novalidate>
+ <form action="/relatorios/goals/{{ goal.id }}/update#report-goals-panel" method="post" class="report-goal-row report-goal-row-kanban js-goal-auto-save-form" novalidate>
  <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
  <input type="hidden" name="return_project_id" value="{{ selectedProjectId if selectedProjectId else '' }}">
  <div class="report-goal-activity-col">
@@ -321,10 +321,7 @@
  </small>
  </div>
  <div class="report-goal-description-col">
- <textarea name="description" rows="3" class="form-control">{{ goal.description }}</textarea>
- <div class="form-actions">
- <button type="submit" class="btn-submit report-goal-save-button">Salvar</button>
- </div>
+ <textarea name="description" rows="3" class="form-control js-goal-auto-save-description">{{ goal.description }}</textarea>
  </div>
  </form>
  {% else %}
@@ -385,8 +382,65 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
   const forms = Array.from(document.querySelectorAll('.js-goal-auto-save-form'));
-  if (!forms.length) {
-    return;
+  const deleteForms = Array.from(document.querySelectorAll('.js-report-delete-form'));
+  let confirmBox = null;
+  let activeCleanup = null;
+
+  function ensureConfirmBox() {
+    if (confirmBox) {
+      return confirmBox;
+    }
+    const container = document.createElement('div');
+    container.className = 'report-inline-confirm report-inline-confirm-furg';
+    container.hidden = true;
+    container.innerHTML = [
+      '<strong class="report-inline-confirm-brand">FURG • Relatórios</strong>',
+      '<span class="report-inline-confirm-text">Confirma a alteração?</span>',
+      '<button type="button" class="report-inline-confirm-yes">Confirmar</button>',
+      '<button type="button" class="report-inline-confirm-no">Cancelar</button>'
+    ].join('');
+    document.body.appendChild(container);
+    confirmBox = container;
+    return confirmBox;
+  }
+
+  function askFurgConfirmation(message, onConfirm, onCancel) {
+    const box = ensureConfirmBox();
+    if (activeCleanup) {
+      activeCleanup();
+      activeCleanup = null;
+    }
+    const text = box.querySelector('.report-inline-confirm-text');
+    const yesButton = box.querySelector('.report-inline-confirm-yes');
+    const noButton = box.querySelector('.report-inline-confirm-no');
+    text.textContent = message;
+    box.hidden = false;
+
+    function cleanup() {
+      yesButton.removeEventListener('click', handleYes);
+      noButton.removeEventListener('click', handleNo);
+      box.hidden = true;
+      box.style.display = 'none';
+    }
+
+    function handleYes() {
+      cleanup();
+      activeCleanup = null;
+      onConfirm();
+    }
+
+    function handleNo() {
+      cleanup();
+      activeCleanup = null;
+      if (onCancel) {
+        onCancel();
+      }
+    }
+
+    yesButton.addEventListener('click', handleYes);
+    noButton.addEventListener('click', handleNo);
+    box.style.display = 'inline-flex';
+    activeCleanup = cleanup;
   }
 
   forms.forEach((form) => {
@@ -400,13 +454,15 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!changed) {
           return;
         }
-        const confirmed = window.confirm('Confirma a alteração?');
-        if (confirmed) {
-          form.requestSubmit();
-          return;
-        }
-        const initial = this.dataset.initialChecked === '1';
-        this.checked = initial;
+        askFurgConfirmation(
+          'Confirmar alteração desta meta da quinzena?',
+          function() {
+            form.requestSubmit();
+          },
+          function() {
+            checkbox.checked = checkbox.dataset.initialChecked === '1';
+          },
+        );
       });
     }
 
@@ -417,12 +473,24 @@ document.addEventListener('DOMContentLoaded', function() {
         if (this.value === initial) {
           return;
         }
-        const confirmed = window.confirm('Confirma a alteração?');
-        if (confirmed) {
-          form.requestSubmit();
-          return;
-        }
-        this.value = initial;
+        askFurgConfirmation(
+          'Salvar atualização desta meta?',
+          function() {
+            form.requestSubmit();
+          },
+          function() {
+            field.value = initial;
+          },
+        );
+      });
+    });
+  });
+
+  deleteForms.forEach((form) => {
+    form.addEventListener('submit', function(event) {
+      event.preventDefault();
+      askFurgConfirmation('Deseja apagar esta atividade concluída?', function() {
+        form.submit();
       });
     });
   });
