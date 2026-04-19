@@ -41,6 +41,7 @@ function registerAuthRoutes(ctx) {
     render,
     renderLogin,
     requireAuth,
+    requireAdminPage,
     canManageProject,
     getCurrentMember,
     listAccessibleProjects,
@@ -75,6 +76,104 @@ function registerAuthRoutes(ctx) {
     }
 
     return canManageProject(req, task.project);
+  }
+
+  function canCompletePlannerTask(req, task) {
+    return canDeletePlannerTask(req, task);
+  }
+
+  function parseQueueMemberIds(rawValue) {
+    const values = Array.isArray(rawValue) ? rawValue : [rawValue];
+    const seen = new Set();
+    const queue = [];
+    values.forEach((value) => {
+      const parsed = parseId(value);
+      if (!parsed || seen.has(parsed)) {
+        return;
+      }
+      seen.add(parsed);
+      queue.push(parsed);
+    });
+    return queue;
+  }
+
+  function addDaysToSqlDateTime(sqlDateTime, days) {
+    const text = String(sqlDateTime || "").trim();
+    const match = text.match(
+      /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?$/,
+    );
+    if (!match) {
+      return null;
+    }
+
+    const year = Number(match[1]);
+    const month = Number(match[2]) - 1;
+    const day = Number(match[3]);
+    const hour = Number(match[4]);
+    const minute = Number(match[5]);
+    const second = Number(match[6] || 0);
+    const date = new Date(Date.UTC(year, month, day, hour, minute, second));
+    date.setUTCDate(date.getUTCDate() + Number(days || 0));
+    const pad = (value) => String(value).padStart(2, "0");
+    return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())} ${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}:${pad(date.getUTCSeconds())}`;
+  }
+
+  function addIntervalToSqlDateTime(sqlDateTime, amount, unit) {
+    const text = String(sqlDateTime || "").trim();
+    const match = text.match(
+      /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?$/,
+    );
+    if (!match) {
+      return null;
+    }
+
+    const every = Number(amount || 0);
+    if (!Number.isInteger(every) || every < 1) {
+      return null;
+    }
+
+    const year = Number(match[1]);
+    const month = Number(match[2]) - 1;
+    const day = Number(match[3]);
+    const hour = Number(match[4]);
+    const minute = Number(match[5]);
+    const second = Number(match[6] || 0);
+    const date = new Date(Date.UTC(year, month, day, hour, minute, second));
+
+    if (unit === "weeks") {
+      date.setUTCDate(date.getUTCDate() + (every * 7));
+    } else if (unit === "months") {
+      date.setUTCMonth(date.getUTCMonth() + every);
+    } else {
+      date.setUTCDate(date.getUTCDate() + every);
+    }
+
+    const pad = (value) => String(value).padStart(2, "0");
+    return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())} ${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}:${pad(date.getUTCSeconds())}`;
+  }
+
+  function normalizePlannerStatus(value) {
+    const raw = String(value || "").trim().toLowerCase();
+    if (raw === "in_progress" || raw === "done" || raw === "todo") {
+      return raw;
+    }
+    return "todo";
+  }
+
+  function normalizePlannerPriority(value) {
+    const raw = String(value || "").trim().toLowerCase();
+    if (raw === "low" || raw === "high" || raw === "urgent") {
+      return raw;
+    }
+    return "medium";
+  }
+
+  function normalizePlannerRecurrenceUnit(value) {
+    const raw = String(value || "").trim().toLowerCase();
+    if (raw === "weeks" || raw === "months") {
+      return raw;
+    }
+    return "days";
   }
 
 app.get("/login", (req, res) => {
@@ -181,6 +280,28 @@ app.get("/services", requireAuth, (req, res) => {
     });
   });
 
+  // DETALHE: Rota GET /manutencao-usuarios: hub administrativo para membros, projetos e usuarios de acesso.
+
+  app.get("/manutencao-usuarios", requireAuth, requireAdminPage, (req, res) => {
+    const users = database.listUsers();
+    const activeMembers = database.listActiveMembers();
+    const projects = database.listProjectsWithMembers();
+    const adminUsers = users.filter((user) => user.is_admin);
+    const commonUsers = users.filter((user) => !user.is_admin);
+
+    return render(res, "users_maintenance/index.html", {
+      title: "Manutenção de Usuários",
+      activeSection: "user_maintenance",
+      summary: {
+        usersTotal: users.length,
+        adminsTotal: adminUsers.length,
+        commonTotal: commonUsers.length,
+        membersTotal: activeMembers.length,
+        projectsTotal: projects.length,
+      },
+    });
+  });
+
   // DETALHE: Rota GET /home: consulta dados necessarios e monta resposta (HTML/JSON) para a tela solicitada.
 
   app.get("/home", requireAuth, (req, res) => {
@@ -249,10 +370,12 @@ app.get("/services", requireAuth, (req, res) => {
       : baseTasks.filter((task) => accessibleProjectIds.has(task.project_id));
 
     const nowIso = toSqlDateTime(new Date());
-    const plannerTasks = visibleTasks.map((task) => ({
+    const plannerTasks = visibleTasks
+      .filter((task) => !task.is_completed)
+      .map((task) => ({
       ...task,
       is_overdue: !task.is_completed && Boolean(task.due_at && nowIso && task.due_at < nowIso),
-    }));
+      }));
     const nowDate = new Date();
     const currentMonthKey = new Intl.DateTimeFormat("en-CA", {
       timeZone: "America/Sao_Paulo",
@@ -339,6 +462,8 @@ app.get("/services", requireAuth, (req, res) => {
     const selectedDayTasks = (tasksByDay[selectedDay] || []).map((task) => ({
       ...task,
       can_delete: canDeletePlannerTask(req, task),
+      can_complete: canCompletePlannerTask(req, task),
+      can_manage: canManageProject(req, task.project),
     }));
     const prevMonthDate = new Date(Date.UTC(monthYear, monthIndex - 1, 1));
     const nextMonthDate = new Date(Date.UTC(monthYear, monthIndex + 1, 1));
@@ -365,6 +490,13 @@ app.get("/services", requireAuth, (req, res) => {
       title: "",
       description: "",
       dueAt: "",
+      recurrenceEnabled: false,
+      recurrenceIntervalDays: "7",
+      recurrenceUnit: "days",
+      recurrenceMemberIds: [],
+      status: "todo",
+      priority: "medium",
+      label: "",
       ...(plannerFormState?.formData || {}),
     };
     if (!formData.memberId && effectiveViewMode === "member" && selectedMemberId) {
@@ -395,6 +527,9 @@ app.get("/services", requireAuth, (req, res) => {
         formData.memberId = "";
       }
     }
+    const recurrenceMemberIds = parseQueueMemberIds(formData.recurrenceMemberIds)
+      .filter((memberId) => createMemberIds.has(memberId));
+    formData.recurrenceMemberIds = recurrenceMemberIds.map((memberId) => String(memberId));
 
     return render(res, "planner/index.html", {
       title: "Planner",
@@ -413,6 +548,17 @@ app.get("/services", requireAuth, (req, res) => {
       calendarCells: cells,
       selectedDay,
       selectedDayTasks,
+      plannerStatusOptions: [
+        { value: "todo", label: "A Fazer" },
+        { value: "in_progress", label: "Em Execução" },
+        { value: "done", label: "Realizado" },
+      ],
+      plannerPriorityOptions: [
+        { value: "low", label: "Baixa" },
+        { value: "medium", label: "Média" },
+        { value: "high", label: "Alta" },
+        { value: "urgent", label: "Urgente" },
+      ],
       projectOptions: accessibleProjects,
       memberOptions,
       canCreatePlannerTask: creatableProjects.length > 0,
@@ -454,8 +600,18 @@ app.get("/services", requireAuth, (req, res) => {
       memberId: String(req.body.member_id || ""),
       title: String(req.body.title || "").trim(),
       description: String(req.body.description || "").trim(),
+      status: normalizePlannerStatus(req.body.status),
+      priority: normalizePlannerPriority(req.body.priority),
+      label: String(req.body.label || "").trim(),
       dueAt: String(req.body.due_at || "").trim(),
+      recurrenceEnabled: String(req.body.recurrence_enabled || "") === "1",
+      recurrenceIntervalDays: String(req.body.recurrence_interval_days || "7").trim(),
+      recurrenceUnit: normalizePlannerRecurrenceUnit(req.body.recurrence_unit),
+      recurrenceMemberIds: parseQueueMemberIds(req.body.recurrence_member_ids).map((id) => String(id)),
     };
+    if (formData.status === "done") {
+      formData.status = "todo";
+    }
     const errors = {};
     const projectId = parseId(formData.projectId);
     const memberId = parseId(formData.memberId);
@@ -467,7 +623,27 @@ app.get("/services", requireAuth, (req, res) => {
       errors.projectId = ["Somente administradores ou coordenadores do projeto podem criar tarefas."];
     }
 
-    if (!memberId) {
+    const recurrenceIntervalDays = Number(formData.recurrenceIntervalDays);
+    const recurrenceEnabled = Boolean(formData.recurrenceEnabled);
+    const recurrenceUnit = normalizePlannerRecurrenceUnit(formData.recurrenceUnit);
+    let recurrenceQueue = [];
+
+    if (project && recurrenceEnabled) {
+      const projectMemberIds = new Set(
+        (project.active_members || []).map((member) => Number(member.id)),
+      );
+      recurrenceQueue = parseQueueMemberIds(formData.recurrenceMemberIds)
+        .filter((id) => projectMemberIds.has(id));
+      if (!recurrenceQueue.length && memberId && projectMemberIds.has(memberId)) {
+        recurrenceQueue = [memberId];
+      }
+      if (!recurrenceQueue.length) {
+        errors.memberId = ["Selecione pelo menos um membro da fila de recorrência."];
+      }
+      if (!Number.isInteger(recurrenceIntervalDays) || recurrenceIntervalDays < 1 || recurrenceIntervalDays > 60) {
+        errors.recurrenceIntervalDays = ["Intervalo de recorrência deve ser entre 1 e 60 dias."];
+      }
+    } else if (!memberId) {
       errors.memberId = ["Selecione o membro da tarefa."];
     } else if (project && !database.isProjectMember(project.id, memberId)) {
       errors.memberId = ["O membro selecionado não pertence ao projeto escolhido."];
@@ -486,6 +662,7 @@ app.get("/services", requireAuth, (req, res) => {
     }
 
     const description = trimToNull(formData.description) || "";
+    const label = trimToNull(formData.label);
 
     if (Object.keys(errors).length > 0) {
       req.session.plannerFormState = {
@@ -497,20 +674,34 @@ app.get("/services", requireAuth, (req, res) => {
     }
 
     try {
+      const assignedMemberId = recurrenceEnabled && recurrenceQueue.length
+        ? recurrenceQueue[0]
+        : memberId;
+      const recurrenceNextIndex = recurrenceEnabled && recurrenceQueue.length > 1
+        ? 1
+        : 0;
       database.createPlannerTask({
         projectId: project.id,
-        assignedMemberId: memberId,
+        assignedMemberId,
         createdByUserId: req.currentUser.id,
         title,
         description,
+        status: formData.status,
+        priority: formData.priority,
+        label,
         dueAt,
+        recurrenceIntervalDays: recurrenceEnabled ? recurrenceIntervalDays : null,
+        recurrenceUnit: recurrenceEnabled ? recurrenceUnit : null,
+        recurrenceEvery: recurrenceEnabled ? recurrenceIntervalDays : null,
+        recurrenceMemberQueue: recurrenceEnabled ? recurrenceQueue : null,
+        recurrenceNextIndex: recurrenceEnabled ? recurrenceNextIndex : null,
       });
       req.flash("success", "Tarefa do Planner criada com sucesso.");
       return res.redirect(
         `${urlFor("planner")}${buildPlannerQuery({
           view: "project",
           projectId: project.id,
-          memberId,
+          memberId: assignedMemberId,
           month: String(req.body.return_month || ""),
           day: String(req.body.return_day || ""),
         })}`,
@@ -520,6 +711,168 @@ app.get("/services", requireAuth, (req, res) => {
       req.flash("danger", `Erro ao criar tarefa do Planner: ${error.message}`);
       return res.redirect(`${urlFor("planner")}${fallbackQuery}`);
     }
+  });
+
+  // DETALHE: Rota POST /planner/tasks/:id/complete: conclui tarefa e gera proxima recorrencia quando aplicavel.
+
+  app.post("/planner/tasks/:id/complete", requireAuth, (req, res) => {
+    if (!ensureValidCsrf(req, res)) {
+      return;
+    }
+
+    const taskId = parseId(req.params.id);
+    const fallbackQuery = buildPlannerQuery({
+      view: String(req.body.view_mode || ""),
+      projectId: parseId(req.body.return_project_id),
+      memberId: parseId(req.body.return_member_id),
+      month: String(req.body.return_month || ""),
+      day: String(req.body.return_day || ""),
+    });
+
+    if (!taskId) {
+      req.flash("danger", "Tarefa inválida para conclusão.");
+      return res.redirect(`${urlFor("planner")}${fallbackQuery}`);
+    }
+
+    const task = database.getPlannerTaskById(taskId);
+    if (!task) {
+      req.flash("danger", "Tarefa do Planner não encontrada.");
+      return res.redirect(`${urlFor("planner")}${fallbackQuery}`);
+    }
+
+    if (!canCompletePlannerTask(req, task)) {
+      req.flash("danger", "Você não tem permissão para concluir esta tarefa.");
+      return res.redirect(`${urlFor("planner")}${fallbackQuery}`);
+    }
+
+    if (task.is_completed) {
+      req.flash("info", "Esta tarefa já está concluída.");
+      return res.redirect(`${urlFor("planner")}${fallbackQuery}`);
+    }
+
+    try {
+      const completedAt = toSqlDateTime(new Date());
+      database.updatePlannerTaskCompletion({
+        id: task.id,
+        isCompleted: true,
+        completedAt,
+        updatedAt: completedAt,
+      });
+      database.createPlannerTaskCompletionLog({
+        taskId: task.id,
+        projectId: task.project_id,
+        assignedMemberId: task.assigned_member_id,
+        completedByUserId: req.currentUser.id,
+        title: task.title,
+        description: task.description,
+        status: "done",
+        priority: task.priority || "medium",
+        label: task.label || null,
+        dueAt: task.due_at,
+        completedAt,
+      });
+
+      const queue = Array.isArray(task.recurrence_member_queue)
+        ? task.recurrence_member_queue
+        : [];
+      const recurrenceEvery = Number(task.recurrence_every || task.recurrence_interval_days || 0);
+      const recurrenceUnit = normalizePlannerRecurrenceUnit(task.recurrence_unit || "days");
+      if (recurrenceEvery > 0 && queue.length > 0) {
+        const currentIndex = Number(task.recurrence_next_index || 0);
+        const nextQueueIndex = currentIndex % queue.length;
+        const nextAssigneeId = queue[nextQueueIndex];
+        const nextDueAt = addIntervalToSqlDateTime(task.due_at, recurrenceEvery, recurrenceUnit)
+          || addDaysToSqlDateTime(task.due_at, recurrenceEvery)
+          || task.due_at;
+        const upcomingIndex = (nextQueueIndex + 1) % queue.length;
+
+        database.createPlannerTask({
+          projectId: task.project_id,
+          assignedMemberId: nextAssigneeId,
+          createdByUserId: req.currentUser.id,
+          title: task.title,
+          description: task.description,
+          status: "todo",
+          priority: task.priority || "medium",
+          label: task.label || null,
+          dueAt: nextDueAt,
+          recurrenceIntervalDays: recurrenceEvery,
+          recurrenceUnit,
+          recurrenceEvery,
+          recurrenceMemberQueue: queue,
+          recurrenceNextIndex: upcomingIndex,
+        });
+      }
+
+      req.flash("success", "Tarefa concluída com sucesso.");
+    } catch (error) {
+      logError(req, "Erro ao concluir tarefa do Planner:", error);
+      req.flash("danger", `Erro ao concluir tarefa do Planner: ${error.message}`);
+    }
+
+    return res.redirect(`${urlFor("planner")}${fallbackQuery}`);
+  });
+
+  // DETALHE: Rota POST /planner/tasks/:id/status: altera bucket (A Fazer/Em Execução/Realizado).
+  app.post("/planner/tasks/:id/status", requireAuth, (req, res) => {
+    if (!ensureValidCsrf(req, res)) {
+      return;
+    }
+
+    const taskId = parseId(req.params.id);
+    const fallbackQuery = buildPlannerQuery({
+      view: String(req.body.view_mode || ""),
+      projectId: parseId(req.body.return_project_id),
+      memberId: parseId(req.body.return_member_id),
+      month: String(req.body.return_month || ""),
+      day: String(req.body.return_day || ""),
+    });
+    const nextStatus = normalizePlannerStatus(req.body.status);
+
+    if (!taskId) {
+      req.flash("danger", "Tarefa inválida para atualizar status.");
+      return res.redirect(`${urlFor("planner")}${fallbackQuery}`);
+    }
+
+    const task = database.getPlannerTaskById(taskId);
+    if (!task) {
+      req.flash("danger", "Tarefa do Planner não encontrada.");
+      return res.redirect(`${urlFor("planner")}${fallbackQuery}`);
+    }
+    if (!canManageProject(req, task.project) && Number(task.assigned_member_id) !== Number(getCurrentMember(req)?.id)) {
+      req.flash("danger", "Você não tem permissão para mover esta tarefa.");
+      return res.redirect(`${urlFor("planner")}${fallbackQuery}`);
+    }
+
+    try {
+      const updatedAt = toSqlDateTime(new Date());
+      const updatedTask = database.updatePlannerTaskStatus({
+        id: task.id,
+        status: nextStatus,
+        updatedAt,
+      });
+      if (updatedTask?.is_completed) {
+        database.createPlannerTaskCompletionLog({
+          taskId: updatedTask.id,
+          projectId: updatedTask.project_id,
+          assignedMemberId: updatedTask.assigned_member_id,
+          completedByUserId: req.currentUser.id,
+          title: updatedTask.title,
+          description: updatedTask.description,
+          status: updatedTask.status,
+          priority: updatedTask.priority || "medium",
+          label: updatedTask.label || null,
+          dueAt: updatedTask.due_at,
+          completedAt: updatedTask.completed_at || updatedAt,
+        });
+      }
+      req.flash("success", "Status da tarefa atualizado.");
+    } catch (error) {
+      logError(req, "Erro ao atualizar status da tarefa do Planner:", error);
+      req.flash("danger", `Erro ao atualizar status da tarefa: ${error.message}`);
+    }
+
+    return res.redirect(`${urlFor("planner")}${fallbackQuery}`);
   });
 
   // DETALHE: Rota POST /planner/tasks/:id/delete: remove tarefa quando usuario tem permissao no projeto.

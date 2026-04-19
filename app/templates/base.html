@@ -82,6 +82,15 @@
                     </a>
                 </li>
 
+                {% if currentUser.is_admin %}
+                <li class="{{ 'hovered' if activeSection == 'user_maintenance' else '' }}">
+                    <a href="{{ urlFor('user_maintenance') }}">
+                        <span class="icon"><ion-icon name="people-outline"></ion-icon></span>
+                        <span class="title">Manutenção Usuários</span>
+                    </a>
+                </li>
+                {% endif %}
+
                 <li class="{{ 'hovered' if activeSection == 'planner' else '' }}">
                     <a href="{{ urlFor('planner') }}">
                         <span class="icon"><ion-icon name="calendar-outline"></ion-icon></span>

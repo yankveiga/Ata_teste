@@ -451,6 +451,68 @@ body.section-reports .report-entries-panel .panel-header {
   background: linear-gradient(180deg, rgba(49, 112, 57, 0.12), rgba(49, 112, 57, 0.03));
 }
 
+/* SECAO: tema especifico do modulo Manutencao de Usuarios. */
+
+.user-maintenance-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.user-maintenance-card {
+  display: grid;
+  grid-template-rows: auto 1fr;
+}
+
+.user-maintenance-card .panel-body {
+  display: grid;
+  align-content: space-between;
+  gap: 14px;
+}
+
+.user-maintenance-stat {
+  margin: 0;
+  color: #4b5f79;
+}
+
+.user-maintenance-stat strong {
+  color: #16324a;
+}
+
+.user-maintenance-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+body.theme-dark.section-user_maintenance .content-panel {
+  background: linear-gradient(180deg, rgba(18, 27, 46, 0.94), rgba(13, 21, 38, 0.94));
+  border-color: rgba(111, 130, 176, 0.34);
+  box-shadow: 0 24px 42px rgba(2, 8, 22, 0.52);
+}
+
+body.theme-dark.section-user_maintenance .page-header h1,
+body.theme-dark.section-user_maintenance .panel-header h2 {
+  color: #edf3ff;
+}
+
+body.theme-dark.section-user_maintenance .page-header .lead,
+body.theme-dark.section-user_maintenance .panel-header p,
+body.theme-dark.section-user_maintenance .user-maintenance-stat {
+  color: #b7c6e6;
+}
+
+body.theme-dark.section-user_maintenance .user-maintenance-stat strong {
+  color: #f2f7ff;
+}
+
+@media (max-width: 1100px) {
+  .user-maintenance-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* SECAO: tema especifico do modulo Planner. */
 
 body.section-planner .page-header {
@@ -532,6 +594,8 @@ body.section-planner .page-header {
   position: relative;
   z-index: 40;
   overflow: visible;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
 }
 
 .planner-ui-top-actions-right {
@@ -563,6 +627,22 @@ body.section-planner .page-header {
   z-index: 45;
 }
 
+.planner-create-backdrop {
+  position: fixed;
+  inset: 0;
+  border: 0;
+  margin: 0;
+  padding: 0;
+  background: rgba(9, 14, 26, 0.45);
+  backdrop-filter: blur(2px);
+  z-index: 88;
+  cursor: default;
+}
+
+.planner-create-backdrop[hidden] {
+  display: none;
+}
+
 .planner-create-button {
   list-style: none;
   cursor: pointer;
@@ -584,16 +664,113 @@ body.section-planner .page-header {
 }
 
 .planner-create-popover {
-  position: absolute;
-  right: 0;
-  top: calc(100% + 8px);
-  width: min(700px, 92vw);
-  z-index: 30;
+  position: fixed !important;
+  top: max(12px, env(safe-area-inset-top)) !important;
+  left: 50%;
+  transform: translateX(-50%) !important;
+  width: min(860px, 94vw);
+  max-height: calc(100dvh - max(20px, env(safe-area-inset-top) + 10px));
+  z-index: 5000 !important;
   background: rgba(255, 255, 255, 0.98);
   border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 18px;
+  box-shadow: 0 30px 60px rgba(15, 23, 42, 0.24);
+  overflow: hidden;
+}
+
+.planner-create-header {
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+  background: linear-gradient(135deg, rgba(224, 242, 254, 0.7), rgba(240, 253, 250, 0.75));
+  position: relative;
+}
+
+.planner-create-header h3 {
+  margin: 0;
+  color: #0f2f45;
+  font-size: 1.06rem;
+}
+
+.planner-create-header p {
+  margin: 4px 0 0;
+  color: #49637a;
+  font-size: 0.8rem;
+}
+
+.planner-create-close-x {
+  position: absolute;
+  right: 10px;
+  top: 8px;
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: rgba(255, 255, 255, 0.86);
+  color: #2f465d;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.planner-create-form {
+  padding: 12px 14px 14px;
+  display: grid;
+  gap: 12px;
+  max-height: calc(100dvh - max(112px, env(safe-area-inset-top) + 82px));
+  overflow: auto;
+}
+
+.planner-create-form .form-group {
+  margin: 0;
+}
+
+.planner-create-section {
+  border: 1px solid rgba(148, 163, 184, 0.22);
   border-radius: 14px;
-  box-shadow: 0 18px 34px rgba(15, 23, 42, 0.18);
-  padding: 12px;
+  background: rgba(255, 255, 255, 0.72);
+  padding: 10px;
+}
+
+.planner-create-section h4 {
+  margin: 0 0 10px;
+  color: #223f56;
+  font-size: 0.86rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.planner-create-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 12px;
+}
+
+.planner-create-grid .form-group-full {
+  grid-column: 1 / -1;
+}
+
+.planner-create-form .form-actions {
+  position: sticky;
+  bottom: -14px;
+  padding: 10px 2px 2px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.98) 32%);
+  z-index: 2;
+}
+
+.planner-create-form .form-control,
+.planner-create-form .form-control-file {
+  padding: 0.68rem 0.8rem;
+  border-radius: 12px;
+  font-size: 0.9rem;
+}
+
+.planner-create-form textarea.form-control {
+  min-height: 96px;
+  resize: vertical;
+}
+
+.planner-modal-open {
+  overflow: hidden;
 }
 
 .planner-create-popover[hidden] {
@@ -826,6 +1003,57 @@ body.section-planner .page-header {
   font-size: 0.76rem;
 }
 
+.planner-side-task-meta {
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.planner-priority {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  padding: 0.2rem 0.55rem;
+}
+
+.planner-priority-low {
+  background: rgba(30, 64, 175, 0.12);
+  color: #1e40af;
+}
+
+.planner-priority-medium {
+  background: rgba(2, 132, 199, 0.14);
+  color: #075985;
+}
+
+.planner-priority-high {
+  background: rgba(217, 119, 6, 0.16);
+  color: #92400e;
+}
+
+.planner-priority-urgent {
+  background: rgba(220, 38, 38, 0.16);
+  color: #991b1b;
+}
+
+.planner-label-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  background: rgba(255, 255, 255, 0.9);
+  color: #2a3c52;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
 .planner-side-task-member {
   margin-top: 6px;
   display: inline-flex;
@@ -838,6 +1066,12 @@ body.section-planner .page-header {
 
 .planner-side-task-actions {
   margin-top: 8px;
+}
+
+.planner-side-status-select {
+  min-height: 34px;
+  font-size: 0.78rem;
+  padding: 0.2rem 0.45rem;
 }
 
 .planner-side-task-delete {
@@ -853,6 +1087,88 @@ body.section-planner .page-header {
 
 .planner-side-task-delete:hover {
   filter: brightness(0.98);
+}
+
+.planner-side-task-complete {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #245c3c;
+}
+
+.planner-side-task-complete input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+}
+
+.planner-recurrence-wrap {
+  border: 1px dashed rgba(148, 163, 184, 0.35);
+  border-radius: 12px;
+  padding: 10px;
+  background: rgba(248, 250, 252, 0.72);
+}
+
+.planner-recurrence-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.planner-recurrence-member-queue {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  background: rgba(248, 250, 252, 0.74);
+  max-height: 144px;
+  overflow: auto;
+}
+
+.planner-recurrence-member-item {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 0.82rem;
+  color: #2d4560;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.82);
+  padding: 7px 8px;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease, transform 120ms ease;
+}
+
+.planner-recurrence-member-item:hover {
+  background: rgba(239, 246, 255, 0.92);
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+.planner-recurrence-member-item.is-selected {
+  background: rgba(219, 234, 254, 0.95);
+  border-color: rgba(59, 130, 246, 0.45);
+  transform: translateY(-1px);
+}
+
+.planner-recurrence-order-badge {
+  min-width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  font-weight: 800;
+  background: #2563eb;
+  color: #fff;
+  flex-shrink: 0;
 }
 
 /* SECAO: modo escuro do Planner (visual inspirado em suites modernas de planejamento). */
@@ -889,6 +1205,38 @@ body.theme-dark.section-planner .planner-create-popover textarea {
   background: rgba(22, 28, 50, 0.94);
   color: #e8eeff;
   border-color: rgba(114, 128, 168, 0.42);
+}
+
+body.theme-dark.section-planner .planner-create-header {
+  background: linear-gradient(135deg, rgba(35, 46, 80, 0.78), rgba(22, 35, 66, 0.8));
+  border-bottom-color: rgba(113, 128, 169, 0.32);
+}
+
+body.theme-dark.section-planner .planner-create-header h3 {
+  color: #eef2ff;
+}
+
+body.theme-dark.section-planner .planner-create-header p {
+  color: #b8c4e2;
+}
+
+body.theme-dark.section-planner .planner-create-close-x {
+  background: rgba(30, 40, 68, 0.92);
+  border-color: rgba(130, 146, 190, 0.38);
+  color: #dce6ff;
+}
+
+body.theme-dark.section-planner .planner-create-form .form-actions {
+  background: linear-gradient(180deg, rgba(12, 15, 31, 0), rgba(12, 15, 31, 0.96) 25%);
+}
+
+body.theme-dark.section-planner .planner-create-section {
+  background: rgba(21, 29, 48, 0.86);
+  border-color: rgba(113, 128, 169, 0.28);
+}
+
+body.theme-dark.section-planner .planner-create-section h4 {
+  color: #dce7ff;
 }
 
 body.theme-dark.section-planner .planner-create-popover {
@@ -979,10 +1327,46 @@ body.theme-dark.section-planner .planner-side-task-member {
   color: #b6c2df;
 }
 
+body.theme-dark.section-planner .planner-label-chip {
+  border-color: rgba(130, 146, 190, 0.42);
+  background: rgba(30, 36, 58, 0.94);
+  color: #d6e2ff;
+}
+
 body.theme-dark.section-planner .planner-side-task-delete {
   background: rgba(115, 39, 39, 0.86);
   border-color: rgba(229, 118, 118, 0.45);
   color: #ffd8d8;
+}
+
+body.theme-dark.section-planner .planner-side-task-complete {
+  color: #b9efcb;
+}
+
+body.theme-dark.section-planner .planner-recurrence-member-queue {
+  background: rgba(18, 26, 44, 0.86);
+  border-color: rgba(113, 128, 169, 0.32);
+}
+
+body.theme-dark.section-planner .planner-recurrence-wrap {
+  background: rgba(17, 26, 42, 0.88);
+  border-color: rgba(113, 128, 169, 0.36);
+}
+
+body.theme-dark.section-planner .planner-recurrence-member-item {
+  color: #d6e2ff;
+  background: rgba(26, 35, 56, 0.9);
+  border-color: rgba(113, 128, 169, 0.34);
+}
+
+body.theme-dark.section-planner .planner-recurrence-member-item:hover {
+  background: rgba(34, 45, 74, 0.95);
+  border-color: rgba(139, 167, 255, 0.48);
+}
+
+body.theme-dark.section-planner .planner-recurrence-member-item.is-selected {
+  background: rgba(43, 59, 96, 0.96);
+  border-color: rgba(139, 167, 255, 0.58);
 }
 
 @media (max-width: 1200px) {
@@ -991,11 +1375,10 @@ body.theme-dark.section-planner .planner-side-task-delete {
   }
 
   .planner-create-popover {
-    position: fixed;
-    top: 80px;
-    right: 14px;
-    left: 14px;
-    width: auto;
+    width: min(92vw, 760px);
+    top: max(12px, env(safe-area-inset-top)) !important;
+    transform: translateX(-50%);
+    max-height: calc(100dvh - max(28px, env(safe-area-inset-top) + 14px));
   }
 }
 
@@ -1030,6 +1413,26 @@ body.theme-dark.section-planner .planner-side-task-delete {
   .planner-calendar-cell {
     min-height: 82px;
     padding: 6px;
+  }
+
+  .planner-recurrence-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .planner-recurrence-member-queue {
+    grid-template-columns: 1fr;
+  }
+
+  .planner-create-grid,
+  .planner-create-form {
+    grid-template-columns: 1fr;
+  }
+
+  .planner-create-popover {
+    width: min(94vw, 640px);
+    top: max(12px, env(safe-area-inset-top)) !important;
+    transform: translateX(-50%);
+    max-height: calc(100dvh - max(20px, env(safe-area-inset-top) + 10px));
   }
 }
 
@@ -1360,6 +1763,30 @@ body.theme-dark.section-almox .form-control {
   font-size: 0.92rem;
   display: grid;
   gap: 4px;
+}
+
+/* SECAO: overrides de formulario exclusivos do Planner (evita conflito com estilos globais). */
+
+body.section-planner .planner-create-grid > * {
+  min-width: 0;
+}
+
+body.section-planner .planner-create-form .form-control,
+body.section-planner .planner-create-form .form-control-file {
+  padding: 0.68rem 0.8rem;
+  border-radius: 12px;
+  font-size: 0.9rem;
+}
+
+body.section-planner .planner-create-form textarea.form-control {
+  min-height: 96px;
+  resize: vertical;
+}
+
+body.section-planner .planner-side-status-select {
+  min-height: 34px;
+  font-size: 0.78rem;
+  padding: 0.2rem 0.45rem;
 }
 
 /* SECAO: padroes visuais para estado vazio e carregamento. */

@@ -65,6 +65,7 @@
 
                 {% if canCreatePlannerTask %}
                     <div class="planner-create-compact {% if plannerFormErrors.projectId or plannerFormErrors.memberId or plannerFormErrors.title or plannerFormErrors.dueAt %}is-open{% endif %}" id="planner_create_box">
+                        <button type="button" class="planner-create-backdrop" id="planner_create_backdrop" {% if not (plannerFormErrors.projectId or plannerFormErrors.memberId or plannerFormErrors.title or plannerFormErrors.dueAt) %}hidden{% endif %} aria-label="Fechar criação de tarefa"></button>
                         <button
                             type="button"
                             class="planner-create-button"
@@ -75,7 +76,12 @@
                             + Nova tarefa
                         </button>
                         <div class="planner-create-popover" id="planner_create_popover" {% if not (plannerFormErrors.projectId or plannerFormErrors.memberId or plannerFormErrors.title or plannerFormErrors.dueAt) %}hidden{% endif %}>
-                            <form action="/planner/tasks/create" method="post" class="portal-form-grid" novalidate>
+                            <header class="planner-create-header">
+                                <h3>Nova tarefa</h3>
+                                <p>Preencha os dados essenciais. Recorrência é opcional.</p>
+                                <button type="button" class="planner-create-close-x" id="planner_create_close_x" aria-label="Fechar">×</button>
+                            </header>
+                            <form action="/planner/tasks/create" method="post" class="planner-create-form" novalidate>
                                 <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
                                 <input type="hidden" name="view_mode" value="{{ plannerViewMode }}">
                                 <input type="hidden" name="return_project_id" value="{{ selectedProject.id if selectedProject else '' }}">
@@ -83,70 +89,174 @@
                                 <input type="hidden" name="return_month" value="{{ plannerMonth }}">
                                 <input type="hidden" name="return_day" value="{{ selectedDay }}">
 
-                                <div class="form-group">
-                                    <label class="form-label" for="planner_form_project_id">Projeto</label>
-                                    <select id="planner_form_project_id" name="project_id" class="form-control" data-selected-member-id="{{ plannerFormData.memberId }}">
-                                        <option value="">Selecione</option>
-                                        {% for project in createProjectOptions %}
-                                            <option value="{{ project.id }}" {% if plannerFormData.projectId == (project.id ~ '') %}selected{% endif %}>
-                                                {{ project.name }}
-                                            </option>
-                                        {% endfor %}
-                                    </select>
-                                    {% if plannerFormErrors.projectId %}
-                                        <ul class="form-error-list">
-                                            {% for error in plannerFormErrors.projectId %}<li>{{ error }}</li>{% endfor %}
-                                        </ul>
-                                    {% endif %}
-                                </div>
+                                <section class="planner-create-section planner-create-section-essential">
+                                    <h4>Essenciais</h4>
+                                    <div class="planner-create-grid">
+                                        <div class="form-group">
+                                            <label class="form-label" for="planner_form_project_id">Projeto</label>
+                                            <select id="planner_form_project_id" name="project_id" class="form-control" data-selected-member-id="{{ plannerFormData.memberId }}">
+                                                <option value="">Selecione</option>
+                                                {% for project in createProjectOptions %}
+                                                    <option value="{{ project.id }}" {% if plannerFormData.projectId == (project.id ~ '') %}selected{% endif %}>
+                                                        {{ project.name }}
+                                                    </option>
+                                                {% endfor %}
+                                            </select>
+                                            {% if plannerFormErrors.projectId %}
+                                                <ul class="form-error-list">
+                                                    {% for error in plannerFormErrors.projectId %}<li>{{ error }}</li>{% endfor %}
+                                                </ul>
+                                            {% endif %}
+                                        </div>
 
-                                <div class="form-group">
-                                    <label class="form-label" for="planner_form_member_id">Membro do Projeto</label>
-                                    <select id="planner_form_member_id" name="member_id" class="form-control">
-                                        <option value="">Selecione</option>
-                                        {% for member in createMemberOptions %}
-                                            <option value="{{ member.id }}" {% if plannerFormData.memberId == (member.id ~ '') %}selected{% endif %}>
-                                                {{ member.name }}
-                                            </option>
-                                        {% endfor %}
-                                    </select>
-                                    {% if plannerFormErrors.memberId %}
-                                        <ul class="form-error-list">
-                                            {% for error in plannerFormErrors.memberId %}<li>{{ error }}</li>{% endfor %}
-                                        </ul>
-                                    {% endif %}
-                                </div>
+                                        <div class="form-group">
+                                            <label class="form-label" for="planner_form_member_id">Membro do Projeto</label>
+                                            <select id="planner_form_member_id" name="member_id" class="form-control">
+                                                <option value="">Selecione</option>
+                                                {% for member in createMemberOptions %}
+                                                    <option value="{{ member.id }}" {% if plannerFormData.memberId == (member.id ~ '') %}selected{% endif %}>
+                                                        {{ member.name }}
+                                                    </option>
+                                                {% endfor %}
+                                            </select>
+                                            {% if plannerFormErrors.memberId %}
+                                                <ul class="form-error-list">
+                                                    {% for error in plannerFormErrors.memberId %}<li>{{ error }}</li>{% endfor %}
+                                                </ul>
+                                            {% endif %}
+                                        </div>
 
-                                <div class="form-group">
-                                    <label class="form-label" for="planner_form_due_at">Data e Horário</label>
-                                    <input
-                                        id="planner_form_due_at"
-                                        name="due_at"
-                                        type="datetime-local"
-                                        class="form-control"
-                                        value="{{ plannerFormData.dueAt }}"
-                                    >
-                                    {% if plannerFormErrors.dueAt %}
-                                        <ul class="form-error-list">
-                                            {% for error in plannerFormErrors.dueAt %}<li>{{ error }}</li>{% endfor %}
-                                        </ul>
-                                    {% endif %}
-                                </div>
+                                        <div class="form-group">
+                                            <label class="form-label" for="planner_form_due_at">Data e Horário</label>
+                                            <input
+                                                id="planner_form_due_at"
+                                                name="due_at"
+                                                type="datetime-local"
+                                                class="form-control"
+                                                value="{{ plannerFormData.dueAt }}"
+                                            >
+                                            {% if plannerFormErrors.dueAt %}
+                                                <ul class="form-error-list">
+                                                    {% for error in plannerFormErrors.dueAt %}<li>{{ error }}</li>{% endfor %}
+                                                </ul>
+                                            {% endif %}
+                                        </div>
 
-                                <div class="form-group form-group-full">
-                                    <label class="form-label" for="planner_form_title">Título</label>
-                                    <input id="planner_form_title" name="title" class="form-control" maxlength="180" value="{{ plannerFormData.title }}">
-                                    {% if plannerFormErrors.title %}
-                                        <ul class="form-error-list">
-                                            {% for error in plannerFormErrors.title %}<li>{{ error }}</li>{% endfor %}
-                                        </ul>
-                                    {% endif %}
-                                </div>
+                                        <div class="form-group">
+                                            <label class="form-label" for="planner_form_status">Status inicial</label>
+                                            <select id="planner_form_status" name="status" class="form-control">
+                                                <option value="todo" {% if plannerFormData.status == 'todo' %}selected{% endif %}>A Fazer</option>
+                                                <option value="in_progress" {% if plannerFormData.status == 'in_progress' %}selected{% endif %}>Em Execução</option>
+                                            </select>
+                                        </div>
 
-                                <div class="form-group form-group-full">
-                                    <label class="form-label" for="planner_form_description">Descrição</label>
-                                    <textarea id="planner_form_description" name="description" rows="3" class="form-control">{{ plannerFormData.description }}</textarea>
-                                </div>
+                                        <div class="form-group">
+                                            <label class="form-label" for="planner_form_priority">Prioridade</label>
+                                            <select id="planner_form_priority" name="priority" class="form-control">
+                                                {% for option in plannerPriorityOptions %}
+                                                    <option value="{{ option.value }}" {% if plannerFormData.priority == option.value %}selected{% endif %}>{{ option.label }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+
+                                        <div class="form-group form-group-full">
+                                            <label class="form-label" for="planner_form_title">Título</label>
+                                            <input id="planner_form_title" name="title" class="form-control" maxlength="180" value="{{ plannerFormData.title }}">
+                                            {% if plannerFormErrors.title %}
+                                                <ul class="form-error-list">
+                                                    {% for error in plannerFormErrors.title %}<li>{{ error }}</li>{% endfor %}
+                                                </ul>
+                                            {% endif %}
+                                        </div>
+
+                                        <div class="form-group form-group-full">
+                                            <label class="form-label" for="planner_form_label">Etiqueta (opcional)</label>
+                                            <input id="planner_form_label" name="label" class="form-control" maxlength="60" value="{{ plannerFormData.label }}">
+                                        </div>
+
+                                        <div class="form-group form-group-full">
+                                            <label class="form-label" for="planner_form_description">Descrição</label>
+                                            <textarea id="planner_form_description" name="description" rows="3" class="form-control">{{ plannerFormData.description }}</textarea>
+                                        </div>
+                                    </div>
+                                </section>
+
+                                <section class="planner-create-section planner-create-section-recurring">
+                                    <h4>Recorrência</h4>
+                                    <div class="form-group form-group-full planner-recurrence-wrap">
+                                        <label class="checkbox-inline" for="planner_form_recurrence_enabled">
+                                            <input
+                                                id="planner_form_recurrence_enabled"
+                                                type="checkbox"
+                                                name="recurrence_enabled"
+                                                value="1"
+                                                {% if plannerFormData.recurrenceEnabled %}checked{% endif %}
+                                            >
+                                            <span>Tarefa recorrente (rotação de membros)</span>
+                                        </label>
+                                        <small class="form-hint">Quando marcada como concluída, cria automaticamente a próxima tarefa para o próximo membro da fila.</small>
+                                    </div>
+
+                                    <div class="planner-recurrence-fields" id="planner_recurrence_fields" {% if not plannerFormData.recurrenceEnabled %}hidden{% endif %}>
+                                        <div class="form-group">
+                                            <label class="form-label" for="planner_form_recurrence_interval_days">Intervalo</label>
+                                            <input
+                                                id="planner_form_recurrence_interval_days"
+                                                type="number"
+                                                min="1"
+                                                max="60"
+                                                name="recurrence_interval_days"
+                                                class="form-control"
+                                                value="{{ plannerFormData.recurrenceIntervalDays }}"
+                                            >
+                                            {% if plannerFormErrors.recurrenceIntervalDays %}
+                                                <ul class="form-error-list">
+                                                    {% for error in plannerFormErrors.recurrenceIntervalDays %}<li>{{ error }}</li>{% endfor %}
+                                                </ul>
+                                            {% endif %}
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label class="form-label" for="planner_form_recurrence_unit">Repetir em</label>
+                                            <select id="planner_form_recurrence_unit" name="recurrence_unit" class="form-control">
+                                                <option value="days" {% if plannerFormData.recurrenceUnit == 'days' %}selected{% endif %}>Dias</option>
+                                                <option value="weeks" {% if plannerFormData.recurrenceUnit == 'weeks' %}selected{% endif %}>Semanas</option>
+                                                <option value="months" {% if plannerFormData.recurrenceUnit == 'months' %}selected{% endif %}>Meses</option>
+                                            </select>
+                                        </div>
+
+                                        <div class="form-group form-group-full">
+                                            <label class="form-label">Fila de membros (ordem da rotação)</label>
+                                            <div
+                                                id="planner_recurrence_member_queue"
+                                                class="planner-recurrence-member-queue"
+                                                data-selected-order="{{ plannerFormData.recurrenceMemberIds | join(',') }}"
+                                            >
+                                                {% for member in createMemberOptions %}
+                                                    <button
+                                                        type="button"
+                                                        class="planner-recurrence-member-item"
+                                                        data-member-id="{{ member.id }}"
+                                                        aria-pressed="{% if plannerFormData.recurrenceMemberIds and (member.id ~ '') in plannerFormData.recurrenceMemberIds %}true{% else %}false{% endif %}"
+                                                    >
+                                                        <span class="planner-recurrence-order-badge" hidden></span>
+                                                        <span>{{ member.name }}</span>
+                                                    </button>
+                                                {% endfor %}
+                                            </div>
+                                            <div id="planner_recurrence_member_inputs" hidden>
+                                                {% for memberId in plannerFormData.recurrenceMemberIds %}
+                                                    <input type="hidden" name="recurrence_member_ids" value="{{ memberId }}">
+                                                {% endfor %}
+                                            </div>
+                                            {% if plannerFormErrors.memberId %}
+                                                <ul class="form-error-list">
+                                                    {% for error in plannerFormErrors.memberId %}<li>{{ error }}</li>{% endfor %}
+                                                </ul>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </section>
 
                                 <div class="form-actions">
                                     <button type="submit" class="btn-submit">Salvar</button>
@@ -224,6 +334,18 @@
                                 <strong>{{ task.title }}</strong>
                                 <small>{{ task.project.name }}</small>
                                 <small>{{ task.due_at | formatDateTime }}</small>
+                                <div class="planner-side-task-meta">
+                                    <span class="planner-priority planner-priority-{{ task.priority }}">{{ task.priority }}</span>
+                                    {% if task.label %}
+                                        <span class="planner-label-chip">{{ task.label }}</span>
+                                    {% endif %}
+                                </div>
+                                {% if task.recurrence_interval_days %}
+                                    <small>
+                                        Recorrente a cada {{ task.recurrence_every or task.recurrence_interval_days }}
+                                        {% if task.recurrence_unit == 'weeks' %}semana(s){% elif task.recurrence_unit == 'months' %}mês(es){% else %}dia(s){% endif %}
+                                    </small>
+                                {% endif %}
                                 <div class="planner-side-task-member">
                                     <span class="planner-ui-avatar">
                                         {% if task.member.photo %}
@@ -234,6 +356,22 @@
                                     </span>
                                     <span>{{ task.member.name }}</span>
                                 </div>
+                                {% if task.can_manage %}
+                                    <form action="/planner/tasks/{{ task.id }}/status" method="post" class="planner-side-task-actions planner-side-task-status-form">
+                                        <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+                                        <input type="hidden" name="view_mode" value="{{ plannerViewMode }}">
+                                        <input type="hidden" name="return_project_id" value="{{ selectedProject.id if selectedProject else '' }}">
+                                        <input type="hidden" name="return_member_id" value="{{ selectedMember.id if selectedMember else '' }}">
+                                        <input type="hidden" name="return_month" value="{{ plannerMonth }}">
+                                        <input type="hidden" name="return_day" value="{{ selectedDay }}">
+                                        <label for="planner_task_status_{{ task.id }}" class="sr-only">Status</label>
+                                        <select id="planner_task_status_{{ task.id }}" name="status" class="form-control planner-side-status-select" onchange="this.form.submit()">
+                                            {% for option in plannerStatusOptions %}
+                                                <option value="{{ option.value }}" {% if task.status == option.value %}selected{% endif %}>{{ option.label }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </form>
+                                {% endif %}
                                 {% if task.can_delete %}
                                     <form action="/planner/tasks/{{ task.id }}/delete" method="post" class="planner-side-task-actions">
                                         <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
@@ -243,6 +381,20 @@
                                         <input type="hidden" name="return_month" value="{{ plannerMonth }}">
                                         <input type="hidden" name="return_day" value="{{ selectedDay }}">
                                         <button type="submit" class="planner-side-task-delete">Excluir</button>
+                                    </form>
+                                {% endif %}
+                                {% if task.can_complete and not task.is_completed %}
+                                    <form action="/planner/tasks/{{ task.id }}/complete" method="post" class="planner-side-task-actions">
+                                        <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+                                        <input type="hidden" name="view_mode" value="{{ plannerViewMode }}">
+                                        <input type="hidden" name="return_project_id" value="{{ selectedProject.id if selectedProject else '' }}">
+                                        <input type="hidden" name="return_member_id" value="{{ selectedMember.id if selectedMember else '' }}">
+                                        <input type="hidden" name="return_month" value="{{ plannerMonth }}">
+                                        <input type="hidden" name="return_day" value="{{ selectedDay }}">
+                                        <label class="planner-side-task-complete">
+                                            <input type="checkbox" onchange="this.form.requestSubmit()">
+                                            <span>Concluir</span>
+                                        </label>
                                     </form>
                                 {% endif %}
                             </article>
@@ -261,10 +413,61 @@
         document.addEventListener('DOMContentLoaded', function() {
             const projectSelect = document.getElementById('planner_form_project_id');
             const memberSelect = document.getElementById('planner_form_member_id');
+            const recurrenceToggle = document.getElementById('planner_form_recurrence_enabled');
+            const recurrenceFields = document.getElementById('planner_recurrence_fields');
+            const recurrenceQueue = document.getElementById('planner_recurrence_member_queue');
+            const recurrenceInputs = document.getElementById('planner_recurrence_member_inputs');
             const createBox = document.getElementById('planner_create_box');
             const createToggle = document.getElementById('planner_create_toggle');
+            const createBackdrop = document.getElementById('planner_create_backdrop');
             const createPopover = document.getElementById('planner_create_popover');
             const createClose = document.getElementById('planner_create_close');
+            const createCloseX = document.getElementById('planner_create_close_x');
+            const createForm = createPopover ? createPopover.querySelector('.planner-create-form') : null;
+
+            function ensurePlannerPortal() {
+                if (!createPopover || !createBackdrop || !document.body) {
+                    return;
+                }
+                if (createPopover.dataset.portalMounted === '1') {
+                    return;
+                }
+                document.body.appendChild(createBackdrop);
+                document.body.appendChild(createPopover);
+                createPopover.dataset.portalMounted = '1';
+            }
+
+            function forcePlannerModalLayout() {
+                const topbar = document.querySelector('.topbar');
+                const topbarBottom = topbar
+                    ? Math.ceil(topbar.getBoundingClientRect().bottom)
+                    : 0;
+                const headerBottom = Math.max(0, topbarBottom);
+                const modalTop = Math.max(12, headerBottom + 8);
+                const viewportHeight = Math.max(window.innerHeight || 0, 320);
+                const modalMaxHeight = Math.max(280, viewportHeight - modalTop - 12);
+                const formMaxHeight = Math.max(200, modalMaxHeight - 108);
+
+                if (createPopover) {
+                    createPopover.style.position = 'fixed';
+                    createPopover.style.top = String(modalTop) + 'px';
+                    createPopover.style.left = '50%';
+                    createPopover.style.transform = 'translateX(-50%)';
+                    createPopover.style.zIndex = '5000';
+                    createPopover.style.maxHeight = String(modalMaxHeight) + 'px';
+                }
+                if (createBackdrop) {
+                    createBackdrop.style.position = 'fixed';
+                    createBackdrop.style.left = '0';
+                    createBackdrop.style.right = '0';
+                    createBackdrop.style.bottom = '0';
+                    createBackdrop.style.top = String(headerBottom) + 'px';
+                    createBackdrop.style.zIndex = '4999';
+                }
+                if (createForm) {
+                    createForm.style.maxHeight = String(formMaxHeight) + 'px';
+                }
+            }
 
             function setCreateOpen(open) {
                 if (!createBox || !createToggle || !createPopover) {
@@ -272,14 +475,29 @@
                 }
                 createBox.classList.toggle('is-open', open);
                 createToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+                document.body.classList.toggle('planner-modal-open', open);
                 if (open) {
+                    ensurePlannerPortal();
+                    forcePlannerModalLayout();
                     createPopover.removeAttribute('hidden');
+                    createPopover.scrollTop = 0;
+                    if (createForm) {
+                        createForm.scrollTop = 0;
+                    }
+                    if (createBackdrop) {
+                        createBackdrop.removeAttribute('hidden');
+                    }
                 } else {
                     createPopover.setAttribute('hidden', 'hidden');
+                    if (createBackdrop) {
+                        createBackdrop.setAttribute('hidden', 'hidden');
+                    }
                 }
             }
 
             if (createToggle && createPopover) {
+                ensurePlannerPortal();
+                forcePlannerModalLayout();
                 createToggle.addEventListener('click', function() {
                     const isOpen = createBox && createBox.classList.contains('is-open');
                     setCreateOpen(!isOpen);
@@ -289,18 +507,139 @@
                         setCreateOpen(false);
                     });
                 }
+                if (createCloseX) {
+                    createCloseX.addEventListener('click', function() {
+                        setCreateOpen(false);
+                    });
+                }
+                if (createBackdrop) {
+                    createBackdrop.addEventListener('click', function() {
+                        setCreateOpen(false);
+                    });
+                }
                 document.addEventListener('click', function(event) {
                     if (!createBox || !createBox.classList.contains('is-open')) {
+                        return;
+                    }
+                    if ((createBox && createBox.contains(event.target))
+                        || (createPopover && createPopover.contains(event.target))) {
                         return;
                     }
                     if (!createBox.contains(event.target)) {
                         setCreateOpen(false);
                     }
                 });
+                document.addEventListener('keydown', function(event) {
+                    if (event.key === 'Escape' && createBox && createBox.classList.contains('is-open')) {
+                        setCreateOpen(false);
+                    }
+                });
+                window.addEventListener('resize', function() {
+                    if (createBox && createBox.classList.contains('is-open')) {
+                        forcePlannerModalLayout();
+                    }
+                });
+                if (createBox && createBox.classList.contains('is-open')) {
+                    ensurePlannerPortal();
+                    document.body.classList.add('planner-modal-open');
+                    if (createBackdrop) {
+                        createBackdrop.removeAttribute('hidden');
+                    }
+                    if (createPopover) {
+                        createPopover.removeAttribute('hidden');
+                    }
+                    forcePlannerModalLayout();
+                }
             }
 
             if (!projectSelect || !memberSelect) {
                 return;
+            }
+
+            function toggleRecurrenceFields() {
+                if (!recurrenceToggle || !recurrenceFields) {
+                    return;
+                }
+                recurrenceFields.hidden = !recurrenceToggle.checked;
+            }
+
+            let recurrenceOrder = [];
+
+            function syncRecurrenceHiddenInputs() {
+                if (!recurrenceInputs) {
+                    return;
+                }
+                recurrenceInputs.innerHTML = '';
+                recurrenceOrder.forEach((memberId) => {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'recurrence_member_ids';
+                    input.value = String(memberId);
+                    recurrenceInputs.appendChild(input);
+                });
+            }
+
+            function paintRecurrenceOrder() {
+                if (!recurrenceQueue) {
+                    return;
+                }
+                const rows = recurrenceQueue.querySelectorAll('.planner-recurrence-member-item[data-member-id]');
+                rows.forEach((row) => {
+                    const memberId = String(row.dataset.memberId || '');
+                    const index = recurrenceOrder.indexOf(memberId);
+                    const badge = row.querySelector('.planner-recurrence-order-badge');
+                    if (index >= 0) {
+                        row.classList.add('is-selected');
+                        row.setAttribute('aria-pressed', 'true');
+                        if (badge) {
+                            badge.hidden = false;
+                            badge.textContent = String(index + 1);
+                        }
+                    } else {
+                        row.classList.remove('is-selected');
+                        row.setAttribute('aria-pressed', 'false');
+                        if (badge) {
+                            badge.hidden = true;
+                            badge.textContent = '';
+                        }
+                    }
+                });
+                syncRecurrenceHiddenInputs();
+            }
+
+            function bindRecurrenceRowEvents() {
+                if (!recurrenceQueue) {
+                    return;
+                }
+                const rows = recurrenceQueue.querySelectorAll('.planner-recurrence-member-item[data-member-id]');
+                rows.forEach((row) => {
+                    row.addEventListener('click', function() {
+                        const memberId = String(this.dataset.memberId || '');
+                        if (!memberId) {
+                            return;
+                        }
+                        const idx = recurrenceOrder.indexOf(memberId);
+                        if (idx >= 0) {
+                            recurrenceOrder.splice(idx, 1);
+                        } else {
+                            recurrenceOrder.push(memberId);
+                        }
+                        paintRecurrenceOrder();
+                    });
+                });
+            }
+
+            function initRecurrenceOrderFromDOM() {
+                if (!recurrenceQueue) {
+                    return;
+                }
+                const seed = String(recurrenceQueue.dataset.selectedOrder || '')
+                    .split(',')
+                    .map((item) => String(item || '').trim())
+                    .filter(Boolean);
+                recurrenceOrder = seed;
+                paintRecurrenceOrder();
+                bindRecurrenceRowEvents();
             }
 
             function renderMembers(members) {
@@ -320,6 +659,22 @@
                     }
                     memberSelect.appendChild(option);
                 });
+
+                if (recurrenceQueue) {
+                    recurrenceQueue.innerHTML = '';
+                    recurrenceOrder = [];
+                    members.forEach((member) => {
+                        const row = document.createElement('button');
+                        row.type = 'button';
+                        row.className = 'planner-recurrence-member-item';
+                        row.setAttribute('data-member-id', String(member.id));
+                        row.setAttribute('aria-pressed', 'false');
+                        row.innerHTML = '<span class="planner-recurrence-order-badge" hidden></span><span>' + member.name + '</span>';
+                        recurrenceQueue.appendChild(row);
+                    });
+                    paintRecurrenceOrder();
+                    bindRecurrenceRowEvents();
+                }
             }
 
             function loadMembers(projectId) {
@@ -347,6 +702,12 @@
                 projectSelect.dataset.selectedMemberId = '';
                 loadMembers(this.value);
             });
+
+            if (recurrenceToggle) {
+                recurrenceToggle.addEventListener('change', toggleRecurrenceFields);
+                toggleRecurrenceFields();
+            }
+            initRecurrenceOrderFromDOM();
         });
     </script>
 {% endblock %}

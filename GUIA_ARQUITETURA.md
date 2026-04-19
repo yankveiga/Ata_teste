@@ -1,63 +1,78 @@
 # Guia de Arquitetura - Portal PET C3
 
-Objetivo: explicar como o sistema está dividido, para evoluir sem quebrar fluxo.
-
 ## 1) Visão geral
 
-Camadas:
-1. Entrada HTTP (`server.js` + `src/app.js`)
-2. Rotas por domínio (`src/routes/*`)
-3. Regras de negócio (`src/services/*`)
-4. Validações (`src/validators/*`)
-5. Persistência SQL (`src/database.js`)
-6. Renderização (`app/templates/*` + `app/static/css/*`)
+Arquitetura em camadas com responsabilidades separadas:
+1. Entrada HTTP e boot: `server.js`
+2. Composição de app/middlewares/contexto: `src/app.js`
+3. Rotas por domínio: `src/routes/*`
+4. Serviços de regra de negócio: `src/services/*`
+5. Validações: `src/validators/*`
+6. Persistência SQL e schema: `src/database.js`
+7. Renderização: `app/templates/*` + `app/static/*`
 
-## 2) Fluxo de request (resumo)
+## 2) Fluxo de request
 
-1. Request entra em `server.js` -> app Express
-2. `src/app.js` aplica sessão, auth, CSRF e contexto
-3. Rota do domínio processa entrada
-4. (Opcional) serviço aplica regra
-5. `src/database.js` lê/escreve no banco
-6. resposta retorna como HTML (Nunjucks) ou JSON
+1. `server.js` sobe app e garante `ensureSchema()`.
+2. `src/app.js` aplica sessão, CSRF, flash, auth, estáticos e contexto de template.
+3. Rota do módulo processa entrada.
+4. Regra de negócio/validação (quando aplicável).
+5. `database.js` executa SQL no Postgres.
+6. Resposta volta como HTML (Nunjucks) ou JSON.
 
 ## 3) Módulos de rota
 
-- `auth.js`: login/logout, serviços iniciais, presença
-- `atas.js`: criação/download/exclusão de atas
-- `reports.js`: metas semanais, scrum, PDF mensal
-- `members.js`: CRUD de membros
-- `projects.js`: CRUD de projetos e coordenação
-- `almox.js`: almoxarifado + APIs internas
+- `src/routes/auth.js`
+  - login/logout, services/home/presença, planner, manutenção de usuários.
+- `src/routes/reports.js`
+  - metas quinzenais, exclusão auditada, PDF mensal.
+- `src/routes/members.js`
+  - CRUD administrativo de membros.
+- `src/routes/projects.js`
+  - CRUD de projetos e gestão de vínculos/coordenadores.
+- `src/routes/atas.js`
+  - criar/baixar/excluir atas.
+- `src/routes/almox.js`
+  - interface + APIs do almoxarifado.
 
-## 4) Permissões
+## 4) Autorização (estado atual)
 
-Perfis base:
-- `admin`: gestão completa
-- `common`: operação com restrições
+Regras centrais em `src/app.js`:
+- `requireAuth`, `requireAdminPage`, `requireAdminApi`
+- `canManageProject`
+- `canManageReportGoal`
+- `canDeleteCompletedGoalFromOthers`
 
-Permissão contextual:
-- coordenador atua apenas nos projetos que coordena
+Modelo atual:
+- Admin: total.
+- Coordenador: gestão contextual no projeto que coordena.
+- Comum: escopo limitado por módulo.
 
-Ponto central:
-- helpers de autorização em `src/app.js`
+## 5) Sessão, segurança e tempo
 
-## 5) Fronteiras importantes
+- Sessão via `cookie-session`.
+- CSRF por token de sessão (`ensureCsrfToken`/`verifyCsrf`).
+- Expiração por inatividade com `SESSION_MAX_AGE_HOURS`.
+- Timezone principal: `America/Sao_Paulo` (`APP_TIMEZONE` + uso em utilitários/relatórios).
 
-- **Schema/queries**: só em `src/database.js`
-- **Regras reutilizáveis**: `src/services/*`
-- **Validação de payload/form**: `src/validators/*`
-- **Padrão de erro/log API**: `src/http.js`
+## 6) Dados e integrações
 
-## 6) Frontend
+- Banco: Postgres/Neon (`DATABASE_URL`).
+- Presença: planilha XLSX em disco (`PRESENCE_WORKBOOK_PATH`).
+- Mídia: local ou Cloudinary (quando configurado).
+- PDF: `src/pdf.js`.
 
-- shell/layout global: `base.html` + `admin_dashboard_style.css`
-- componentes compartilhados e UX/A11y: `custom_styles.css`
-- telas por domínio: `app/templates/<modulo>/*`
+## 7) Frontend
 
-## 7) Princípios de evolução
+- Shell global/menu/tema: `app/templates/base.html`.
+- CSS base: `app/static/css/admin_dashboard_style.css`.
+- CSS compartilhado e componentes: `app/static/css/custom_styles.css`.
+- Telas por domínio em `app/templates/<modulo>/...`.
 
-1. Mudou regra -> ajustar rota + serviço + teste manual
-2. Mudou dado -> ajustar `database.js` e documentação
-3. Mudou interface -> template + CSS + acessibilidade
-4. Sempre atualizar docs afetados (`MAPA`, `RUNBOOK`, README)
+## 8) Princípios para evoluir sem regressão
+
+- SQL somente em `src/database.js`.
+- Regra de negócio repetida deve virar service/helper.
+- Permissões novas devem passar pelos helpers centrais.
+- Mudança de schema exige atualização de documentação.
+- Mudança de fluxo deve atualizar `MAPA_PROJETO`, `README` e docs técnicas.

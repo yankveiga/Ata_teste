@@ -1,64 +1,86 @@
 # Portal PET C3
 
-Sistema web interno em **Node.js + Express + Nunjucks** com:
+Sistema interno em **Node.js + Express + Nunjucks** com:
 - Gestor de Atas
-- Relatórios Semanais
+- Relatórios Quinzenais
+- Planner
 - Almoxarifado
 - Controle de Presença
+- Manutenção de Usuários (admin)
 
-Banco principal: **PostgreSQL (Neon)**  
-Mídia em produção: **Cloudinary**  
-Deploy: **Render**
+Stack atual:
+- Banco: **PostgreSQL (Neon)**
+- Mídias (foto/logo): **Cloudinary** (opcional, recomendado em produção)
+- Deploy: **Render**
 
-## Começo rápido (local)
+## Início rápido (local)
 
 ```bash
 npm install
-# preencher .env (DATABASE_URL e SECRET_KEY)
+# configure o .env
 npm run create-user
-npm start
+npm run dev
 ```
 
 Acesso local: `http://127.0.0.1:3000`
 
-## Variáveis essenciais
+## Variáveis de ambiente
 
-- `DATABASE_URL`
+Obrigatórias:
+- `DATABASE_URL` (Neon/Postgres)
 - `SECRET_KEY`
-- `SESSION_MAX_AGE_HOURS=1`
+
+Recomendadas:
+- `NODE_ENV=production|development`
+- `PORT=3000`
+- `SESSION_MAX_AGE_HOURS=1` (expiração da sessão por inatividade)
 - `APP_TIMEZONE=America/Sao_Paulo`
+- `PRESENCE_WORKBOOK_PATH=planilha_presenca.xlsx`
+
+Cloudinary (produção):
 - `CLOUDINARY_CLOUD_NAME`
 - `CLOUDINARY_API_KEY`
 - `CLOUDINARY_API_SECRET`
-- `CLOUDINARY_FOLDER`
+- `CLOUDINARY_FOLDER=pet-c3`
 
-## Deploy (resumo)
+Bootstrap opcional de admin:
+- `BOOTSTRAP_ADMIN=true|false`
+- `BOOTSTRAP_ADMIN_USERNAME`
+- `BOOTSTRAP_ADMIN_PASSWORD`
+- `BOOTSTRAP_ADMIN_NAME`
 
-Render:
-- Build: `npm install`
-- Start: `npm start`
-- Configurar variáveis de ambiente (incluindo `DATABASE_URL`)
+## Permissões (resumo)
 
-## Estrutura principal
+- `admin`: acesso total.
+- `coordenador de projeto`: gerencia membros/coordenadores no próprio projeto; atua nas regras de relatório/planner do projeto.
+- `comum`: operação limitada ao que estiver permitido por regra de módulo.
 
-- `server.js`: bootstrap da aplicação
-- `src/app.js`: middlewares e registro de rotas
-- `src/routes/*`: rotas por domínio
-- `src/services/*`: regras de negócio
-- `src/database.js`: schema e queries
-- `app/templates/*`: páginas
-- `app/static/css/*`: estilos
+Observações atuais:
+- Criar/editar/desativar **membros**: apenas admin.
+- Criar projeto e excluir projeto: apenas admin.
+- Editar vínculos de membros/coordenadores em projeto: admin ou coordenador do projeto.
+- Aba **Manutenção de Usuários**: exibida apenas para admin.
 
-## Documentação (sem redundância)
-
-- `MAPA_PROJETO.txt` -> onde editar cada funcionalidade (atalho rápido)
-- `GUIA_ARQUITETURA.md` -> visão técnica de camadas e módulos
-- `RUNBOOK_PRODUCAO.md` -> deploy, backup, restore e incidentes
-- `DOCUMENTACAO_TECNICA_COMPLETA.md` -> guia de manutenção e evolução
-- `MODELAGEM_BANCO.md` -> modelagem do banco
-
-## Verificação rápida
+## Comandos úteis
 
 ```bash
-npm run verify
+npm run dev        # servidor com watch
+npm start          # modo normal
+npm run create-user
+npm run verify     # verificação automatizada (exige DATABASE_URL)
 ```
+
+## Deploy no Render (resumo)
+
+- Build Command: `npm install`
+- Start Command: `npm start`
+- Definir variáveis (`DATABASE_URL`, `SECRET_KEY`, etc.)
+- Se usar presença por planilha no Render, manter `PRESENCE_WORKBOOK_PATH` em disco persistente.
+
+## Documentação do projeto
+
+- `MAPA_PROJETO.txt` -> onde alterar cada funcionalidade
+- `GUIA_ARQUITETURA.md` -> visão técnica por camadas
+- `MODELAGEM_BANCO.md` -> schema e relacionamentos reais
+- `RUNBOOK_PRODUCAO.md` -> operação, backup, incidentes
+- `DOCUMENTACAO_TECNICA_COMPLETA.md` -> manutenção e evolução

@@ -1,0 +1,75 @@
+{#
+  TEMPLATE: users_maintenance/index.html
+  FUNCAO: centralizar manutencao de membros, projetos e usuarios do almoxarifado em uma unica area.
+#}
+{% extends "base.html" %}
+
+{% block content %}
+    <div class="page-header page-header-split">
+        <div>
+            <h1>Manutenção de Usuários</h1>
+            <p class="lead">
+                Central administrativa para cadastro de membros, vinculação em projetos e criação de usuários do almoxarifado.
+            </p>
+        </div>
+        <span class="page-badge">{{ summary.usersTotal }} usuários do sistema</span>
+    </div>
+
+    <section class="user-maintenance-grid">
+        <article class="content-panel user-maintenance-card">
+            <div class="panel-header">
+                <div>
+                    <h2>Membros do Projeto</h2>
+                    <p>Cadastre pessoas com foto e mantenha os dados base dos participantes.</p>
+                </div>
+            </div>
+            <div class="panel-body">
+                <p class="user-maintenance-stat"><strong>{{ summary.membersTotal }}</strong> membros ativos</p>
+                <div class="user-maintenance-actions">
+                    <a href="{{ urlFor('add_member') }}" class="btn-primary-action">
+                        <ion-icon name="person-add-outline"></ion-icon> Novo membro
+                    </a>
+                    <a href="{{ urlFor('list_members') }}" class="btn-cancel">Listar/Editar membros</a>
+                </div>
+            </div>
+        </article>
+
+        <article class="content-panel user-maintenance-card">
+            <div class="panel-header">
+                <div>
+                    <h2>Projetos e Vínculos</h2>
+                    <p>Defina em quais projetos cada membro está e quem coordena cada projeto.</p>
+                </div>
+            </div>
+            <div class="panel-body">
+                <p class="user-maintenance-stat"><strong>{{ summary.projectsTotal }}</strong> projetos cadastrados</p>
+                <div class="user-maintenance-actions">
+                    <a href="{{ urlFor('add_project') }}" class="btn-primary-action">
+                        <ion-icon name="folder-open-outline"></ion-icon> Novo projeto
+                    </a>
+                    <a href="{{ urlFor('list_projects') }}" class="btn-cancel">Gerenciar projetos e membros</a>
+                </div>
+            </div>
+        </article>
+
+        <article class="content-panel user-maintenance-card">
+            <div class="panel-header">
+                <div>
+                    <h2>Usuários do Almoxarifado</h2>
+                    <p>Crie acesso ao sistema e defina permissões de administração (mover/cadastrar/excluir).</p>
+                </div>
+            </div>
+            <div class="panel-body">
+                <p class="user-maintenance-stat">
+                    <strong>{{ summary.adminsTotal }}</strong> admins · <strong>{{ summary.commonTotal }}</strong> comuns
+                </p>
+                <div class="user-maintenance-actions">
+                    <a href="{{ urlFor('almox_home') }}?tab=users#almox-users-create" class="btn-primary-action">
+                        <ion-icon name="key-outline"></ion-icon> Novo usuário
+                    </a>
+                    <a href="{{ urlFor('almox_home') }}?tab=users" class="btn-cancel">Abrir gestão de usuários</a>
+                </div>
+            </div>
+        </article>
+    </section>
+{% endblock %}

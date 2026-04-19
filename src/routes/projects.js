@@ -30,6 +30,10 @@ function registerProjectRoutes(ctx) {
     logError,
   } = ctx;
 
+  function canAssignMembersToProject(req, project) {
+    return canManageProject(req, project);
+  }
+
 app.get("/projects", requireAuth, (req, res) => {
     const projects = listAccessibleProjects(req).map((project) => {
       const detailed = database.getProjectById(project.id);
@@ -39,6 +43,7 @@ app.get("/projects", requireAuth, (req, res) => {
       return {
         ...detailed,
         can_manage: canManageProject(req, detailed),
+        can_assign_members: canAssignMembersToProject(req, detailed),
       };
     }).filter(Boolean);
 
@@ -188,10 +193,12 @@ app.get("/projects", requireAuth, (req, res) => {
       return notFound(res);
     }
 
-    if (!canManageProject(req, project)) {
+    const canManageMetadata = Boolean(req.currentUser?.is_admin);
+    const canAssignMembers = canAssignMembersToProject(req, project);
+    if (!canAssignMembers) {
       req.flash(
         "warning",
-        "Somente coordenadores deste projeto podem editar membros, coordenadores e dados do projeto.",
+        "Somente administradores ou coordenadores deste projeto podem editar membros.",
       );
       return res.redirect(urlFor("list_projects"));
     }
@@ -208,7 +215,7 @@ app.get("/projects", requireAuth, (req, res) => {
       },
       errors: {},
       project,
-      canManageProject: true,
+      canManageProject: canManageMetadata,
     });
   });
 
@@ -237,37 +244,47 @@ app.get("/projects", requireAuth, (req, res) => {
         return notFound(res);
       }
 
-      if (!canManageProject(req, project)) {
+      const canManageMetadata = Boolean(req.currentUser?.is_admin);
+      const canAssignMembers = canAssignMembersToProject(req, project);
+      if (!canAssignMembers) {
         if (req.file) {
           safeUnlink(req.file.path);
         }
         req.flash(
           "warning",
-          "Somente coordenadores deste projeto podem editar membros, coordenadores e dados do projeto.",
+          "Somente administradores ou coordenadores deste projeto podem editar membros.",
         );
         return res.redirect(urlFor("list_projects"));
+      }
+
+      if (!canManageMetadata && req.file) {
+        safeUnlink(req.file.path);
       }
 
       const memberIds = parseIdArray(req.body.members);
       const coordinatorIds = parseIdArray(req.body.coordinators);
       const formData = {
-        name: String(req.body.name || "").trim(),
-        primaryColor: normalizeProjectColor(req.body.primary_color, project.primary_color),
+        name: canManageMetadata ? String(req.body.name || "").trim() : project.name,
+        primaryColor: canManageMetadata
+          ? normalizeProjectColor(req.body.primary_color, project.primary_color)
+          : normalizeProjectColor(project.primary_color, DEFAULT_PROJECT_COLOR),
         memberIds,
         coordinatorIds,
-        logoClear: Boolean(req.body["logo-clear"]),
+        logoClear: canManageMetadata && Boolean(req.body["logo-clear"]),
       };
       // DETALHE: Objeto para acumular erros de validacao e devolver feedback completo ao usuario.
 
       const errors = {};
 
-      if (!formData.name) {
-        errors.name = ["Nome do projeto é obrigatório."];
-      } else if (formData.name.length < 3 || formData.name.length > 150) {
-        errors.name = ["Nome do projeto deve ter entre 3 e 150 caracteres."];
+      if (canManageMetadata) {
+        if (!formData.name) {
+          errors.name = ["Nome do projeto é obrigatório."];
+        } else if (formData.name.length < 3 || formData.name.length > 150) {
+          errors.name = ["Nome do projeto deve ter entre 3 e 150 caracteres."];
+        }
       }
 
-      if (req.uploadError) {
+      if (canManageMetadata && req.uploadError) {
         errors.logo = [req.uploadError];
       }
 
@@ -304,7 +321,7 @@ app.get("/projects", requireAuth, (req, res) => {
           formData,
           errors,
           project,
-          canManageProject: true,
+          canManageProject: canManageMetadata,
         });
       }
 
@@ -313,11 +330,11 @@ app.get("/projects", requireAuth, (req, res) => {
       let uploadedLogo = null;
 
       try {
-        if (req.file) {
+        if (canManageMetadata && req.file) {
           uploadedLogo = await persistUploadedImage(req, { folder: "pet-c3/projects" });
           logo = uploadedLogo;
           uploadedIsNew = logo !== project.logo;
-        } else if (formData.logoClear) {
+        } else if (canManageMetadata && formData.logoClear) {
           logo = null;
         }
 
@@ -357,7 +374,7 @@ app.get("/projects", requireAuth, (req, res) => {
             logo,
             primary_color: formData.primaryColor,
           },
-          canManageProject: true,
+          canManageProject: canManageMetadata,
         });
       }
     },
@@ -378,10 +395,10 @@ app.get("/projects", requireAuth, (req, res) => {
       return notFound(res);
     }
 
-    if (!canManageProject(req, project)) {
+    if (!req.currentUser?.is_admin) {
       req.flash(
         "warning",
-        "Somente coordenadores deste projeto podem remover o projeto.",
+        "Somente administradores podem remover projetos.",
       );
       return res.redirect(urlFor("list_projects"));
     }

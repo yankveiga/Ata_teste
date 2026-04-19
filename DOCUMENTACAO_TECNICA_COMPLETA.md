@@ -1,71 +1,95 @@
-# Documentação Técnica Completa (Guia de Manutenção)
+# Documentação Técnica Completa (Manutenção)
 
-Este arquivo é o **guia de manutenção do código**.
-Ele evita dúvidas de "onde colocar" cada mudança no dia a dia.
+Objetivo: servir como guia único para manutenção diária e evolução sem regressão.
 
-## 1) Regra de ouro
+## 1) Estado atual do projeto
 
-Sempre separar por responsabilidade:
-- rota HTTP -> `src/routes/*`
-- regra de negócio -> `src/services/*`
-- validação -> `src/validators/*`
-- persistência SQL -> `src/database.js`
-- interface -> `app/templates/*` + `app/static/css/*`
+- Aplicação monolítica modular em Node.js/Express.
+- Banco principal: Postgres (Neon).
+- Uploads: local ou Cloudinary.
+- Presença: planilha XLSX no servidor.
+- Renderização server-side com Nunjucks.
 
-## 2) Onde adicionar cada tipo de mudança
+## 2) Estrutura por responsabilidade
 
-### Nova rota
-- criar/editar no módulo certo em `src/routes/*`
-- registrar no `src/app.js` (se necessário)
+- Entrada/boot: `server.js`
+- Middlewares + helpers de autorização + contexto global: `src/app.js`
+- Rotas por domínio: `src/routes/*`
+- Regras de negócio reutilizáveis: `src/services/*`
+- Validações: `src/validators/*`
+- Persistência e schema: `src/database.js`
+- Frontend (templates/CSS/JS): `app/templates/*`, `app/static/*`
 
-### Nova regra de negócio
-- criar função em `src/services/*`
-- chamar na rota
+## 3) Regras de permissão vigentes
 
-### Nova validação
-- colocar em `src/validators/*`
-- usar antes de persistir
+Perfis:
+- `admin`
+- `common`
 
-### Nova tabela/campo/query
-- alterar `src/database.js` (`ensureSchema` + funções CRUD/consulta)
-- atualizar `MODELAGEM_BANCO.md`
+Permissão contextual:
+- coordenador por projeto (`project_members.is_coordinator = 1`)
 
-### Novo bloco de tela
-- editar template do módulo em `app/templates/*`
-- estilizar no CSS correspondente
-- incluir acessibilidade mínima (`label`, `aria-*`, foco)
+Resumo funcional:
+- Membros (criar/editar/desativar): admin.
+- Projetos:
+  - criar/excluir: admin.
+  - editar vínculos de membros/coordenadores: admin ou coordenador do projeto.
+  - editar nome/cor/logo: admin.
+- Manutenção de Usuários: somente admin (rota e menu).
+- Relatórios: regras mistas por admin/próprio membro/coordenador.
+- Planner: criação de tarefa por admin/coordenador; movimentação/exclusão por permissões de projeto e dono da tarefa.
 
-### Novo PDF
-- implementar em `src/pdf.js`
-- chamar pela rota do módulo
+## 4) Convenções de alteração
 
-## 3) Convenções de manutenção
+Sempre seguir esta ordem:
+1. Ajustar validação.
+2. Ajustar regra/autorização.
+3. Ajustar persistência se necessário.
+4. Ajustar interface.
+5. Atualizar documentação.
 
-- não duplicar regra de autorização em vários pontos
-- evitar query SQL fora de `src/database.js`
-- manter mensagens de erro consistentes
-- para botões só com ícone, usar `aria-label`
-- para feedback dinâmico, usar `aria-live`
+Padrões obrigatórios:
+- Não escrever SQL fora de `src/database.js`.
+- Não duplicar regra de permissão em múltiplos lugares sem helper.
+- Em botões de ícone, manter `aria-label`.
+- Erros críticos devem usar `logError`.
 
-## 4) Fluxo seguro para alteração
+## 5) Checklist de mudança por módulo
 
-1. localizar arquivos pelo `MAPA_PROJETO.txt`
-2. alterar backend + frontend do mesmo fluxo
-3. validar cenário feliz e cenário de erro
-4. atualizar docs impactadas
+### Relatórios
+- Arquivos: `src/routes/reports.js`, `src/services/reportService.js`, `src/database.js`, `app/templates/reports/index.html`.
+- Validar: criação/edição/meta concluída, atraso, log de exclusão, PDF mensal.
 
-## 5) Checklist antes de subir
+### Planner
+- Arquivos: `src/routes/auth.js`, `src/database.js`, `app/templates/planner/index.html`.
+- Validar: criação, status, conclusão, recorrência (fila), exclusão.
 
-- fluxo principal do módulo funcionando
-- permissões corretas (admin/common/coordenador)
-- sem regressão visual grave
-- sem erro 500 no log
-- docs atualizadas se mudou arquitetura/operacao
+### Projetos e membros
+- Arquivos: `src/routes/projects.js`, `src/routes/members.js`, `src/database.js`, templates de `projects/` e `members/`.
+- Validar: permissões de admin/coordenador e consistência do vínculo em `project_members`.
 
-## 6) Documentos complementares
+### Almoxarifado
+- Arquivos: `src/routes/almox.js`, `src/services/inventoryService.js`, `src/database.js`, `app/templates/almoxarifado/index.html`.
+- Validar: estoque, retirada, empréstimo, devolução, prorrogação e APIs.
 
-- `README.md`: entrada rápida do projeto
-- `MAPA_PROJETO.txt`: atalho de onde editar
-- `GUIA_ARQUITETURA.md`: desenho técnico por camadas
-- `RUNBOOK_PRODUCAO.md`: operação em produção
-- `MODELAGEM_BANCO.md`: schema e relacionamentos
+## 6) Fluxo de validação antes de deploy
+
+1. `node -c` nos arquivos alterados.
+2. Teste manual do fluxo principal afetado.
+3. Teste manual de permissão (admin/coordenador/comum).
+4. Teste de erro esperado (CSRF, validação, permissão negada).
+5. Atualização de docs (`README`, `MAPA`, `GUIA`, `MODELAGEM`) quando necessário.
+
+## 7) Riscos conhecidos (operacionais)
+
+- Presença depende de arquivo XLSX acessível no servidor.
+- Exclusão de usuário exige cuidado por FKs/histórico; usar fluxo da aplicação.
+- Alterações de schema devem ser idempotentes em `ensureSchema()`.
+
+## 8) Documentos complementares
+
+- `README.md` (entrada rápida)
+- `MAPA_PROJETO.txt` (atalho de manutenção)
+- `GUIA_ARQUITETURA.md` (desenho técnico)
+- `MODELAGEM_BANCO.md` (schema)
+- `RUNBOOK_PRODUCAO.md` (operação)

@@ -15,6 +15,9 @@
         <div>
             <h1>{{ title }}</h1>
             <p class="lead">Monte o contexto do projeto com nome, identidade visual e time vinculado.</p>
+            {% if not canManageProject %}
+                <p class="form-hint">Você pode ajustar membros e coordenadores deste projeto. Nome, cor e logo só podem ser alterados por administradores.</p>
+            {% endif %}
         </div>
         <span class="page-badge">Projetos</span>
     </div>
@@ -31,6 +34,7 @@
                 name="name"
                 class="form-control"
                 value="{{ formData.name or '' }}"
+                {% if not canManageProject %}readonly{% endif %}
             >
             {% if errors.name %}
                 <ul class="errors form-error-list">
@@ -47,6 +51,7 @@
                 type="color"
                 class="form-control form-control-color"
                 value="{{ formData.primaryColor or '#0b6bcb' }}"
+                {% if not canManageProject %}disabled{% endif %}
             >
             {% if errors.primaryColor %}
                 <ul class="errors form-error-list">
@@ -61,19 +66,25 @@
             {% if project and project.logo %}
                 <div class="project-logo-preview">
                     <img src="{{ mediaUrl(project.logo) }}" alt="Logo Atual">
-                    <label class="checkbox-inline">
-                        <input type="checkbox" name="logo-clear" id="logo-clear" {% if formData.logoClear %}checked{% endif %}>
-                        <span>Remover logo atual?</span>
-                    </label>
+                    {% if canManageProject %}
+                        <label class="checkbox-inline">
+                            <input type="checkbox" name="logo-clear" id="logo-clear" {% if formData.logoClear %}checked{% endif %}>
+                            <span>Remover logo atual?</span>
+                        </label>
+                    {% endif %}
                 </div>
             {% endif %}
-            <input id="logo" name="logo" type="file" class="form-control-file" accept=".jpg,.jpeg,.png,.gif,.webp,.jfif,image/jpeg,image/png,image/gif,image/webp">
-            {% if errors.logo %}
-                <ul class="errors form-error-list">
-                    {% for error in errors.logo %}<li>{{ error }}</li>{% endfor %}
-                </ul>
+            {% if canManageProject %}
+                <input id="logo" name="logo" type="file" class="form-control-file" accept=".jpg,.jpeg,.png,.gif,.webp,.jfif,image/jpeg,image/png,image/gif,image/webp">
+                {% if errors.logo %}
+                    <ul class="errors form-error-list">
+                        {% for error in errors.logo %}<li>{{ error }}</li>{% endfor %}
+                    </ul>
+                {% endif %}
+                <small class="form-hint">Envie um novo arquivo para substituir o logo atual. Tipos permitidos: jpg, jpeg, png, gif, webp, jfif.</small>
+            {% else %}
+                <small class="form-hint">Somente administradores podem alterar logo do projeto.</small>
             {% endif %}
-            <small class="form-hint">Envie um novo arquivo para substituir o logo atual. Tipos permitidos: jpg, jpeg, png, gif, webp, jfif.</small>
         </div>
 
         <div class="form-group">
