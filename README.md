@@ -52,14 +52,10 @@ Bootstrap opcional de admin:
 ## Permissões (resumo)
 
 - `admin`: acesso total.
-- `coordenador de projeto`: gerencia membros/coordenadores no próprio projeto; atua nas regras de relatório/planner do projeto.
-- `comum`: operação limitada ao que estiver permitido por regra de módulo.
+- `coordenador`: acesso contextual no próprio projeto.
+- `comum`: acesso operacional limitado.
 
-Observações atuais:
-- Criar/editar/desativar **membros**: apenas admin.
-- Criar projeto e excluir projeto: apenas admin.
-- Editar vínculos de membros/coordenadores em projeto: admin ou coordenador do projeto.
-- Aba **Manutenção de Usuários**: exibida apenas para admin.
+Detalhe completo: `MATRIZ_PERMISSOES.md`.
 
 ## Comandos úteis
 
@@ -80,6 +76,7 @@ npm run verify     # verificação automatizada (exige DATABASE_URL)
 ## Documentação do projeto
 
 - `MAPA_PROJETO.txt` -> onde alterar cada funcionalidade
+- `MATRIZ_PERMISSOES.md` -> fonte única de permissões por módulo/ação
 - `GUIA_ARQUITETURA.md` -> visão técnica por camadas
 - `MODELAGEM_BANCO.md` -> schema e relacionamentos reais
 - `RUNBOOK_PRODUCAO.md` -> operação, backup, incidentes

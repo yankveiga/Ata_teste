@@ -73,5 +73,6 @@ REGRA: quer alterar X -> abra os arquivos abaixo.
 12) OPERAÇÃO
 - Deploy Render: render.yaml
 - Runbook: RUNBOOK_PRODUCAO.md
+- Permissões (fonte única): MATRIZ_PERMISSOES.md
 - Arquitetura: GUIA_ARQUITETURA.md
 - Banco: MODELAGEM_BANCO.md

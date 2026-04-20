@@ -48,6 +48,8 @@ Modelo atual:
 - Coordenador: gestão contextual no projeto que coordena.
 - Comum: escopo limitado por módulo.
 
+Fonte única detalhada: `MATRIZ_PERMISSOES.md`.
+
 ## 5) Sessão, segurança e tempo
 
 - Sessão via `cookie-session`.

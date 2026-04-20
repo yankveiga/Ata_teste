@@ -25,19 +25,9 @@ Objetivo: servir como guia único para manutenção diária e evolução sem reg
 Perfis:
 - `admin`
 - `common`
+- `coordenador` (contextual por projeto via `project_members.is_coordinator`)
 
-Permissão contextual:
-- coordenador por projeto (`project_members.is_coordinator = 1`)
-
-Resumo funcional:
-- Membros (criar/editar/desativar): admin.
-- Projetos:
-  - criar/excluir: admin.
-  - editar vínculos de membros/coordenadores: admin ou coordenador do projeto.
-  - editar nome/cor/logo: admin.
-- Manutenção de Usuários: somente admin (rota e menu).
-- Relatórios: regras mistas por admin/próprio membro/coordenador.
-- Planner: criação de tarefa por admin/coordenador; movimentação/exclusão por permissões de projeto e dono da tarefa.
+Fonte única de regras por módulo/ação: `MATRIZ_PERMISSOES.md`.
 
 ## 4) Convenções de alteração
 
@@ -90,6 +80,7 @@ Padrões obrigatórios:
 
 - `README.md` (entrada rápida)
 - `MAPA_PROJETO.txt` (atalho de manutenção)
+- `MATRIZ_PERMISSOES.md` (fonte única de autorização)
 - `GUIA_ARQUITETURA.md` (desenho técnico)
 - `MODELAGEM_BANCO.md` (schema)
 - `RUNBOOK_PRODUCAO.md` (operação)
