@@ -55,6 +55,7 @@ function registerAuthRoutes(ctx) {
     registerPresenceInWorkbook,
     logError,
     sendApiError,
+    syncReportWeekGoalFromPlannerTask,
   } = ctx;
 
   function canDeletePlannerTask(req, task) {
@@ -570,6 +571,7 @@ app.get("/services", requireAuth, (req, res) => {
         ? "project"
         : "member",
       plannerPanelColor: selectedProject?.primary_color || "#0f766e",
+      plannerMinDateTime: nowIso ? `${nowIso.slice(0, 16).replace(" ", "T")}` : "",
       plannerQuery: buildPlannerQuery({
         view: effectiveViewMode,
         projectId: selectedProjectId,
@@ -657,8 +659,12 @@ app.get("/services", requireAuth, (req, res) => {
     }
 
     const dueAt = toSqlDateTime(formData.dueAt);
+    const nowSql = toSqlDateTime(new Date());
+    const nowMinuteSql = nowSql ? `${String(nowSql).slice(0, 16)}:00` : null;
     if (!dueAt) {
       errors.dueAt = ["Informe data e horário válidos para a tarefa."];
+    } else if (nowMinuteSql && dueAt < nowMinuteSql) {
+      errors.dueAt = ["Não é permitido criar tarefa com data/hora no passado."];
     }
 
     const description = trimToNull(formData.description) || "";
@@ -674,19 +680,22 @@ app.get("/services", requireAuth, (req, res) => {
     }
 
     try {
+      const initialStatus = dueAt && nowMinuteSql && dueAt <= nowMinuteSql
+        ? "in_progress"
+        : "todo";
       const assignedMemberId = recurrenceEnabled && recurrenceQueue.length
         ? recurrenceQueue[0]
         : memberId;
       const recurrenceNextIndex = recurrenceEnabled && recurrenceQueue.length > 1
         ? 1
         : 0;
-      database.createPlannerTask({
+      const createdTask = database.createPlannerTask({
         projectId: project.id,
         assignedMemberId,
         createdByUserId: req.currentUser.id,
         title,
         description,
-        status: formData.status,
+        status: initialStatus,
         priority: formData.priority,
         label,
         dueAt,
@@ -696,6 +705,11 @@ app.get("/services", requireAuth, (req, res) => {
         recurrenceMemberQueue: recurrenceEnabled ? recurrenceQueue : null,
         recurrenceNextIndex: recurrenceEnabled ? recurrenceNextIndex : null,
       });
+      if (createdTask) {
+        syncReportWeekGoalFromPlannerTask(createdTask, {
+          createdByUserId: req.currentUser.id,
+        });
+      }
       req.flash("success", "Tarefa do Planner criada com sucesso.");
       return res.redirect(
         `${urlFor("planner")}${buildPlannerQuery({
@@ -752,12 +766,17 @@ app.get("/services", requireAuth, (req, res) => {
 
     try {
       const completedAt = toSqlDateTime(new Date());
-      database.updatePlannerTaskCompletion({
+      const completedTask = database.updatePlannerTaskCompletion({
         id: task.id,
         isCompleted: true,
         completedAt,
         updatedAt: completedAt,
       });
+      if (completedTask) {
+        syncReportWeekGoalFromPlannerTask(completedTask, {
+          createdByUserId: req.currentUser.id,
+        });
+      }
       database.createPlannerTaskCompletionLog({
         taskId: task.id,
         projectId: task.project_id,
@@ -781,18 +800,26 @@ app.get("/services", requireAuth, (req, res) => {
         const currentIndex = Number(task.recurrence_next_index || 0);
         const nextQueueIndex = currentIndex % queue.length;
         const nextAssigneeId = queue[nextQueueIndex];
-        const nextDueAt = addIntervalToSqlDateTime(task.due_at, recurrenceEvery, recurrenceUnit)
+        const nextDueAtRaw = addIntervalToSqlDateTime(task.due_at, recurrenceEvery, recurrenceUnit)
           || addDaysToSqlDateTime(task.due_at, recurrenceEvery)
           || task.due_at;
+        const nowSql = toSqlDateTime(new Date());
+        const nowMinuteSql = nowSql ? `${String(nowSql).slice(0, 16)}:00` : null;
+        const nextDueAt = nextDueAtRaw && nowMinuteSql && nextDueAtRaw < nowMinuteSql
+          ? nowMinuteSql
+          : nextDueAtRaw;
+        const nextStatus = nextDueAt && nowMinuteSql && nextDueAt <= nowMinuteSql
+          ? "in_progress"
+          : "todo";
         const upcomingIndex = (nextQueueIndex + 1) % queue.length;
 
-        database.createPlannerTask({
+        const nextTask = database.createPlannerTask({
           projectId: task.project_id,
           assignedMemberId: nextAssigneeId,
           createdByUserId: req.currentUser.id,
           title: task.title,
           description: task.description,
-          status: "todo",
+          status: nextStatus,
           priority: task.priority || "medium",
           label: task.label || null,
           dueAt: nextDueAt,
@@ -802,6 +829,11 @@ app.get("/services", requireAuth, (req, res) => {
           recurrenceMemberQueue: queue,
           recurrenceNextIndex: upcomingIndex,
         });
+        if (nextTask) {
+          syncReportWeekGoalFromPlannerTask(nextTask, {
+            createdByUserId: req.currentUser.id,
+          });
+        }
       }
 
       req.flash("success", "Tarefa concluída com sucesso.");
@@ -846,12 +878,18 @@ app.get("/services", requireAuth, (req, res) => {
 
     try {
       const updatedAt = toSqlDateTime(new Date());
+      const wasCompleted = Boolean(task.is_completed);
       const updatedTask = database.updatePlannerTaskStatus({
         id: task.id,
         status: nextStatus,
         updatedAt,
       });
-      if (updatedTask?.is_completed) {
+      if (updatedTask) {
+        syncReportWeekGoalFromPlannerTask(updatedTask, {
+          createdByUserId: req.currentUser.id,
+        });
+      }
+      if (updatedTask?.is_completed && !wasCompleted) {
         database.createPlannerTaskCompletionLog({
           taskId: updatedTask.id,
           projectId: updatedTask.project_id,
@@ -908,8 +946,20 @@ app.get("/services", requireAuth, (req, res) => {
     }
 
     try {
+      const linkedGoal = database.getReportWeekGoalByPlannerTaskId(task.id);
+      if (linkedGoal) {
+        if (linkedGoal.is_completed) {
+          database.deleteReportWeekGoalWithAudit(linkedGoal.id, req.currentUser.id);
+        } else {
+          database.deleteReportWeekGoal(linkedGoal.id);
+        }
+      }
       database.deletePlannerTask(task.id);
-      req.flash("success", "Tarefa do Planner excluída com sucesso.");
+      if (linkedGoal) {
+        req.flash("success", "Tarefa do Planner e meta vinculada no relatório foram removidas.");
+      } else {
+        req.flash("success", "Tarefa do Planner excluída com sucesso.");
+      }
     } catch (error) {
       logError(req, "Erro ao excluir tarefa do Planner:", error);
       req.flash("danger", `Erro ao excluir tarefa do Planner: ${error.message}`);

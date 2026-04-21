@@ -316,6 +316,19 @@ function toSqlDateTime(value) {
   return `${valueByType.year}-${valueByType.month}-${valueByType.day} ${valueByType.hour}:${valueByType.minute}:${valueByType.second}`;
 }
 
+// FUNCAO: resolveFortnightStartFromSqlDateTime.
+function resolveFortnightStartFromSqlDateTime(value) {
+  const text = String(value || "").trim();
+  const match = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!match) {
+    return null;
+  }
+
+  const day = Number(match[3]);
+  const fortnightStart = day <= 15 ? "01" : "16";
+  return `${match[1]}-${match[2]}-${fortnightStart}`;
+}
+
 // FUNCAO: addDaysToNow.
 function addDaysToNow(days) {
   const date = new Date();
@@ -442,6 +455,8 @@ function ensureSchema() {
       week_start TEXT NOT NULL,
       activity TEXT NOT NULL,
       description TEXT NOT NULL DEFAULT '',
+      planner_task_id INTEGER,
+      goal_source TEXT NOT NULL DEFAULT 'manual',
       is_completed INTEGER NOT NULL DEFAULT 0,
       completed_at TEXT,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -612,6 +627,8 @@ function ensureSchema() {
   ensureColumn("estoque", "item_type", "TEXT NOT NULL DEFAULT 'stock'");
   ensureColumn("project", "primary_color", `TEXT NOT NULL DEFAULT '${DEFAULT_PROJECT_COLOR}'`);
   ensureColumn("project_members", "is_coordinator", "INTEGER NOT NULL DEFAULT 0");
+  ensureColumn("report_week_goal", "planner_task_id", "INTEGER");
+  ensureColumn("report_week_goal", "goal_source", "TEXT NOT NULL DEFAULT 'manual'");
   ensureColumn("planner_task", "status", "TEXT NOT NULL DEFAULT 'todo'");
   ensureColumn("planner_task", "priority", "TEXT NOT NULL DEFAULT 'medium'");
   ensureColumn("planner_task", "label", "TEXT");
@@ -624,6 +641,9 @@ function ensureSchema() {
   getDb().exec("CREATE INDEX IF NOT EXISTS ix_planner_task_priority ON planner_task(priority)");
   getDb().exec(
     "CREATE INDEX IF NOT EXISTS ix_project_members_project_coordinator ON project_members(project_id, is_coordinator)",
+  );
+  getDb().exec(
+    "CREATE UNIQUE INDEX IF NOT EXISTS ux_report_week_goal_planner_task_id ON report_week_goal(planner_task_id) WHERE planner_task_id IS NOT NULL",
   );
 
   db.prepare(
@@ -731,6 +751,16 @@ function ensureSchema() {
     SET status = CASE
       WHEN status IN ('completed', 'in_progress', 'blocked') THEN status
       ELSE 'in_progress'
+    END
+  `,
+  ).run();
+
+  db.prepare(
+    `
+    UPDATE report_week_goal
+    SET goal_source = CASE
+      WHEN goal_source IN ('manual', 'planner') THEN goal_source
+      ELSE 'manual'
     END
   `,
   ).run();
@@ -871,6 +901,8 @@ function mapReportWeekGoal(row) {
     week_start: row.week_start,
     activity: row.activity || "",
     description: row.description || "",
+    planner_task_id: row.planner_task_id || null,
+    goal_source: row.goal_source === "planner" ? "planner" : "manual",
     is_completed: Boolean(row.is_completed),
     completed_at: row.completed_at || null,
     created_at: row.created_at || null,
@@ -2193,6 +2225,8 @@ function createReportWeekGoal({
   weekStart,
   activity,
   description = "",
+  plannerTaskId = null,
+  goalSource = "manual",
   isCompleted = false,
 }) {
   const result = getDb()
@@ -2205,10 +2239,12 @@ function createReportWeekGoal({
         week_start,
         activity,
         description,
+        planner_task_id,
+        goal_source,
         is_completed,
         completed_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, CASE WHEN ? = 1 THEN CURRENT_TIMESTAMP ELSE NULL END)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CASE WHEN ? = 1 THEN CURRENT_TIMESTAMP ELSE NULL END)
       RETURNING id
     `,
     )
@@ -2219,6 +2255,8 @@ function createReportWeekGoal({
       weekStart,
       activity,
       description,
+      plannerTaskId,
+      goalSource === "planner" ? "planner" : "manual",
       isCompleted ? 1 : 0,
       isCompleted ? 1 : 0,
     );
@@ -2239,6 +2277,8 @@ function getReportWeekGoalById(id) {
         g.week_start,
         g.activity,
         g.description,
+        g.planner_task_id,
+        g.goal_source,
         g.is_completed,
         g.completed_at,
         g.created_at,
@@ -2262,6 +2302,153 @@ function getReportWeekGoalById(id) {
     .get(id);
 
   return mapReportWeekGoal(row);
+}
+
+// FUNCAO: getReportWeekGoalByPlannerTaskId.
+function getReportWeekGoalByPlannerTaskId(plannerTaskId) {
+  const row = getDb()
+    .prepare(
+      `
+      SELECT
+        g.id,
+        g.member_id,
+        g.project_id,
+        g.created_by_user_id,
+        g.week_start,
+        g.activity,
+        g.description,
+        g.planner_task_id,
+        g.goal_source,
+        g.is_completed,
+        g.completed_at,
+        g.created_at,
+        g.updated_at,
+        p.name AS project_name,
+        p.logo AS project_logo,
+        p.primary_color AS project_primary_color,
+        m.name AS member_name,
+        m.photo AS member_photo,
+        m.is_active AS member_is_active,
+        u.username AS created_by_username,
+        u.name AS created_by_name
+      FROM report_week_goal g
+      INNER JOIN project p ON p.id = g.project_id
+      INNER JOIN member m ON m.id = g.member_id
+      LEFT JOIN user u ON u.id = g.created_by_user_id
+      WHERE g.planner_task_id = ?
+      LIMIT 1
+    `,
+    )
+    .get(plannerTaskId);
+
+  return mapReportWeekGoal(row);
+}
+
+// FUNCAO: syncReportWeekGoalFromPlannerTask.
+function syncReportWeekGoalFromPlannerTask(
+  plannerTask,
+  { createdByUserId = null } = {},
+) {
+  if (!plannerTask?.id || !plannerTask?.assigned_member_id || !plannerTask?.project_id) {
+    return null;
+  }
+
+  const weekStart = resolveFortnightStartFromSqlDateTime(plannerTask.due_at);
+  const activity = String(plannerTask.title || "").trim();
+  if (!weekStart || !activity) {
+    return null;
+  }
+
+  const description = String(plannerTask.description || "").trim();
+  const ownerUserId = createdByUserId || plannerTask.created_by_user_id || null;
+  const isCompleted = Boolean(plannerTask.is_completed);
+
+  return withTransaction((db) => {
+    const existing = db
+      .prepare(
+        `
+        SELECT id
+        FROM report_week_goal
+        WHERE planner_task_id = ?
+        LIMIT 1
+      `,
+      )
+      .get(plannerTask.id);
+
+    if (existing?.id) {
+      db.prepare(
+        `
+        UPDATE report_week_goal
+        SET
+          member_id = ?,
+          project_id = ?,
+          week_start = ?,
+          activity = ?,
+          description = ?,
+          is_completed = ?,
+          completed_at = CASE
+            WHEN ? = 1 THEN COALESCE(completed_at, CURRENT_TIMESTAMP)
+            ELSE NULL
+          END,
+          goal_source = 'planner',
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `,
+      ).run(
+        plannerTask.assigned_member_id,
+        plannerTask.project_id,
+        weekStart,
+        activity,
+        description,
+        isCompleted ? 1 : 0,
+        isCompleted ? 1 : 0,
+        existing.id,
+      );
+
+      if (ownerUserId) {
+        db.prepare(
+          `
+          UPDATE report_week_goal
+          SET created_by_user_id = COALESCE(created_by_user_id, ?)
+          WHERE id = ?
+        `,
+        ).run(ownerUserId, existing.id);
+      }
+
+      return getReportWeekGoalById(existing.id);
+    }
+
+    const inserted = db.prepare(
+      `
+      INSERT INTO report_week_goal (
+        member_id,
+        project_id,
+        created_by_user_id,
+        week_start,
+        activity,
+        description,
+        planner_task_id,
+        goal_source,
+        is_completed,
+        completed_at
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, 'planner', ?, CASE WHEN ? = 1 THEN CURRENT_TIMESTAMP ELSE NULL END)
+      RETURNING id
+    `,
+    ).run(
+      plannerTask.assigned_member_id,
+      plannerTask.project_id,
+      ownerUserId,
+      weekStart,
+      activity,
+      description,
+      plannerTask.id,
+      isCompleted ? 1 : 0,
+      isCompleted ? 1 : 0,
+    );
+
+    return getReportWeekGoalById(inserted.lastInsertRowid);
+  });
 }
 
 // FUNCAO: updateReportWeekGoal.
@@ -2408,6 +2595,8 @@ function listReportWeekGoalsForMember(
         g.week_start,
         g.activity,
         g.description,
+        g.planner_task_id,
+        g.goal_source,
         g.is_completed,
         g.completed_at,
         g.created_at,
@@ -2457,6 +2646,8 @@ function listReportMonthGoalsForMember(memberId, { monthKey, limit = 1200 } = {}
         g.week_start,
         g.activity,
         g.description,
+        g.planner_task_id,
+        g.goal_source,
         g.is_completed,
         g.completed_at,
         g.created_at,
@@ -2525,7 +2716,7 @@ function createPlannerTask({
         recurrence_member_queue,
         recurrence_next_index
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       RETURNING id
     `,
     )
@@ -2662,16 +2853,23 @@ function listPlannerTasks({
 
 // FUNCAO: deletePlannerTask.
 function deletePlannerTask(id) {
-  const result = getDb()
-    .prepare(
+  return withTransaction((db) => {
+    db.prepare(
+      `
+      DELETE FROM planner_task_completion_log
+      WHERE task_id = ?
+    `,
+    ).run(id);
+
+    const result = db.prepare(
       `
       DELETE FROM planner_task
       WHERE id = ?
     `,
-    )
-    .run(id);
+    ).run(id);
 
-  return Number(result.changes || 0) > 0;
+    return Number(result.changes || 0) > 0;
+  });
 }
 
 // FUNCAO: updatePlannerTaskCompletion.
@@ -3486,6 +3684,7 @@ module.exports = {
   getProjectMembers,
   getReportEntryById,
   getReportWeekGoalById,
+  getReportWeekGoalByPlannerTaskId,
   getUserById,
   getUserByUsername,
   listInventoryCategories,
@@ -3510,6 +3709,7 @@ module.exports = {
   listRecentAtas,
   createReportEntry,
   createReportWeekGoal,
+  syncReportWeekGoalFromPlannerTask,
   createPlannerTask,
   createPlannerTaskCompletionLog,
   updatePlannerTaskCompletion,

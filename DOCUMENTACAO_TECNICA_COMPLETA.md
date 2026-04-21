@@ -29,6 +29,16 @@ Perfis:
 
 Fonte única de regras por módulo/ação: `MATRIZ_PERMISSOES.md`.
 
+Resumo operacional (21/04/2026):
+- `admin`: gestão total.
+- `coordenador`: gestão do próprio projeto (planner, relatórios, atas e vínculos de membros/coordenadores no projeto).
+- `comum`: ações no próprio escopo (inclusive tarefas do planner atribuídas a si).
+
+Regras do Planner:
+- criação de tarefa: somente admin/coordenador do projeto;
+- data/hora passada: bloqueada;
+- status inicial: automático por data (`agora = Em Execução`, `futuro = A Fazer`).
+
 ## 4) Convenções de alteração
 
 Sempre seguir esta ordem:

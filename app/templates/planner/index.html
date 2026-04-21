@@ -133,6 +133,7 @@
                                                 name="due_at"
                                                 type="datetime-local"
                                                 class="form-control"
+                                                min="{{ plannerMinDateTime }}"
                                                 value="{{ plannerFormData.dueAt }}"
                                             >
                                             {% if plannerFormErrors.dueAt %}
@@ -143,11 +144,11 @@
                                         </div>
 
                                         <div class="form-group">
-                                            <label class="form-label" for="planner_form_status">Status inicial</label>
-                                            <select id="planner_form_status" name="status" class="form-control">
-                                                <option value="todo" {% if plannerFormData.status == 'todo' %}selected{% endif %}>A Fazer</option>
-                                                <option value="in_progress" {% if plannerFormData.status == 'in_progress' %}selected{% endif %}>Em Execução</option>
-                                            </select>
+                                            <label class="form-label">Status inicial</label>
+                                            <div class="form-control" style="display:flex;align-items:center;background:var(--surface-muted,#f4f8fb);">
+                                                Automático pela data (agora = Em Execução, futuro = A Fazer)
+                                            </div>
+                                            <input type="hidden" name="status" value="todo">
                                         </div>
 
                                         <div class="form-group">

@@ -781,8 +781,19 @@ function render(res, template, data = {}) {
       : [];
     const pendingGoals = reportGoals.filter((goal) => !goal.is_completed);
     const completedGoals = reportGoals.filter((goal) => goal.is_completed);
-    const overduePendingGoals = pendingGoals.filter((goal) => goal.is_overdue);
-    const openPendingGoals = pendingGoals.filter((goal) => !goal.is_overdue);
+    const overduePendingGoals = pendingGoals
+      .filter((goal) => goal.week_start < currentWeekStart)
+      .sort((left, right) => (
+        left.week_start.localeCompare(right.week_start) || left.id - right.id
+      ));
+    const inProgressGoals = pendingGoals
+      .filter((goal) => goal.week_start === currentWeekStart)
+      .sort((left, right) => left.id - right.id);
+    const futurePendingGoals = pendingGoals
+      .filter((goal) => goal.week_start > currentWeekStart)
+      .sort((left, right) => (
+        left.week_start.localeCompare(right.week_start) || left.id - right.id
+      ));
     const coordinatorProjectIds = currentMember?.is_active
       ? new Set(
           database
@@ -846,7 +857,8 @@ function render(res, template, data = {}) {
       completedGoals,
       deletionLogs,
       overduePendingGoals,
-      openPendingGoals,
+      inProgressGoals,
+      futurePendingGoals,
       canCreateGoalsForSelectedMember,
       currentWeekStart,
       currentMember,
@@ -1025,6 +1037,7 @@ function render(res, template, data = {}) {
     validateWeekGoalForm,
     canGenerateMonthlyReport,
     buildMonthlyPdfFilename,
+    syncReportWeekGoalFromPlannerTask: database.syncReportWeekGoalFromPlannerTask,
     canManageProject,
     canCreateAtaForProject,
     canManageReportGoal,

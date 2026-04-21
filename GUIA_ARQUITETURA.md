@@ -50,6 +50,16 @@ Modelo atual:
 
 Fonte única detalhada: `MATRIZ_PERMISSOES.md`.
 
+Regras de domínio importantes já aplicadas:
+- Planner:
+  - criação somente por admin/coordenador do projeto;
+  - comum pode mover/concluir/excluir somente tarefas atribuídas a si;
+  - criação com data/hora passada é bloqueada;
+  - status inicial é automático por data (`agora = Em Execução`, `futuro = A Fazer`).
+- Relatórios:
+  - admin, coordenador do projeto ou o próprio membro (quando participante do projeto) podem criar/editar metas no escopo permitido;
+  - exclusão de metas concluídas fica restrita a admin/coordenador do projeto e gera auditoria.
+
 ## 5) Sessão, segurança e tempo
 
 - Sessão via `cookie-session`.

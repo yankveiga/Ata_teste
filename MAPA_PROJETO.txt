@@ -76,3 +76,14 @@ REGRA: quer alterar X -> abra os arquivos abaixo.
 - Permissões (fonte única): MATRIZ_PERMISSOES.md
 - Arquitetura: GUIA_ARQUITETURA.md
 - Banco: MODELAGEM_BANCO.md
+
+13) PERMISSÕES E PERFIS (ONDE MEXER)
+- Guardas e helpers centrais: src/app.js
+  - requireAuth / requireAdminPage / requireAdminApi
+  - canManageProject
+  - canManageReportGoal
+  - canDeleteCompletedGoalFromOthers
+- Planner (quem cria/move/conclui/exclui): src/routes/auth.js
+- Relatórios (quem cria/edita/exclui metas): src/routes/reports.js
+- Projetos (quem vincula membros/coordenadores): src/routes/projects.js
+- Matriz de referência funcional: MATRIZ_PERMISSOES.md

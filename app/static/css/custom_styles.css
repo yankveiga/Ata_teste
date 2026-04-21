@@ -2257,7 +2257,7 @@ body.theme-dark.section-projects .project-logo-preview img {
 
 .report-kanban-board {
   display: grid;
-  grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.82fr) minmax(0, 0.66fr);
+  grid-template-columns: minmax(0, 0.78fr) minmax(0, 1fr) minmax(0, 1fr);
   gap: 14px;
   margin-top: 12px;
 }
@@ -2288,6 +2288,15 @@ body.theme-dark.section-projects .project-logo-preview img {
 
 .report-kanban-open::before {
   background: rgba(41, 112, 165, 0.55);
+}
+
+.report-kanban-future {
+  border-color: rgba(14, 116, 144, 0.28);
+  background: linear-gradient(180deg, rgba(236, 253, 255, 0.78), rgba(236, 253, 255, 0.52));
+}
+
+.report-kanban-future::before {
+  background: rgba(14, 116, 144, 0.58);
 }
 
 .report-kanban-completed::before {
@@ -2454,6 +2463,12 @@ body.theme-dark.section-projects .project-logo-preview img {
   background: rgba(254, 226, 226, 0.86);
   font-size: 0.72rem;
   font-weight: 700;
+}
+
+.report-goal-flag-future {
+  color: #0e7490;
+  border-color: rgba(14, 116, 144, 0.38);
+  background: rgba(207, 250, 254, 0.86);
 }
 
 .report-goal-description-col p {
@@ -2928,9 +2943,20 @@ body.theme-dark.section-reports .report-kanban-overdue {
   border-color: rgba(203, 85, 85, 0.44);
 }
 
+body.theme-dark.section-reports .report-kanban-future {
+  background: rgba(19, 49, 56, 0.86);
+  border-color: rgba(61, 148, 171, 0.44);
+}
+
 body.theme-dark.section-reports .report-goal-item.is-overdue {
   background: rgba(87, 35, 35, 0.84);
   border-color: rgba(214, 96, 96, 0.48);
+}
+
+body.theme-dark.section-reports .report-goal-flag-future {
+  background: rgba(16, 66, 79, 0.72);
+  border-color: rgba(66, 171, 197, 0.45);
+  color: #a8e7f5;
 }
 
 body.theme-dark.section-reports .report-goal-create-details.report-goal-create-details-inline > summary {

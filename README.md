@@ -51,11 +51,15 @@ Bootstrap opcional de admin:
 
 ## Permissões (resumo)
 
-- `admin`: acesso total.
-- `coordenador`: acesso contextual no próprio projeto.
-- `comum`: acesso operacional limitado.
+- `admin`: gestão total (membros, projetos, manutenção de usuários, almoxarifado, planner, relatórios).
+- `coordenador`: gestão contextual no(s) projeto(s) que coordena (inclusive tarefas do planner, metas e atas do projeto).
+- `comum`: operação no próprio escopo (atas de projetos em que participa, presença, visualização e ações permitidas por módulo).
 
-Detalhe completo: `MATRIZ_PERMISSOES.md`.
+Observações atuais:
+- No Planner, tarefa com data passada é bloqueada.
+- No Planner, status inicial é automático por data (`agora = Em Execução`, `futuro = A Fazer`).
+
+Fonte de verdade: `MATRIZ_PERMISSOES.md`.
 
 ## Comandos úteis
 
