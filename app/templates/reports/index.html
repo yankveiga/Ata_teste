@@ -109,8 +109,8 @@
  {% endfor %}
  </select>
  {% else %}
- <input type="hidden" name="member_id" value="{{ currentMember.id if currentMember else selectedMember.id }}">
- <input type="text" class="form-control" value="{{ currentMember.name if currentMember else selectedMember.name }}" readonly>
+ <input type="hidden" name="member_id" value="{{ selectedMember.id }}">
+ <input type="text" class="form-control" value="{{ selectedMember.name }}" readonly>
  {% endif %}
  </div>
  <div class="form-group">
