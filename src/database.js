@@ -2642,6 +2642,29 @@ function updateReportWeekGoal(
   return getReportWeekGoalById(id);
 }
 
+// FUNCAO: attachPlannerTaskToReportWeekGoal.
+function attachPlannerTaskToReportWeekGoal(goalId, plannerTaskId) {
+  const existing = getReportWeekGoalById(goalId);
+  if (!existing || !plannerTaskId) {
+    return null;
+  }
+
+  getDb()
+    .prepare(
+      `
+      UPDATE report_week_goal
+      SET
+        planner_task_id = ?,
+        goal_source = 'planner',
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `,
+    )
+    .run(plannerTaskId, goalId);
+
+  return getReportWeekGoalById(goalId);
+}
+
 // FUNCAO: deleteReportWeekGoal.
 function deleteReportWeekGoal(id) {
   const existing = getReportWeekGoalById(id);
@@ -4472,6 +4495,7 @@ module.exports = {
   updateProject,
   updateReportEntry,
   updateReportWeekGoal,
+  attachPlannerTaskToReportWeekGoal,
   deleteReportWeekGoal,
   deleteReportWeekGoalWithAudit,
   isProjectMember,

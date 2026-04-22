@@ -326,12 +326,10 @@ function registerReportRoutes(ctx) {
           workflowState: goal.task_state === "missed" ? "missed" : "active",
           priority: "medium",
         });
+        database.attachPlannerTaskToReportWeekGoal(goal.id, createdTask.id);
         database.syncReportWeekGoalFromPlannerTask(createdTask, {
           createdByUserId: req.currentUser.id,
         });
-        if (!goal.planner_task_id) {
-          database.deleteReportWeekGoal(goal.id);
-        }
         linkedTask = createdTask;
       }
 
