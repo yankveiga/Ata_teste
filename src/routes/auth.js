@@ -691,8 +691,6 @@ app.get("/services", requireAuth, (req, res) => {
     const nowMinuteSql = nowSql ? `${String(nowSql).slice(0, 16)}:00` : null;
     if (!dueAt) {
       errors.dueAt = ["Informe data e horário válidos para a tarefa."];
-    } else if (nowMinuteSql && dueAt < nowMinuteSql) {
-      errors.dueAt = ["Não é permitido criar tarefa com data/hora no passado."];
     }
 
     const description = trimToNull(formData.description) || "";

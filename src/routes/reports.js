@@ -162,8 +162,6 @@ function registerReportRoutes(ctx) {
     const nowSql = toSqlDateTime(new Date());
     if (!dueAt) {
       goalFormErrors.dueAt = ["Informe uma data de entrega válida."];
-    } else if (nowSql && dueAt < nowSql) {
-      goalFormErrors.dueAt = ["A data de entrega não pode estar no passado."];
     }
 
     if (!req.currentUser?.is_admin) {
@@ -275,7 +273,6 @@ function registerReportRoutes(ctx) {
     const extensionReason = String(req.body.extension_reason || "").trim();
     const goalFormErrors = {};
     const nowSql = toSqlDateTime(new Date());
-    const previousDueAt = String(goal.due_at || "").trim();
 
     if (goalAction === "save") {
       const validatedGoal = validateWeekGoalForm({ activity, description, dueAt: dueAtInput });
@@ -287,14 +284,6 @@ function registerReportRoutes(ctx) {
       }
       if (validatedGoal.errors.dueAt) {
         goalFormErrors.dueAt = validatedGoal.errors.dueAt;
-      }
-      if (
-        dueAt
-        && nowSql
-        && dueAt < nowSql
-        && dueAt !== previousDueAt
-      ) {
-        goalFormErrors.dueAt = ["A data de entrega não pode estar no passado."];
       }
     } else if (goalAction === "extend_deadline") {
       if (!dueAt) {
