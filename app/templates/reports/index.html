@@ -792,9 +792,10 @@ document.addEventListener('DOMContentLoaded', function() {
           function() {
             submitGoalForm(form, {
               onSuccess: function() {
-                const nextUrl = new URL(window.location.href);
-                nextUrl.hash = 'report-goals-panel';
-                window.location.assign(nextUrl.toString());
+                if (window.location.hash !== '#report-goals-panel') {
+                  window.location.hash = 'report-goals-panel';
+                }
+                window.location.reload();
               },
               onError: function() {
                 checkbox.checked = checkbox.dataset.initialChecked === '1';
