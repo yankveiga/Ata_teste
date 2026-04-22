@@ -83,6 +83,23 @@ function registerAuthRoutes(ctx) {
     return canDeletePlannerTask(req, task);
   }
 
+  function canCreatePlannerTaskForMember(req, project, memberId) {
+    if (!project || !memberId) {
+      return false;
+    }
+
+    if (canManageProject(req, project)) {
+      return true;
+    }
+
+    const currentMember = getCurrentMember(req);
+    return Boolean(
+      currentMember?.is_active
+      && Number(currentMember.id) === Number(memberId)
+      && database.isProjectMember(project.id, currentMember.id),
+    );
+  }
+
   function parseQueueMemberIds(rawValue) {
     const values = Array.isArray(rawValue) ? rawValue : [rawValue];
     const seen = new Set();
@@ -468,9 +485,18 @@ app.get("/services", requireAuth, (req, res) => {
       year: "numeric",
     }).format(new Date(`${plannerMonth}-01T12:00:00Z`));
 
+    const currentMemberId = currentMember?.is_active ? currentMember.id : null;
     const creatableProjects = accessibleProjects
       .map((project) => database.getProjectById(project.id))
-      .filter((project) => canManageProject(req, project));
+      .filter(Boolean)
+      .filter((project) => (
+        canManageProject(req, project)
+        || (currentMemberId && database.isProjectMember(project.id, currentMemberId))
+      ))
+      .map((project) => ({
+        ...project,
+        can_create_for_others: canManageProject(req, project),
+      }));
     const creatableProjectIds = new Set(creatableProjects.map((project) => project.id));
 
     const plannerFormState = req.session?.plannerFormState || null;
@@ -491,6 +517,8 @@ app.get("/services", requireAuth, (req, res) => {
     };
     if (!formData.memberId && effectiveViewMode === "member" && selectedMemberId) {
       formData.memberId = String(selectedMemberId);
+    } else if (!formData.memberId && currentMemberId) {
+      formData.memberId = String(currentMemberId);
     }
 
     const preferredProjectForMember = effectiveViewMode === "member" && selectedMemberId
@@ -506,7 +534,15 @@ app.get("/services", requireAuth, (req, res) => {
       ? creatableProjects.find((project) => project.id === requestedCreateProjectId) || null
       : (creatableProjects[0] || null);
     const selectedCreateProjectId = selectedCreateProject?.id || null;
-    const createMemberOptions = selectedCreateProject?.active_members || [];
+    const createMemberOptions = selectedCreateProject
+      ? (
+        canManageProject(req, selectedCreateProject)
+          ? (selectedCreateProject.active_members || [])
+          : (currentMemberId && database.isProjectMember(selectedCreateProject.id, currentMemberId)
+            ? (selectedCreateProject.active_members || []).filter((member) => member.id === currentMemberId)
+            : [])
+      )
+      : [];
     const createMemberIds = new Set(createMemberOptions.map((member) => member.id));
     if (!formData.projectId && selectedCreateProjectId) {
       formData.projectId = String(selectedCreateProjectId);
@@ -599,8 +635,6 @@ app.get("/services", requireAuth, (req, res) => {
 
     if (!project) {
       errors.projectId = ["Selecione um projeto válido."];
-    } else if (!canManageProject(req, project)) {
-      errors.projectId = ["Somente administradores ou coordenadores do projeto podem criar tarefas."];
     }
 
     const recurrenceIntervalDays = Number(formData.recurrenceIntervalDays);
@@ -617,6 +651,12 @@ app.get("/services", requireAuth, (req, res) => {
       if (!recurrenceQueue.length && memberId && projectMemberIds.has(memberId)) {
         recurrenceQueue = [memberId];
       }
+      if (!canManageProject(req, project)) {
+        const ownMemberId = currentMember?.id || null;
+        recurrenceQueue = ownMemberId && recurrenceQueue.includes(ownMemberId)
+          ? [ownMemberId]
+          : [];
+      }
       if (!recurrenceQueue.length) {
         errors.memberId = ["Selecione pelo menos um membro da fila de recorrência."];
       }
@@ -627,11 +667,14 @@ app.get("/services", requireAuth, (req, res) => {
       errors.memberId = ["Selecione o membro da tarefa."];
     } else if (project && !database.isProjectMember(project.id, memberId)) {
       errors.memberId = ["O membro selecionado não pertence ao projeto escolhido."];
+    } else if (project && !canCreatePlannerTaskForMember(req, project, memberId)) {
+      errors.memberId = ["Você só pode criar tarefas para si mesmo, exceto se for coordenador do projeto."];
     } else {
       const ownMemberId = currentMember?.id || null;
-      if (scopeMemberId && memberId && scopeMemberId !== memberId) {
+      const canCreateForOthers = project && canManageProject(req, project);
+      if (!canCreateForOthers && scopeMemberId && memberId && scopeMemberId !== memberId) {
         errors.memberId = ["Crie tarefas para outro membro apenas no perfil dele em Relatórios."];
-      } else if (!scopeMemberId && ownMemberId && memberId && ownMemberId !== memberId) {
+      } else if (!canCreateForOthers && !scopeMemberId && ownMemberId && memberId && ownMemberId !== memberId) {
         errors.memberId = ["Crie tarefas para outro membro apenas no perfil dele em Relatórios."];
       }
     }

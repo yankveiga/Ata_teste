@@ -94,10 +94,20 @@
                                     <div class="planner-create-grid">
                                         <div class="form-group">
                                             <label class="form-label" for="planner_form_project_id">Projeto</label>
-                                            <select id="planner_form_project_id" name="project_id" class="form-control" data-selected-member-id="{{ plannerFormData.memberId }}">
+                                            <select
+                                                id="planner_form_project_id"
+                                                name="project_id"
+                                                class="form-control"
+                                                data-selected-member-id="{{ plannerFormData.memberId }}"
+                                                data-current-member-id="{{ currentMember.id if currentMember else '' }}"
+                                            >
                                                 <option value="">Selecione</option>
                                                 {% for project in createProjectOptions %}
-                                                    <option value="{{ project.id }}" {% if plannerFormData.projectId == (project.id ~ '') %}selected{% endif %}>
+                                                    <option
+                                                        value="{{ project.id }}"
+                                                        data-can-create-for-others="{{ '1' if project.can_create_for_others else '0' }}"
+                                                        {% if plannerFormData.projectId == (project.id ~ '') %}selected{% endif %}
+                                                    >
                                                         {{ project.name }}
                                                     </option>
                                                 {% endfor %}
@@ -617,17 +627,26 @@
 
             function renderMembers(members) {
                 const selectedMemberId = String(projectSelect.dataset.selectedMemberId || '');
+                const selectedProjectOption = projectSelect.options[projectSelect.selectedIndex];
+                const canCreateForOthers = selectedProjectOption && selectedProjectOption.dataset.canCreateForOthers === '1';
+                const currentMemberId = String(projectSelect.dataset.currentMemberId || '');
+                const visibleMembers = canCreateForOthers || !currentMemberId
+                    ? members
+                    : members.filter((member) => String(member.id) === currentMemberId);
                 memberSelect.innerHTML = '';
                 const placeholder = document.createElement('option');
                 placeholder.value = '';
                 placeholder.textContent = 'Selecione';
                 memberSelect.appendChild(placeholder);
 
-                members.forEach((member) => {
+                visibleMembers.forEach((member) => {
                     const option = document.createElement('option');
                     option.value = String(member.id);
                     option.textContent = member.name;
-                    if (selectedMemberId && selectedMemberId === String(member.id)) {
+                    if (
+                        (selectedMemberId && selectedMemberId === String(member.id))
+                        || (!selectedMemberId && visibleMembers.length === 1)
+                    ) {
                         option.selected = true;
                     }
                     memberSelect.appendChild(option);
@@ -636,7 +655,7 @@
                 if (recurrenceQueue) {
                     recurrenceQueue.innerHTML = '';
                     recurrenceOrder = [];
-                    members.forEach((member) => {
+                    visibleMembers.forEach((member) => {
                         const row = document.createElement('button');
                         row.type = 'button';
                         row.className = 'planner-recurrence-member-item';

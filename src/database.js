@@ -2353,7 +2353,7 @@ function createReportWeekGoal({
         completed_at,
         completed_late
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CASE WHEN ? = 1 THEN CURRENT_TIMESTAMP ELSE NULL END, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CASE WHEN ? = 1 THEN CAST(CURRENT_TIMESTAMP AS TEXT) ELSE NULL END, ?)
       RETURNING id
     `,
     )
@@ -2510,7 +2510,7 @@ function syncReportWeekGoalFromPlannerTask(
           task_state = ?,
           is_completed = ?,
           completed_at = CASE
-            WHEN ? = 1 THEN COALESCE(?, completed_at, CURRENT_TIMESTAMP)
+            WHEN ? = 1 THEN COALESCE(CAST(? AS TEXT), completed_at, CAST(CURRENT_TIMESTAMP AS TEXT))
             ELSE NULL
           END,
           completed_late = ?,
@@ -2563,7 +2563,7 @@ function syncReportWeekGoalFromPlannerTask(
         completed_at,
         completed_late
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'planner', ?, ?, CASE WHEN ? = 1 THEN COALESCE(?, CURRENT_TIMESTAMP) ELSE NULL END, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'planner', ?, ?, CASE WHEN ? = 1 THEN COALESCE(CAST(? AS TEXT), CAST(CURRENT_TIMESTAMP AS TEXT)) ELSE NULL END, ?)
       RETURNING id
     `,
     ).run(
@@ -2616,7 +2616,7 @@ function updateReportWeekGoal(
           ELSE ?
         END,
         is_completed = ?,
-        completed_at = CASE WHEN ? = 1 THEN CURRENT_TIMESTAMP ELSE NULL END,
+        completed_at = CASE WHEN ? = 1 THEN CAST(CURRENT_TIMESTAMP AS TEXT) ELSE NULL END,
         completed_late = CASE
           WHEN ? IS NULL THEN completed_late
           WHEN ? = 1 THEN 1
@@ -2934,7 +2934,7 @@ function createTaskAuditLog({
         payload_json,
         created_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, COALESCE(?, CURRENT_TIMESTAMP))
+      VALUES (?, ?, ?, ?, ?, ?, ?, COALESCE(CAST(? AS TEXT), CAST(CURRENT_TIMESTAMP AS TEXT)))
       RETURNING id
     `,
     )
@@ -3429,7 +3429,7 @@ function updatePlannerTaskStatus({
       SET
         status = ?,
         is_completed = ?,
-        completed_at = CASE WHEN ? = 1 THEN COALESCE(completed_at, CURRENT_TIMESTAMP) ELSE NULL END,
+        completed_at = CASE WHEN ? = 1 THEN COALESCE(completed_at, CAST(CURRENT_TIMESTAMP AS TEXT)) ELSE NULL END,
         completed_late = 0,
         updated_at = ?
       WHERE id = ?
@@ -3505,7 +3505,7 @@ function updatePlannerTaskDetails({
         label = ?,
         is_completed = ?,
         completed_at = CASE
-          WHEN ? = 1 THEN COALESCE(completed_at, CURRENT_TIMESTAMP)
+          WHEN ? = 1 THEN COALESCE(completed_at, CAST(CURRENT_TIMESTAMP AS TEXT))
           ELSE NULL
         END,
         completed_late = CASE

@@ -16,9 +16,7 @@ function validateWeekGoalForm(formData = {}) {
     errors.activity = ["A atividade deve ter entre 3 e 180 caracteres."];
   }
 
-  if (!description) {
-    errors.description = ["Informe a descrição da tarefa."];
-  } else if (description.length > 2000) {
+  if (description.length > 2000) {
     errors.description = ["A descrição pode ter no máximo 2000 caracteres."];
   }
 

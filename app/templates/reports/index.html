@@ -174,8 +174,8 @@
  {% endif %}
  </div>
  <div class="report-goal-create-description">
- <label class="form-label" for="goal_description">Descrição</label>
- <textarea id="goal_description" name="description" rows="3" class="form-control" placeholder="Descrição objetiva da entrega." required>{{ goalFormData.description }}</textarea>
+ <label class="form-label" for="goal_description">Descrição (opcional)</label>
+ <textarea id="goal_description" name="description" rows="3" class="form-control" placeholder="Descrição objetiva da entrega.">{{ goalFormData.description }}</textarea>
  {% if goalFormErrors.description %}
  <ul class="errors form-error-list">
  {% for error in goalFormErrors.description %}<li>{{ error }}</li>{% endfor %}
