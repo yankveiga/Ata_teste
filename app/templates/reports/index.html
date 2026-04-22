@@ -717,6 +717,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
       syncInitialSnapshots(form);
       setSaveState(form, 'saved', 'Salvo');
+      if (options && typeof options.onSuccess === 'function') {
+        options.onSuccess(payload);
+      }
       window.setTimeout(() => {
         if (form.querySelector('.js-goal-save-state')?.dataset.state === 'saved') {
           setSaveState(form, 'idle', '');
@@ -788,6 +791,11 @@ document.addEventListener('DOMContentLoaded', function() {
           'Confirmar alteração desta meta da quinzena?',
           function() {
             submitGoalForm(form, {
+              onSuccess: function() {
+                const nextUrl = new URL(window.location.href);
+                nextUrl.hash = 'report-goals-panel';
+                window.location.assign(nextUrl.toString());
+              },
               onError: function() {
                 checkbox.checked = checkbox.dataset.initialChecked === '1';
               },
