@@ -1,90 +1,101 @@
 # Guia de Arquitetura - Portal PET C3
 
+Última revisão: **22/04/2026**.
+
 ## 1) Visão geral
 
-Arquitetura em camadas com responsabilidades separadas:
-1. Entrada HTTP e boot: `server.js`
-2. Composição de app/middlewares/contexto: `src/app.js`
+Arquitetura em camadas:
+1. Boot e HTTP: `server.js`
+2. Composição do app, middlewares e helpers: `src/app.js`
 3. Rotas por domínio: `src/routes/*`
-4. Serviços de regra de negócio: `src/services/*`
-5. Validações: `src/validators/*`
-6. Persistência SQL e schema: `src/database.js`
-7. Renderização: `app/templates/*` + `app/static/*`
+4. Serviços de regra: `src/services/*`
+5. Validação: `src/validators/*`
+6. Persistência e schema: `src/database.js`
+7. UI server-side: `app/templates/*` + `app/static/*`
 
 ## 2) Fluxo de request
 
-1. `server.js` sobe app e garante `ensureSchema()`.
-2. `src/app.js` aplica sessão, CSRF, flash, auth, estáticos e contexto de template.
-3. Rota do módulo processa entrada.
-4. Regra de negócio/validação (quando aplicável).
-5. `database.js` executa SQL no Postgres.
-6. Resposta volta como HTML (Nunjucks) ou JSON.
+1. `server.js` inicia app e chama `database.ensureSchema()`.
+2. `src/app.js` aplica sessão, CSRF, autenticação, flash e contexto global.
+3. Rota do domínio valida entrada e autorização.
+4. Regras de negócio e sync de domínio são aplicados.
+5. `src/database.js` executa SQL no Postgres (via worker).
+6. Resposta em HTML (Nunjucks) ou JSON.
 
 ## 3) Módulos de rota
 
 - `src/routes/auth.js`
-  - login/logout, services/home/presença, planner, manutenção de usuários.
+  - login/logout, home, presença, planner, manutenção de usuários.
 - `src/routes/reports.js`
-  - metas quinzenais, exclusão auditada, PDF mensal.
+  - metas quinzenais, calendário integrado, ações de atraso e PDF mensal.
 - `src/routes/members.js`
   - CRUD administrativo de membros.
 - `src/routes/projects.js`
-  - CRUD de projetos e gestão de vínculos/coordenadores.
+  - CRUD de projetos e vínculos/coordenadores.
 - `src/routes/atas.js`
   - criar/baixar/excluir atas.
 - `src/routes/almox.js`
   - interface + APIs do almoxarifado.
 
-## 4) Autorização (estado atual)
+## 4) Domínio de tarefas (Planner + Relatórios)
 
-Regras centrais em `src/app.js`:
+- Entidades principais:
+  - `planner_task` (operação)
+  - `report_week_goal` (visão quinzenal)
+- Vínculo de consistência:
+  - `report_week_goal.planner_task_id` (1:1 quando tarefa vem do planner)
+- Regra de atraso:
+  - ciclo automático marca `workflow_state/task_state = missed` após janela operacional (48h)
+- Estados críticos:
+  - Planner: `status` (`todo`, `in_progress`, `done`) + `workflow_state` (`active`, `missed`)
+  - Relatório: `is_completed` + `task_state`
+- Ações de recuperação para `missed`:
+  - `feito com atraso`
+  - `estender prazo`
+- Auditoria:
+  - `task_audit_log` para criação/edição/status/atraso/extensão/exclusão
+  - `report_week_goal_deletion_log` para exclusão de metas concluídas
+
+## 5) Autorização
+
+Helpers centrais em `src/app.js`:
 - `requireAuth`, `requireAdminPage`, `requireAdminApi`
 - `canManageProject`
 - `canManageReportGoal`
 - `canDeleteCompletedGoalFromOthers`
 
-Modelo atual:
-- Admin: total.
-- Coordenador: gestão contextual no projeto que coordena.
-- Comum: escopo limitado por módulo.
+Modelo:
+- `admin`: gestão total.
+- `coordenador`: gestão contextual por projeto.
+- `comum`: escopo próprio por módulo.
 
-Fonte única detalhada: `MATRIZ_PERMISSOES.md`.
+Fonte única de regra funcional: `MATRIZ_PERMISSOES.md`.
 
-Regras de domínio importantes já aplicadas:
-- Planner:
-  - criação somente por admin/coordenador do projeto;
-  - comum pode mover/concluir/excluir somente tarefas atribuídas a si;
-  - criação com data/hora passada é bloqueada;
-  - status inicial é automático por data (`agora = Em Execução`, `futuro = A Fazer`).
-- Relatórios:
-  - admin, coordenador do projeto ou o próprio membro (quando participante do projeto) podem criar/editar metas no escopo permitido;
-  - exclusão de metas concluídas fica restrita a admin/coordenador do projeto e gera auditoria.
+## 6) Sessão, segurança e tempo
 
-## 5) Sessão, segurança e tempo
+- Sessão: `cookie-session`
+- CSRF: token de sessão (`ensureCsrfToken` / `verifyCsrf`)
+- Expiração por inatividade: `SESSION_MAX_AGE_HOURS`
+- Timezone principal: `America/Sao_Paulo`
 
-- Sessão via `cookie-session`.
-- CSRF por token de sessão (`ensureCsrfToken`/`verifyCsrf`).
-- Expiração por inatividade com `SESSION_MAX_AGE_HOURS`.
-- Timezone principal: `America/Sao_Paulo` (`APP_TIMEZONE` + uso em utilitários/relatórios).
+## 7) Dados e integrações
 
-## 6) Dados e integrações
+- Banco: Postgres/Neon (`DATABASE_URL`)
+- Presença: XLSX local (`PRESENCE_WORKBOOK_PATH`)
+- Mídia: local ou Cloudinary
+- PDF: `src/pdf.js`
 
-- Banco: Postgres/Neon (`DATABASE_URL`).
-- Presença: planilha XLSX em disco (`PRESENCE_WORKBOOK_PATH`).
-- Mídia: local ou Cloudinary (quando configurado).
-- PDF: `src/pdf.js`.
+## 8) Frontend
 
-## 7) Frontend
+- Base e navegação: `app/templates/base.html`
+- CSS global/layout: `app/static/css/admin_dashboard_style.css`
+- CSS compartilhado e componentes: `app/static/css/custom_styles.css`
+- Relatórios: `app/templates/reports/index.html`
+- Planner: `app/templates/planner/index.html`
 
-- Shell global/menu/tema: `app/templates/base.html`.
-- CSS base: `app/static/css/admin_dashboard_style.css`.
-- CSS compartilhado e componentes: `app/static/css/custom_styles.css`.
-- Telas por domínio em `app/templates/<modulo>/...`.
-
-## 8) Princípios para evoluir sem regressão
+## 9) Princípios de evolução
 
 - SQL somente em `src/database.js`.
-- Regra de negócio repetida deve virar service/helper.
-- Permissões novas devem passar pelos helpers centrais.
-- Mudança de schema exige atualização de documentação.
-- Mudança de fluxo deve atualizar `MAPA_PROJETO`, `README` e docs técnicas.
+- Mudança de permissão passa pelos helpers centrais.
+- Mudança de schema deve ser idempotente.
+- Mudou fluxo funcional -> atualizar `README`, `MAPA_PROJETO`, `MODELAGEM_BANCO`, `MATRIZ_PERMISSOES`.

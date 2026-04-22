@@ -143,23 +143,6 @@
                                             {% endif %}
                                         </div>
 
-                                        <div class="form-group">
-                                            <label class="form-label">Status inicial</label>
-                                            <div class="form-control" style="display:flex;align-items:center;background:var(--surface-muted,#f4f8fb);">
-                                                Automático pela data (agora = Em Execução, futuro = A Fazer)
-                                            </div>
-                                            <input type="hidden" name="status" value="todo">
-                                        </div>
-
-                                        <div class="form-group">
-                                            <label class="form-label" for="planner_form_priority">Prioridade</label>
-                                            <select id="planner_form_priority" name="priority" class="form-control">
-                                                {% for option in plannerPriorityOptions %}
-                                                    <option value="{{ option.value }}" {% if plannerFormData.priority == option.value %}selected{% endif %}>{{ option.label }}</option>
-                                                {% endfor %}
-                                            </select>
-                                        </div>
-
                                         <div class="form-group form-group-full">
                                             <label class="form-label" for="planner_form_title">Título</label>
                                             <input id="planner_form_title" name="title" class="form-control" maxlength="180" value="{{ plannerFormData.title }}">
@@ -168,11 +151,6 @@
                                                     {% for error in plannerFormErrors.title %}<li>{{ error }}</li>{% endfor %}
                                                 </ul>
                                             {% endif %}
-                                        </div>
-
-                                        <div class="form-group form-group-full">
-                                            <label class="form-label" for="planner_form_label">Etiqueta (opcional)</label>
-                                            <input id="planner_form_label" name="label" class="form-control" maxlength="60" value="{{ plannerFormData.label }}">
                                         </div>
 
                                         <div class="form-group form-group-full">
@@ -335,12 +313,6 @@
                                 <strong>{{ task.title }}</strong>
                                 <small>{{ task.project.name }}</small>
                                 <small>{{ task.due_at | formatDateTime }}</small>
-                                <div class="planner-side-task-meta">
-                                    <span class="planner-priority planner-priority-{{ task.priority }}">{{ task.priority }}</span>
-                                    {% if task.label %}
-                                        <span class="planner-label-chip">{{ task.label }}</span>
-                                    {% endif %}
-                                </div>
                                 {% if task.recurrence_interval_days %}
                                     <small>
                                         Recorrente a cada {{ task.recurrence_every or task.recurrence_interval_days }}

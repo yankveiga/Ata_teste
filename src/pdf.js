@@ -265,12 +265,17 @@ function generateMonthlyReportPdf({ member, monthKey, goals, generatedByName = n
       doc.moveDown(0.35);
 
       projectGroup.goals.forEach((goal, index) => {
-        const statusLabel = goal.is_completed ? "Concluída" : "Em aberto";
+        const statusLabel = goal.is_completed
+          ? (goal.completed_late ? "Concluída com atraso" : "Concluída")
+          : "Em aberto";
         const weekLabel = goal.week_start || "-";
+        const activityLabel = goal.completed_late
+          ? `ATRASADA - ${goal.activity || "Sem atividade"}`
+          : (goal.activity || "Sem atividade");
         doc
           .font("Helvetica-Bold")
           .fontSize(11)
-          .text(`${index + 1}. ${goal.activity || "Sem atividade"}`);
+          .text(`${index + 1}. ${activityLabel}`);
         doc
           .font("Helvetica")
           .fontSize(10.5)

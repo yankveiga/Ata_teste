@@ -1,18 +1,19 @@
 # Modelagem do Banco de Dados
 
-Fonte de verdade: `src/database.js` (`ensureSchema()`).
+Fonte de verdade: `src/database.js` (`ensureSchema()` + migrações idempotentes com `ensureColumn`).
+Banco atual: **PostgreSQL (Neon)**.
+Última revisão: **22/04/2026**.
 
-Banco em uso: PostgreSQL (Neon).
+## 1) Domínios
 
-## 1) Domínios principais
-
-- Pessoas e acesso: `member`, `user`
-- Projetos e atas: `project`, `project_members`, `ata`, `ata_present_members`, `ata_absent_justification`
-- Relatórios: `report_entry`, `report_week_goal`, `report_week_goal_deletion_log`
-- Planner: `planner_task`, `planner_task_completion_log`
+- Identidade e acesso: `member`, `user`
+- Projetos e governança: `project`, `project_members`
+- Atas: `ata`, `ata_present_members`, `ata_absent_justification`
+- Relatórios: `report_entry` (legado), `report_week_goal`, `report_week_goal_deletion_log`
+- Planner: `planner_task`, `planner_task_completion_log`, `task_audit_log`
 - Almoxarifado: `estoque`, `pedido`, `inventory_category`, `inventory_location`, `inventory_loan`
 
-## 2) Diagrama ER (resumido)
+## 2) Diagrama ER (resumo)
 
 ```mermaid
 erDiagram
@@ -59,7 +60,7 @@ erDiagram
   user ||--o{ inventory_loan : "returned_by_user_id"
 ```
 
-## 3) Tabelas e campos (resumo técnico)
+## 3) Tabelas essenciais
 
 ### `member`
 - `id` PK
@@ -73,13 +74,13 @@ erDiagram
 - `password_hash` NOT NULL
 - `name` TEXT
 - `role` TEXT (`admin` | `common`)
-- `member_id` FK -> `member.id` (opcional)
+- `member_id` FK opcional -> `member.id`
 
 ### `project`
 - `id` PK
 - `name` UNIQUE NOT NULL
 - `logo` TEXT
-- `primary_color` TEXT (hex)
+- `primary_color` TEXT
 
 ### `project_members`
 - `project_id` FK -> `project.id`
@@ -87,113 +88,77 @@ erDiagram
 - `is_coordinator` INTEGER (0/1)
 - PK composta (`project_id`, `member_id`)
 
-### `ata`
-- `id` PK
-- `meeting_datetime` TEXT
-- `location_type`, `location_details`, `notes`
-- `created_at`
-- `project_id` FK -> `project.id`
-
-### `ata_present_members`
-- `ata_id` FK -> `ata.id`
-- `member_id` FK -> `member.id`
-- PK composta (`ata_id`, `member_id`)
-
-### `ata_absent_justification`
-- `ata_id` FK -> `ata.id`
-- `member_id` FK -> `member.id`
-- `justification`
-- PK composta (`ata_id`, `member_id`)
-
-### `report_entry` (legado)
-- `id` PK
-- `project_id`, `member_id`, `created_by_user_id`
-- `week_start`
-- `status` (`completed` | `in_progress` | `blocked`)
-- `content`, `created_at`, `updated_at`
-
-### `report_week_goal`
+### `report_week_goal` (fonte de verdade do Relatório)
 - `id` PK
 - `member_id`, `project_id`, `created_by_user_id`
-- `week_start`
+- `week_start` (quinzena)
+- `due_at` (prazo real da tarefa)
 - `activity`, `description`
+- `planner_task_id` (vínculo 1:1 opcional com planner)
+- `goal_source` (`manual` | `planner`)
+- `task_state` (`active` | `missed`)
 - `is_completed`, `completed_at`
 - `created_at`, `updated_at`
 
-### `report_week_goal_deletion_log`
-- `id` PK
-- `goal_id` (id da meta original)
-- `member_id`, `project_id`, `deleted_by_user_id`
-- `week_start`, `activity`, `description`, `completed_at`
-- `deleted_at`
+Observação: índice único parcial em `planner_task_id` evita duplicar a projeção da mesma tarefa.
 
-### `planner_task`
+### `report_week_goal_deletion_log`
+- trilha de exclusão de metas concluídas:
+- `goal_id`, `member_id`, `project_id`, `deleted_by_user_id`, `week_start`, `activity`, `description`, `completed_at`, `deleted_at`
+
+### `planner_task` (planejamento operacional)
 - `id` PK
 - `project_id`, `assigned_member_id`, `created_by_user_id`
 - `title`, `description`
 - `status` (`todo` | `in_progress` | `done`)
 - `priority` (`low` | `medium` | `high` | `urgent`)
-- `label` TEXT
+- `label`
 - `due_at`
 - `is_completed`, `completed_at`
+- `workflow_state` (`active` | `missed`)
+- `missed_at`
+- `last_extended_at`, `last_extended_by_user_id`
 - recorrência: `recurrence_interval_days`, `recurrence_unit`, `recurrence_every`, `recurrence_member_queue`, `recurrence_next_index`
 - `created_at`, `updated_at`
 
 ### `planner_task_completion_log`
-- `id` PK
-- `task_id` FK -> `planner_task.id`
-- `project_id`, `assigned_member_id`, `completed_by_user_id`
-- `title`, `description`
-- `status`, `priority`, `label`
-- `due_at`, `completed_at`
+- histórico de conclusões:
+- `task_id`, `project_id`, `assigned_member_id`, `completed_by_user_id`
+- snapshot: `title`, `description`, `status`, `priority`, `label`, `due_at`
+- `completed_at`
 
-### `inventory_category`
-- `id` PK
-- `name` UNIQUE NOT NULL
+### `task_audit_log`
+- auditoria de ciclo de vida de tarefas/metas:
+- `task_id`, `report_goal_id`, `member_id`, `project_id`
+- `event_type` (ex.: `task_created`, `task_updated`, `status_changed`, `task_marked_missed`, `deadline_extended`, `task_done_late`, `task_deleted`)
+- `actor_user_id`
+- `payload_json`
+- `created_at`
 
-### `inventory_location`
-- `id` PK
-- `name` UNIQUE NOT NULL
+Observação: sem FKs rígidas para preservar histórico mesmo após exclusões.
 
-### `estoque`
-- `id` PK
-- `name`
-- `item_type` (`stock` | `patrimony`)
-- `category` (legado), `category_id` (normalizado)
-- `location` (legado), `location_id` (normalizado)
-- `amount`, `description`
-
-### `pedido`
-- `id` PK
-- `qtd_retirada`
-- `usuario_id` FK -> `user.id`
-- `estoque_id` FK -> `estoque.id`
-- `data_pedido`
-
-### `inventory_loan`
-- `id` PK
-- `item_id`, `user_id`
-- `quantity`
-- `borrowed_at`, `original_due_at`, `due_at`
-- `returned_at`, `extended_at`
-- `extended_by_user_id`, `returned_by_user_id`
-
-## 4) Índices importantes
+## 4) Índices relevantes
 
 - `project_members(project_id, is_coordinator)`
-- Relatórios por membro/projeto/semana/conclusão
-- Planner por projeto/membro/data/status/prioridade
-- Logs do planner por tarefa/projeto/membro/data
-- Almox por nome/tipo/categoria/local e empréstimos por prazo/retorno
+- Relatórios: por `member_id`, `project_id`, `week_start`, `is_completed`, `due_at`, `task_state`
+- Planner: por `project_id`, `assigned_member_id`, `due_at`, `is_completed`, `status`, `priority`, `workflow_state`, `missed_at`
+- Auditoria: `task_audit_log` por `task_id`, `report_goal_id`, `member_id`, `project_id`, `event_type`, `created_at`
+- Almox: índices por item, categoria/local e prazo de empréstimo
 
-## 5) Regras refletidas no schema
+## 5) Regras de modelagem aplicadas
 
-- Coordenação de projeto é contextual (`project_members.is_coordinator`).
-- Metas concluídas podem ser removidas com trilha em `report_week_goal_deletion_log`.
-- Planner suporta recorrência com fila de membros.
-- Almox mantém compatibilidade com colunas legadas e também catálogo normalizado.
+- Coordenador é contextual por projeto (`project_members.is_coordinator`).
+- Relatório e Planner são sincronizados pelo vínculo `report_week_goal.planner_task_id`.
+- Após atraso + janela operacional (48h no backend), tarefa pode migrar para `task_state/workflow_state = missed`.
+- Tarefas em `missed` não devem receber edição direta normal; usam ações controladas (feito com atraso / extensão).
+- Exclusão de meta concluída mantém trilha em `report_week_goal_deletion_log`.
+- Ações críticas de tarefa geram trilha em `task_audit_log`.
 
 ## 6) Observações operacionais
 
-- A função `deleteUser` limpa vínculos e histórico dependente antes de remover usuário.
-- Toda evolução de schema deve ser idempotente em `ensureSchema()` e documentada aqui.
+- Migrações são incrementais e idempotentes em `ensureSchema()`.
+- `deleteUser` precisa preservar integridade e histórico antes de remover vínculos.
+- Qualquer coluna nova deve ser:
+  1. criada em `CREATE TABLE IF NOT EXISTS`;
+  2. reforçada com `ensureColumn`;
+  3. documentada aqui no mesmo commit.

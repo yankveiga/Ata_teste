@@ -1,96 +1,115 @@
 # Documentação Técnica Completa (Manutenção)
 
-Objetivo: servir como guia único para manutenção diária e evolução sem regressão.
+Objetivo: guia único de manutenção e evolução sem regressão.
+Última revisão: **22/04/2026**.
 
-## 1) Estado atual do projeto
+## 1) Estado atual
 
-- Aplicação monolítica modular em Node.js/Express.
+- Aplicação Node.js/Express renderizada por Nunjucks.
 - Banco principal: Postgres (Neon).
 - Uploads: local ou Cloudinary.
 - Presença: planilha XLSX no servidor.
-- Renderização server-side com Nunjucks.
+- Módulos em rotas separadas (`src/routes/*`).
 
 ## 2) Estrutura por responsabilidade
 
-- Entrada/boot: `server.js`
-- Middlewares + helpers de autorização + contexto global: `src/app.js`
-- Rotas por domínio: `src/routes/*`
-- Regras de negócio reutilizáveis: `src/services/*`
+- Boot: `server.js`
+- Middlewares/autorização/contexto: `src/app.js`
+- Rotas: `src/routes/*`
+- Serviços: `src/services/*`
 - Validações: `src/validators/*`
-- Persistência e schema: `src/database.js`
-- Frontend (templates/CSS/JS): `app/templates/*`, `app/static/*`
+- Persistência/schema: `src/database.js`
+- Frontend: `app/templates/*`, `app/static/*`
 
-## 3) Regras de permissão vigentes
+## 3) Permissões vigentes
 
 Perfis:
 - `admin`
 - `common`
 - `coordenador` (contextual por projeto via `project_members.is_coordinator`)
 
-Fonte única de regras por módulo/ação: `MATRIZ_PERMISSOES.md`.
+Fonte única: `MATRIZ_PERMISSOES.md`.
 
-Resumo operacional (21/04/2026):
+Resumo operacional:
 - `admin`: gestão total.
-- `coordenador`: gestão do próprio projeto (planner, relatórios, atas e vínculos de membros/coordenadores no projeto).
-- `comum`: ações no próprio escopo (inclusive tarefas do planner atribuídas a si).
+- `coordenador`: gestão do próprio projeto.
+- `comum`: ações no próprio escopo.
 
-Regras do Planner:
-- criação de tarefa: somente admin/coordenador do projeto;
-- data/hora passada: bloqueada;
-- status inicial: automático por data (`agora = Em Execução`, `futuro = A Fazer`).
+## 4) Domínio de tarefas (relatório + planner)
 
-## 4) Convenções de alteração
+- Fonte operacional: `planner_task`.
+- Projeção quinzenal: `report_week_goal`.
+- Sincronização: vínculo por `planner_task_id`.
+- Atraso operacional:
+  - tarefa pode migrar para `missed` após janela de 48h;
+  - nesse estado, edição direta é bloqueada;
+  - ações permitidas: `feito com atraso` e `estender prazo`.
+- Auditoria:
+  - `task_audit_log` (criação, edição, mudança de status, atraso, extensão, exclusão)
+  - `report_week_goal_deletion_log` (remoção de metas concluídas)
 
-Sempre seguir esta ordem:
+## 5) Convenções obrigatórias
+
 1. Ajustar validação.
-2. Ajustar regra/autorização.
-3. Ajustar persistência se necessário.
+2. Ajustar autorização/regra.
+3. Ajustar persistência.
 4. Ajustar interface.
 5. Atualizar documentação.
 
-Padrões obrigatórios:
+Padrões:
 - Não escrever SQL fora de `src/database.js`.
-- Não duplicar regra de permissão em múltiplos lugares sem helper.
-- Em botões de ícone, manter `aria-label`.
-- Erros críticos devem usar `logError`.
+- Não duplicar regra de permissão sem helper.
+- `aria-label` obrigatório em botões de ícone.
+- Erros críticos via `logError`.
 
-## 5) Checklist de mudança por módulo
+## 6) Checklist por módulo
 
 ### Relatórios
 - Arquivos: `src/routes/reports.js`, `src/services/reportService.js`, `src/database.js`, `app/templates/reports/index.html`.
-- Validar: criação/edição/meta concluída, atraso, log de exclusão, PDF mensal.
+- Validar:
+  - criação/edição/exclusão de meta;
+  - sincronização com planner;
+  - fluxo `missed` (48h);
+  - histórico de exclusão;
+  - histórico de auditoria;
+  - PDF mensal.
 
 ### Planner
 - Arquivos: `src/routes/auth.js`, `src/database.js`, `app/templates/planner/index.html`.
-- Validar: criação, status, conclusão, recorrência (fila), exclusão.
+- Validar:
+  - criação;
+  - status/conclusão/exclusão;
+  - recorrência;
+  - sincronização com relatório.
 
 ### Projetos e membros
-- Arquivos: `src/routes/projects.js`, `src/routes/members.js`, `src/database.js`, templates de `projects/` e `members/`.
-- Validar: permissões de admin/coordenador e consistência do vínculo em `project_members`.
+- Arquivos: `src/routes/projects.js`, `src/routes/members.js`, `src/database.js`, templates `projects/` e `members/`.
+- Validar coordenação contextual em `project_members`.
 
 ### Almoxarifado
 - Arquivos: `src/routes/almox.js`, `src/services/inventoryService.js`, `src/database.js`, `app/templates/almoxarifado/index.html`.
-- Validar: estoque, retirada, empréstimo, devolução, prorrogação e APIs.
+- Validar estoque, retirada, empréstimo, devolução, prorrogação.
 
-## 6) Fluxo de validação antes de deploy
+## 7) Validação antes de deploy
 
 1. `node -c` nos arquivos alterados.
-2. Teste manual do fluxo principal afetado.
-3. Teste manual de permissão (admin/coordenador/comum).
-4. Teste de erro esperado (CSRF, validação, permissão negada).
-5. Atualização de docs (`README`, `MAPA`, `GUIA`, `MODELAGEM`) quando necessário.
+2. `npm run verify` com `DATABASE_URL` válido.
+3. Teste manual do fluxo alterado.
+4. Teste de permissão (admin/coordenador/comum).
+5. Teste de erro esperado (CSRF, validação, permissão negada).
+6. Atualizar docs do mesmo commit.
 
-## 7) Riscos conhecidos (operacionais)
+## 8) Riscos operacionais conhecidos
 
-- Presença depende de arquivo XLSX acessível no servidor.
-- Exclusão de usuário exige cuidado por FKs/histórico; usar fluxo da aplicação.
-- Alterações de schema devem ser idempotentes em `ensureSchema()`.
+- Presença depende de XLSX acessível no servidor.
+- Exclusão de usuário exige cuidado com histórico/FKs.
+- Mudança de schema deve ser idempotente em `ensureSchema()`.
 
-## 8) Documentos complementares
+## 9) Documentos complementares
 
-- `README.md` (entrada rápida)
-- `MAPA_PROJETO.txt` (atalho de manutenção)
-- `MATRIZ_PERMISSOES.md` (fonte única de autorização)
-- `GUIA_ARQUITETURA.md` (desenho técnico)
-- `MODELAGEM_BANCO.md` (schema)
-- `RUNBOOK_PRODUCAO.md` (operação)
+- `README.md`
+- `MAPA_PROJETO.txt`
+- `MATRIZ_PERMISSOES.md`
+- `GUIA_ARQUITETURA.md`
+- `MODELAGEM_BANCO.md`
+- `RUNBOOK_PRODUCAO.md`

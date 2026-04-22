@@ -616,6 +616,23 @@ function requireAuth(req, res, next) {
     return database.isProjectCoordinator(goal.project_id, currentMember.id);
   }
 
+  function canDeleteGoalFromExecution(req, goal) {
+    if (!goal?.id || !goal?.project_id) {
+      return false;
+    }
+
+    if (req.currentUser?.is_admin) {
+      return true;
+    }
+
+    const currentMember = getCurrentMember(req);
+    if (!currentMember?.is_active) {
+      return false;
+    }
+
+    return database.isProjectCoordinator(goal.project_id, currentMember.id);
+  }
+
   // DETALHE: Valida token CSRF para formularios e interrompe fluxo quando invalido.
 
   function ensureValidCsrf(req, res) {
@@ -743,6 +760,8 @@ function render(res, template, data = {}) {
   function renderReportPage(req, res, data = {}) {
     const currentMember = getCurrentMember(req);
     const currentWeekStart = getCurrentWeekStartDate();
+    const nowSql = toSqlDateTime(new Date());
+    database.refreshPlannerTaskLifecycle({ graceHours: 48 });
     const membersSummary = database.listReportMembersSummary();
     const requestedMemberId = parseId(data.selectedMemberId || req.query.member_id);
     const selectedMemberId =
@@ -769,6 +788,7 @@ function render(res, template, data = {}) {
       ? database.listReportWeekGoalsForMember(selectedMember.id, {
           projectId: selectedProjectId || null,
           currentWeekStart,
+          nowSql,
           limit: 400,
         }).map((goal) => ({
           ...goal,
@@ -777,20 +797,24 @@ function render(res, template, data = {}) {
             projectId: goal.project_id,
           }),
           can_delete_completed: canDeleteCompletedGoalFromOthers(req, goal),
+          can_delete_from_execution: canDeleteGoalFromExecution(req, goal),
         }))
       : [];
     const pendingGoals = reportGoals.filter((goal) => !goal.is_completed);
     const completedGoals = reportGoals.filter((goal) => goal.is_completed);
-    const overduePendingGoals = pendingGoals
-      .filter((goal) => goal.week_start < currentWeekStart)
+    const activePendingGoals = pendingGoals.filter((goal) => goal.task_state !== "missed");
+    const missedGoals = pendingGoals.filter((goal) => goal.task_state === "missed");
+    const overduePendingGoals = activePendingGoals
+      .filter((goal) => goal.is_overdue)
       .sort((left, right) => (
-        left.week_start.localeCompare(right.week_start) || left.id - right.id
+        String(left.due_at || left.week_start).localeCompare(String(right.due_at || right.week_start))
+        || left.id - right.id
       ));
-    const inProgressGoals = pendingGoals
-      .filter((goal) => goal.week_start === currentWeekStart)
+    const inProgressGoals = activePendingGoals
+      .filter((goal) => !goal.is_overdue && goal.week_start === currentWeekStart)
       .sort((left, right) => left.id - right.id);
-    const futurePendingGoals = pendingGoals
-      .filter((goal) => goal.week_start > currentWeekStart)
+    const futurePendingGoals = activePendingGoals
+      .filter((goal) => !goal.is_overdue && goal.week_start > currentWeekStart)
       .sort((left, right) => (
         left.week_start.localeCompare(right.week_start) || left.id - right.id
       ));
@@ -817,6 +841,12 @@ function render(res, template, data = {}) {
       ? database.listReportWeekGoalDeletionLogsForMember(selectedMember.id, {
           projectId: selectedProjectId || null,
           limit: 30,
+        })
+      : [];
+    const taskAuditLogs = selectedMember
+      ? database.listTaskAuditLogsForMember(selectedMember.id, {
+          projectId: selectedProjectId || null,
+          limit: 80,
         })
       : [];
     const goalsSummary = reportGoals.reduce(
@@ -855,7 +885,9 @@ function render(res, template, data = {}) {
       reportGoals,
       pendingGoals,
       completedGoals,
+      missedGoals,
       deletionLogs,
+      taskAuditLogs,
       overduePendingGoals,
       inProgressGoals,
       futurePendingGoals,
@@ -866,6 +898,7 @@ function render(res, template, data = {}) {
         projectId: selectedProjectId || "",
         activity: "",
         description: "",
+        dueAt: "",
         isCompleted: false,
         ...(data.goalFormData || {}),
       },
@@ -1042,6 +1075,7 @@ function render(res, template, data = {}) {
     canCreateAtaForProject,
     canManageReportGoal,
     canDeleteCompletedGoalFromOthers,
+    canDeleteGoalFromExecution,
     getCurrentMember,
     getCurrentWeekStartDate,
     getCurrentMonthKeyInSaoPaulo,

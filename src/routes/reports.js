@@ -21,13 +21,25 @@ function registerReportRoutes(ctx) {
     ensureValidCsrf,
     canManageReportGoal,
     canDeleteCompletedGoalFromOthers,
+    canDeleteGoalFromExecution,
     canGenerateMonthlyReport,
     buildMonthlyPdfFilename,
     validateWeekGoalForm,
+    toSqlDateTime,
     logError,
   } = ctx;
 
-app.get("/relatorios", requireAuth, (req, res) => {
+  function normalizeDueAtInput(value) {
+    return toSqlDateTime(String(value || "").trim());
+  }
+
+  function wantsJsonResponse(req) {
+    const requestedWith = String(req.get("x-requested-with") || "").toLowerCase();
+    const acceptHeader = String(req.get("accept") || "").toLowerCase();
+    return requestedWith === "xmlhttprequest" || acceptHeader.includes("application/json");
+  }
+
+  app.get("/relatorios", requireAuth, (req, res) => {
     return renderReportPage(req, res);
   });
 
@@ -125,6 +137,7 @@ app.get("/relatorios", requireAuth, (req, res) => {
       projectId: String(req.body.project_id || "").trim(),
       activity: String(req.body.activity || "").trim(),
       description: String(req.body.description || "").trim(),
+      dueAt: String(req.body.due_at || "").trim(),
       isCompleted: Boolean(req.body.is_completed),
     };
     const goalFormErrors = {};
@@ -145,6 +158,13 @@ app.get("/relatorios", requireAuth, (req, res) => {
     }
 
     Object.assign(goalFormErrors, validateWeekGoalForm(goalFormData).errors);
+    const dueAt = normalizeDueAtInput(goalFormData.dueAt);
+    const nowSql = toSqlDateTime(new Date());
+    if (!dueAt) {
+      goalFormErrors.dueAt = ["Informe uma data de entrega válida."];
+    } else if (nowSql && dueAt < nowSql) {
+      goalFormErrors.dueAt = ["A data de entrega não pode estar no passado."];
+    }
 
     if (!req.currentUser?.is_admin) {
       const currentMember = getCurrentMember(req);
@@ -172,14 +192,22 @@ app.get("/relatorios", requireAuth, (req, res) => {
     }
 
     try {
-      database.createReportWeekGoal({
-        memberId: selectedMember.id,
+      const initialStatus = dueAt && nowSql && dueAt <= nowSql
+        ? "in_progress"
+        : "todo";
+      const createdTask = database.createPlannerTask({
         projectId: project.id,
+        assignedMemberId: selectedMember.id,
         createdByUserId: req.currentUser.id,
-        weekStart: getCurrentWeekStartDate(),
-        activity: goalFormData.activity,
+        title: goalFormData.activity,
         description: goalFormData.description,
-        isCompleted: goalFormData.isCompleted,
+        dueAt,
+        status: goalFormData.isCompleted ? "done" : initialStatus,
+        workflowState: "active",
+        priority: "medium",
+      });
+      database.syncReportWeekGoalFromPlannerTask(createdTask, {
+        createdByUserId: req.currentUser.id,
       });
       req.flash("success", "Meta da quinzena adicionada com sucesso.");
     } catch (error) {
@@ -210,65 +238,181 @@ app.get("/relatorios", requireAuth, (req, res) => {
     const goalId = parseId(req.params.id);
     const goal = goalId ? database.getReportWeekGoalById(goalId) : null;
     const returnProjectId = parseId(req.body.return_project_id);
+    const wantsJson = wantsJsonResponse(req);
+
+    function buildReturnUrl() {
+      return `/relatorios${buildReportsQuery({
+        memberId: goal?.member_id || null,
+        projectId: returnProjectId || null,
+      })}#report-goals-panel`;
+    }
+
+    function sendGoalUpdateError(status, message) {
+      if (wantsJson) {
+        return res.status(status).json({ ok: false, message });
+      }
+      req.flash("warning", message);
+      return res.redirect(goal ? buildReturnUrl() : "/relatorios");
+    }
+
     if (!goal) {
-      req.flash("warning", "Meta quinzenal não encontrada.");
-      return res.redirect("/relatorios");
+      return sendGoalUpdateError(404, "Meta quinzenal não encontrada.");
     }
 
     if (!canManageReportGoal(req, {
       memberId: goal.member_id,
       projectId: goal.project_id,
     })) {
-      req.flash("warning", "Sem permissão para editar esta meta quinzenal.");
-      return res.redirect(
-        `/relatorios${buildReportsQuery({
-          memberId: goal.member_id,
-          projectId: returnProjectId || null,
-        })}#report-goals-panel`,
-      );
+      return sendGoalUpdateError(403, "Sem permissão para editar esta meta quinzenal.");
     }
 
     const activity = String(req.body.activity || "").trim();
     const description = String(req.body.description || "").trim();
+    const dueAtInput = String(req.body.due_at || "").trim();
+    const dueAt = normalizeDueAtInput(dueAtInput);
     const isCompleted = Boolean(req.body.is_completed);
+    const goalAction = String(req.body.goal_action || "save").trim().toLowerCase();
+    const extensionReason = String(req.body.extension_reason || "").trim();
     const goalFormErrors = {};
+    const nowSql = toSqlDateTime(new Date());
+    const previousDueAt = String(goal.due_at || "").trim();
 
-    const validatedGoal = validateWeekGoalForm({ activity, description });
-    if (validatedGoal.errors.activity) {
-      goalFormErrors.activity = validatedGoal.errors.activity;
-    }
-    if (validatedGoal.errors.description) {
-      goalFormErrors.description = validatedGoal.errors.description;
+    if (goalAction === "save") {
+      const validatedGoal = validateWeekGoalForm({ activity, description, dueAt: dueAtInput });
+      if (validatedGoal.errors.activity) {
+        goalFormErrors.activity = validatedGoal.errors.activity;
+      }
+      if (validatedGoal.errors.description) {
+        goalFormErrors.description = validatedGoal.errors.description;
+      }
+      if (validatedGoal.errors.dueAt) {
+        goalFormErrors.dueAt = validatedGoal.errors.dueAt;
+      }
+      if (
+        dueAt
+        && nowSql
+        && dueAt < nowSql
+        && dueAt !== previousDueAt
+      ) {
+        goalFormErrors.dueAt = ["A data de entrega não pode estar no passado."];
+      }
+    } else if (goalAction === "extend_deadline") {
+      if (!dueAt) {
+        goalFormErrors.dueAt = ["Informe a nova data de entrega para estender o prazo."];
+      } else if (nowSql && dueAt <= nowSql) {
+        goalFormErrors.dueAt = ["A nova data de entrega deve ser futura."];
+      }
     }
 
     if (Object.keys(goalFormErrors).length > 0) {
-      req.flash("warning", goalFormErrors.activity?.[0] || goalFormErrors.description?.[0]);
-      return res.redirect(
-        `/relatorios${buildReportsQuery({
-          memberId: goal.member_id,
-          projectId: returnProjectId || null,
-        })}#report-goals-panel`,
-      );
+      const firstError = goalFormErrors.activity?.[0]
+        || goalFormErrors.description?.[0]
+        || goalFormErrors.dueAt?.[0]
+        || "Não foi possível salvar a meta.";
+      if (wantsJson) {
+        return res.status(422).json({
+          ok: false,
+          message: firstError,
+          errors: goalFormErrors,
+        });
+      }
+      req.flash("warning", firstError);
+      return res.redirect(buildReturnUrl());
     }
 
     try {
-      database.updateReportWeekGoal(goal.id, {
-        activity,
-        description,
-        isCompleted,
-      });
+      let linkedTask = goal.planner_task_id
+        ? database.getPlannerTaskById(goal.planner_task_id)
+        : null;
+
+      if (!linkedTask) {
+        const createdTask = database.createPlannerTask({
+          projectId: goal.project_id,
+          assignedMemberId: goal.member_id,
+          createdByUserId: req.currentUser.id,
+          title: activity || goal.activity,
+          description: description || goal.description,
+          dueAt: dueAt || goal.due_at || toSqlDateTime(new Date()),
+          status: isCompleted ? "done" : "todo",
+          workflowState: goal.task_state === "missed" ? "missed" : "active",
+          priority: "medium",
+        });
+        database.syncReportWeekGoalFromPlannerTask(createdTask, {
+          createdByUserId: req.currentUser.id,
+        });
+        if (!goal.planner_task_id) {
+          database.deleteReportWeekGoal(goal.id);
+        }
+        linkedTask = createdTask;
+      }
+
+      if (!linkedTask) {
+        throw new Error("Falha ao localizar tarefa vinculada no Planner.");
+      }
+
+      if (linkedTask.workflow_state === "missed" && goalAction === "save") {
+        return sendGoalUpdateError(
+          409,
+          "Tarefa em histórico de não feitas. Use 'Feito com atraso' ou 'Estender prazo'.",
+        );
+      }
+
+      let updatedTask = null;
+      if (goalAction === "done_late") {
+        updatedTask = database.markPlannerTaskDoneLate({
+          id: linkedTask.id,
+          actorUserId: req.currentUser.id,
+        });
+      } else if (goalAction === "extend_deadline") {
+        updatedTask = database.extendPlannerTaskDeadline({
+          id: linkedTask.id,
+          dueAt,
+          actorUserId: req.currentUser.id,
+          reason: extensionReason || null,
+        });
+      } else {
+        const nextStatus = isCompleted
+          ? "done"
+          : (dueAt && nowSql && dueAt <= nowSql ? "in_progress" : "todo");
+        updatedTask = database.updatePlannerTaskDetails({
+          id: linkedTask.id,
+          projectId: goal.project_id,
+          assignedMemberId: goal.member_id,
+          title: activity,
+          description,
+          dueAt: dueAt || linkedTask.due_at,
+          status: nextStatus,
+          actorUserId: req.currentUser.id,
+        });
+      }
+
+      if (updatedTask) {
+        database.syncReportWeekGoalFromPlannerTask(updatedTask, {
+          createdByUserId: req.currentUser.id,
+        });
+      }
+
+      if (wantsJson) {
+        return res.json({
+          ok: true,
+          message: "Meta quinzenal atualizada.",
+          goalId: goal.id,
+        });
+      }
+
       req.flash("success", "Meta quinzenal atualizada.");
     } catch (error) {
       logError(req, "Erro ao atualizar meta quinzenal:", error);
+      if (wantsJson) {
+        return res.status(500).json({
+          ok: false,
+          message: `Erro ao atualizar meta quinzenal: ${error.message}`,
+        });
+      }
       req.flash("danger", `Erro ao atualizar meta quinzenal: ${error.message}`);
     }
 
-    return res.redirect(
-      `/relatorios${buildReportsQuery({
-        memberId: goal.member_id,
-        projectId: returnProjectId || null,
-      })}#report-goals-panel`,
-    );
+    return res.redirect(buildReturnUrl());
   });
 
   app.post("/relatorios/goals/:id/delete", requireAuth, (req, res) => {
@@ -278,27 +422,40 @@ app.get("/relatorios", requireAuth, (req, res) => {
 
     const goalId = parseId(req.params.id);
     const goal = goalId ? database.getReportWeekGoalById(goalId) : null;
+    const returnProjectId = parseId(req.body.return_project_id);
     if (!goal) {
       req.flash("warning", "Meta quinzenal não encontrada.");
       return res.redirect("/relatorios");
     }
 
-    if (!canDeleteCompletedGoalFromOthers(req, goal)) {
+    const canDeleteFromCompleted = canDeleteCompletedGoalFromOthers(req, goal);
+    const canDeleteFromExecution = canDeleteGoalFromExecution(req, goal);
+
+    if (!canDeleteFromCompleted && !canDeleteFromExecution) {
       req.flash(
         "warning",
-        "Sem permissão para apagar metas concluídas deste membro neste projeto.",
+        "Sem permissão para apagar esta meta neste projeto.",
       );
       return res.redirect(
         `/relatorios${buildReportsQuery({
           memberId: goal.member_id,
-          projectId: goal.project_id,
+          projectId: returnProjectId || goal.project_id,
         })}#report-goals-panel`,
       );
     }
 
     try {
+      if (goal.planner_task_id) {
+        const linkedTask = database.getPlannerTaskById(goal.planner_task_id);
+        if (linkedTask) {
+          database.deletePlannerTask(linkedTask.id, {
+            actorUserId: req.currentUser.id,
+            reportGoalId: goal.id,
+          });
+        }
+      }
       database.deleteReportWeekGoalWithAudit(goal.id, req.currentUser.id);
-      req.flash("success", "Atividade concluída removida com sucesso.");
+      req.flash("success", "Atividade removida com sucesso.");
     } catch (error) {
       logError(req, "Erro ao apagar meta concluída:", error);
       req.flash("danger", `Erro ao apagar atividade concluída: ${error.message}`);
@@ -307,7 +464,7 @@ app.get("/relatorios", requireAuth, (req, res) => {
     return res.redirect(
       `/relatorios${buildReportsQuery({
         memberId: goal.member_id,
-        projectId: goal.project_id,
+        projectId: returnProjectId || goal.project_id,
       })}#report-goals-panel`,
     );
   });

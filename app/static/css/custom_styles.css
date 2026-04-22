@@ -1003,57 +1003,6 @@ body.section-planner .page-header {
   font-size: 0.76rem;
 }
 
-.planner-side-task-meta {
-  margin-top: 6px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.planner-priority {
-  display: inline-flex;
-  align-items: center;
-  border-radius: 999px;
-  font-size: 0.7rem;
-  font-weight: 800;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  padding: 0.2rem 0.55rem;
-}
-
-.planner-priority-low {
-  background: rgba(30, 64, 175, 0.12);
-  color: #1e40af;
-}
-
-.planner-priority-medium {
-  background: rgba(2, 132, 199, 0.14);
-  color: #075985;
-}
-
-.planner-priority-high {
-  background: rgba(217, 119, 6, 0.16);
-  color: #92400e;
-}
-
-.planner-priority-urgent {
-  background: rgba(220, 38, 38, 0.16);
-  color: #991b1b;
-}
-
-.planner-label-chip {
-  display: inline-flex;
-  align-items: center;
-  border-radius: 999px;
-  border: 1px solid rgba(148, 163, 184, 0.4);
-  background: rgba(255, 255, 255, 0.9);
-  color: #2a3c52;
-  padding: 0.2rem 0.55rem;
-  font-size: 0.72rem;
-  font-weight: 700;
-}
-
 .planner-side-task-member {
   margin-top: 6px;
   display: inline-flex;
@@ -1325,12 +1274,6 @@ body.theme-dark.section-planner .planner-side-task strong {
 body.theme-dark.section-planner .planner-side-task small,
 body.theme-dark.section-planner .planner-side-task-member {
   color: #b6c2df;
-}
-
-body.theme-dark.section-planner .planner-label-chip {
-  border-color: rgba(130, 146, 190, 0.42);
-  background: rgba(30, 36, 58, 0.94);
-  color: #d6e2ff;
 }
 
 body.theme-dark.section-planner .planner-side-task-delete {
@@ -2542,7 +2485,8 @@ body.theme-dark.section-projects .project-logo-preview img {
 }
 
 .report-inline-confirm-yes,
-.report-inline-confirm-no {
+.report-inline-confirm-no,
+.report-inline-confirm-delete {
   border: 0;
   border-radius: 10px;
   padding: 0.42rem 0.72rem;
@@ -2561,6 +2505,11 @@ body.theme-dark.section-projects .project-logo-preview img {
   color: #6b4b00;
 }
 
+.report-inline-confirm-delete {
+  background: rgba(220, 38, 38, 0.14);
+  color: #b91c1c;
+}
+
 .report-goal-list-completed .report-goal-item {
   opacity: 0.95;
 }
@@ -2568,6 +2517,27 @@ body.theme-dark.section-projects .project-logo-preview img {
 .report-goal-item-completed .report-goal-checkline strong {
   text-decoration: line-through;
   color: #334155;
+}
+
+.report-goal-title-wrap {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+.report-goal-late-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(220, 38, 38, 0.36);
+  background: rgba(220, 38, 38, 0.12);
+  color: #b91c1c;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
 }
 
 .report-goal-section-header {
@@ -2716,6 +2686,135 @@ body.theme-dark.section-projects .project-logo-preview img {
 
 .report-deletion-log-list li small {
   color: #475569;
+}
+
+.report-goal-item-missed {
+  border-color: rgba(239, 68, 68, 0.34);
+  background: linear-gradient(180deg, rgba(255, 236, 236, 0.92), rgba(255, 246, 246, 0.92));
+}
+
+.report-goal-missed-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.report-goal-missed-actions .form-control {
+  min-width: 180px;
+}
+
+.report-goal-save-state {
+  margin: 6px 0 0;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #475569;
+}
+
+.report-goal-save-state[data-state="saving"] {
+  color: #2563eb;
+}
+
+.report-goal-save-state[data-state="saved"] {
+  color: #166534;
+}
+
+.report-goal-save-state[data-state="error"] {
+  color: #b91c1c;
+}
+
+.report-completed-filters {
+  margin: 8px 0 10px;
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(180px, 240px) minmax(160px, 200px);
+  gap: 8px;
+}
+
+.report-completed-filters .form-control {
+  min-height: 40px;
+}
+
+.report-missed-modal[hidden] {
+  display: none;
+}
+
+.report-missed-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+
+.report-missed-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(15, 23, 42, 0.44);
+  cursor: pointer;
+}
+
+.report-missed-modal-card {
+  position: relative;
+  width: min(560px, calc(100vw - 28px));
+  border-radius: 18px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  background: #f8fbff;
+  box-shadow: 0 28px 64px rgba(15, 23, 42, 0.24);
+  overflow: hidden;
+  transform: translateY(12px);
+  opacity: 0;
+  transition: transform 120ms ease, opacity 120ms ease;
+}
+
+.report-missed-modal.is-open .report-missed-modal-card {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.report-missed-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px 8px;
+}
+
+.report-missed-modal-head h3 {
+  margin: 0;
+  font-size: 1rem;
+  color: #1e293b;
+}
+
+.report-missed-modal-close {
+  border: 1px solid rgba(148, 163, 184, 0.34);
+  background: rgba(248, 250, 252, 0.9);
+  color: #475569;
+  border-radius: 10px;
+  width: 30px;
+  height: 30px;
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.report-missed-modal-subtitle {
+  margin: 0 16px 10px;
+  font-size: 0.86rem;
+  color: #475569;
+}
+
+.report-missed-modal-form {
+  display: grid;
+  gap: 8px;
+  padding: 0 16px 14px;
+}
+
+@media (max-width: 880px) {
+  .report-completed-filters {
+    grid-template-columns: 1fr;
+  }
 }
 
 .report-kanban-column .report-goal-list {
@@ -2966,6 +3065,58 @@ body.theme-dark.section-reports .report-goal-create-details.report-goal-create-d
   box-shadow: 0 18px 30px rgba(49, 112, 57, 0.28);
 }
 
+body.theme-dark.section-reports .report-goal-item-missed {
+  background: rgba(87, 35, 35, 0.84);
+  border-color: rgba(214, 96, 96, 0.48);
+}
+
+body.theme-dark.section-reports .report-goal-save-state {
+  color: #b6c6d8;
+}
+
+body.theme-dark.section-reports .report-goal-save-state[data-state="saving"] {
+  color: #93c5fd;
+}
+
+body.theme-dark.section-reports .report-goal-save-state[data-state="saved"] {
+  color: #86efac;
+}
+
+body.theme-dark.section-reports .report-goal-save-state[data-state="error"] {
+  color: #fca5a5;
+}
+
+body.theme-dark.section-reports .report-missed-modal-backdrop {
+  background: rgba(3, 6, 16, 0.65);
+}
+
+body.theme-dark.section-reports .report-missed-modal-card {
+  border-color: rgba(95, 123, 193, 0.36);
+  background: rgba(16, 24, 43, 0.98);
+  box-shadow: 0 32px 64px rgba(0, 0, 0, 0.58);
+}
+
+body.theme-dark.section-reports .report-missed-modal-head h3 {
+  color: #dbe6ff;
+}
+
+body.theme-dark.section-reports .report-missed-modal-subtitle {
+  color: #a9bada;
+}
+
+body.theme-dark.section-reports .report-missed-modal-close {
+  border-color: rgba(110, 134, 187, 0.42);
+  background: rgba(23, 34, 58, 0.92);
+  color: #cfdcf8;
+}
+
+body.theme-dark.section-reports .report-completed-filters .form-control {
+  background: rgba(12, 24, 17, 0.92);
+  color: #def1e3;
+  border-color: rgba(86, 146, 99, 0.34);
+}
+
+
 body.theme-dark.section-reports .report-inline-confirm {
   background: rgba(14, 30, 56, 0.98);
   border-color: rgba(118, 162, 255, 0.5);
@@ -2982,6 +3133,11 @@ body.theme-dark.section-reports .report-inline-confirm-brand {
 body.theme-dark.section-reports .report-inline-confirm-no {
   background: rgba(255, 195, 0, 0.28);
   color: #ffd986;
+}
+
+body.theme-dark.section-reports .report-inline-confirm-delete {
+  background: rgba(220, 38, 38, 0.28);
+  color: #fecaca;
 }
 
 body.theme-dark.section-reports .report-inline-confirm-yes {
@@ -3002,6 +3158,12 @@ body.theme-dark.section-reports .report-scrum-chip {
   background: rgba(42, 81, 50, 0.46);
   border-color: rgba(96, 167, 111, 0.5);
   color: #ccead3;
+}
+
+body.theme-dark.section-reports .report-goal-late-badge {
+  border-color: rgba(248, 113, 113, 0.54);
+  background: rgba(127, 29, 29, 0.45);
+  color: #fecaca;
 }
 
 body.theme-dark.section-reports .report-goal-create-details[open] .report-goal-create-form {
@@ -3266,4 +3428,5 @@ body.theme-dark.section-home .ata-summary-card small {
   .panel-body {
     padding: 18px;
   }
+
 }

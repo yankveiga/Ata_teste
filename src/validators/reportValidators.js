@@ -8,6 +8,7 @@ function validateWeekGoalForm(formData = {}) {
   const errors = {};
   const activity = String(formData.activity || "").trim();
   const description = String(formData.description || "").trim();
+  const dueAt = String(formData.dueAt || "").trim();
 
   if (!activity) {
     errors.activity = ["Informe a atividade da meta quinzenal."];
@@ -15,8 +16,14 @@ function validateWeekGoalForm(formData = {}) {
     errors.activity = ["A atividade deve ter entre 3 e 180 caracteres."];
   }
 
-  if (description.length > 2000) {
+  if (!description) {
+    errors.description = ["Informe a descrição da tarefa."];
+  } else if (description.length > 2000) {
     errors.description = ["A descrição pode ter no máximo 2000 caracteres."];
+  }
+
+  if (!dueAt) {
+    errors.dueAt = ["Informe a data de entrega da tarefa."];
   }
 
   return {
@@ -25,6 +32,7 @@ function validateWeekGoalForm(formData = {}) {
       ...formData,
       activity,
       description,
+      dueAt,
     },
   };
 }

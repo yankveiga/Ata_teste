@@ -161,14 +161,6 @@ function registerAuthRoutes(ctx) {
     return "todo";
   }
 
-  function normalizePlannerPriority(value) {
-    const raw = String(value || "").trim().toLowerCase();
-    if (raw === "low" || raw === "high" || raw === "urgent") {
-      return raw;
-    }
-    return "medium";
-  }
-
   function normalizePlannerRecurrenceUnit(value) {
     const raw = String(value || "").trim().toLowerCase();
     if (raw === "weeks" || raw === "months") {
@@ -495,9 +487,6 @@ app.get("/services", requireAuth, (req, res) => {
       recurrenceIntervalDays: "7",
       recurrenceUnit: "days",
       recurrenceMemberIds: [],
-      status: "todo",
-      priority: "medium",
-      label: "",
       ...(plannerFormState?.formData || {}),
     };
     if (!formData.memberId && effectiveViewMode === "member" && selectedMemberId) {
@@ -554,12 +543,6 @@ app.get("/services", requireAuth, (req, res) => {
         { value: "in_progress", label: "Em Execução" },
         { value: "done", label: "Realizado" },
       ],
-      plannerPriorityOptions: [
-        { value: "low", label: "Baixa" },
-        { value: "medium", label: "Média" },
-        { value: "high", label: "Alta" },
-        { value: "urgent", label: "Urgente" },
-      ],
       projectOptions: accessibleProjects,
       memberOptions,
       canCreatePlannerTask: creatableProjects.length > 0,
@@ -602,21 +585,16 @@ app.get("/services", requireAuth, (req, res) => {
       memberId: String(req.body.member_id || ""),
       title: String(req.body.title || "").trim(),
       description: String(req.body.description || "").trim(),
-      status: normalizePlannerStatus(req.body.status),
-      priority: normalizePlannerPriority(req.body.priority),
-      label: String(req.body.label || "").trim(),
       dueAt: String(req.body.due_at || "").trim(),
       recurrenceEnabled: String(req.body.recurrence_enabled || "") === "1",
       recurrenceIntervalDays: String(req.body.recurrence_interval_days || "7").trim(),
       recurrenceUnit: normalizePlannerRecurrenceUnit(req.body.recurrence_unit),
       recurrenceMemberIds: parseQueueMemberIds(req.body.recurrence_member_ids).map((id) => String(id)),
     };
-    if (formData.status === "done") {
-      formData.status = "todo";
-    }
     const errors = {};
     const projectId = parseId(formData.projectId);
     const memberId = parseId(formData.memberId);
+    const scopeMemberId = parseId(req.body.return_member_id) || null;
     const project = projectId ? database.getProjectById(projectId) : null;
 
     if (!project) {
@@ -649,6 +627,13 @@ app.get("/services", requireAuth, (req, res) => {
       errors.memberId = ["Selecione o membro da tarefa."];
     } else if (project && !database.isProjectMember(project.id, memberId)) {
       errors.memberId = ["O membro selecionado não pertence ao projeto escolhido."];
+    } else {
+      const ownMemberId = currentMember?.id || null;
+      if (scopeMemberId && memberId && scopeMemberId !== memberId) {
+        errors.memberId = ["Crie tarefas para outro membro apenas no perfil dele em Relatórios."];
+      } else if (!scopeMemberId && ownMemberId && memberId && ownMemberId !== memberId) {
+        errors.memberId = ["Crie tarefas para outro membro apenas no perfil dele em Relatórios."];
+      }
     }
 
     const title = trimToNull(formData.title);
@@ -668,8 +653,6 @@ app.get("/services", requireAuth, (req, res) => {
     }
 
     const description = trimToNull(formData.description) || "";
-    const label = trimToNull(formData.label);
-
     if (Object.keys(errors).length > 0) {
       req.session.plannerFormState = {
         formData,
@@ -696,8 +679,8 @@ app.get("/services", requireAuth, (req, res) => {
         title,
         description,
         status: initialStatus,
-        priority: formData.priority,
-        label,
+        priority: "medium",
+        label: null,
         dueAt,
         recurrenceIntervalDays: recurrenceEnabled ? recurrenceIntervalDays : null,
         recurrenceUnit: recurrenceEnabled ? recurrenceUnit : null,
@@ -766,12 +749,19 @@ app.get("/services", requireAuth, (req, res) => {
 
     try {
       const completedAt = toSqlDateTime(new Date());
-      const completedTask = database.updatePlannerTaskCompletion({
-        id: task.id,
-        isCompleted: true,
-        completedAt,
-        updatedAt: completedAt,
-      });
+      const completedTask = task.workflow_state === "missed"
+        ? database.markPlannerTaskDoneLate({
+          id: task.id,
+          actorUserId: req.currentUser.id,
+          completedAt,
+        })
+        : database.updatePlannerTaskCompletion({
+          id: task.id,
+          isCompleted: true,
+          completedAt,
+          updatedAt: completedAt,
+          actorUserId: req.currentUser.id,
+        });
       if (completedTask) {
         syncReportWeekGoalFromPlannerTask(completedTask, {
           createdByUserId: req.currentUser.id,
@@ -877,13 +867,24 @@ app.get("/services", requireAuth, (req, res) => {
     }
 
     try {
+      if (task.workflow_state === "missed" && nextStatus !== "done") {
+        req.flash("warning", "Tarefa em não feitas: apenas conclusão com atraso ou extensão de prazo.");
+        return res.redirect(`${urlFor("planner")}${fallbackQuery}`);
+      }
       const updatedAt = toSqlDateTime(new Date());
       const wasCompleted = Boolean(task.is_completed);
-      const updatedTask = database.updatePlannerTaskStatus({
-        id: task.id,
-        status: nextStatus,
-        updatedAt,
-      });
+      const updatedTask = (task.workflow_state === "missed" && nextStatus === "done")
+        ? database.markPlannerTaskDoneLate({
+          id: task.id,
+          actorUserId: req.currentUser.id,
+          completedAt: updatedAt,
+        })
+        : database.updatePlannerTaskStatus({
+          id: task.id,
+          status: nextStatus,
+          updatedAt,
+          actorUserId: req.currentUser.id,
+        });
       if (updatedTask) {
         syncReportWeekGoalFromPlannerTask(updatedTask, {
           createdByUserId: req.currentUser.id,
@@ -954,7 +955,10 @@ app.get("/services", requireAuth, (req, res) => {
           database.deleteReportWeekGoal(linkedGoal.id);
         }
       }
-      database.deletePlannerTask(task.id);
+      database.deletePlannerTask(task.id, {
+        actorUserId: req.currentUser.id,
+        reportGoalId: linkedGoal?.id || null,
+      });
       if (linkedGoal) {
         req.flash("success", "Tarefa do Planner e meta vinculada no relatório foram removidas.");
       } else {

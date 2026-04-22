@@ -4,51 +4,59 @@ MAPA RÁPIDO DO PROJETO (manutenção prática)
 REGRA: quer alterar X -> abra os arquivos abaixo.
 
 1) LOGIN / SESSÃO / CSRF
-- Composição da app e middlewares: src/app.js
-- Config de sessão/env: src/config.js
-- Login/logout/serviços: src/routes/auth.js
-- Helpers (CSRF, datas, rotas nomeadas): src/utils.js
+- App/middlewares/helpers centrais: src/app.js
+- Config e env: src/config.js
+- Login/logout: src/routes/auth.js
+- Helpers utilitários: src/utils.js
 
 2) MANUTENÇÃO DE USUÁRIOS (ADMIN)
 - Página: app/templates/users_maintenance/index.html
 - Rota: src/routes/auth.js (/manutencao-usuarios)
-- Menu/visibilidade: app/templates/base.html
+- Visibilidade no menu: app/templates/base.html
 
 3) MEMBROS
 - Lista: app/templates/members/list.html
 - Formulário: app/templates/members/form.html
-- Rotas (admin): src/routes/members.js
+- Rotas: src/routes/members.js
 - Persistência: src/database.js
 
 4) PROJETOS E VÍNCULOS
 - Lista: app/templates/projects/list.html
 - Formulário: app/templates/projects/form.html
 - Rotas/permissões: src/routes/projects.js
-- Vínculos e coordenação: tabela project_members em src/database.js
+- Coordenação contextual: tabela project_members em src/database.js
 
 5) ATAS
 - Dashboard/lista: app/templates/home.html
 - Formulário: app/templates/atas/create_form.html
 - Rotas: src/routes/atas.js
-- Geração PDF: src/pdf.js
+- PDF: src/pdf.js
 - Persistência: src/database.js
 
-6) RELATÓRIOS QUINZENAIS
+6) RELATÓRIOS (FONTE ÚNICA DE TAREFAS VINCULADAS)
 - Tela: app/templates/reports/index.html
-- Rotas e regras: src/routes/reports.js
-- Serviço de relatório: src/services/reportService.js
-- Validação: src/validators/reportValidators.js
-- Persistência/auditoria: src/database.js (report_week_goal + deletion_log)
+- Regras e ações de meta: src/routes/reports.js
+- Serviço auxiliar: src/services/reportService.js
+- Validação formulário: src/validators/reportValidators.js
+- Persistência:
+  - report_week_goal
+  - report_week_goal_deletion_log
+  - task_audit_log
+  - funções de sync com planner em src/database.js
 
 7) PLANNER
-- Tela: app/templates/planner/index.html
-- Rotas/planner: src/routes/auth.js
-- Persistência: src/database.js (planner_task + planner_task_completion_log)
+- Tela dedicada: app/templates/planner/index.html
+- Rotas planner: src/routes/auth.js
+- Persistência:
+  - planner_task
+  - planner_task_completion_log
+  - task_audit_log
+- Sync com relatórios: src/database.js + src/routes/reports.js + src/routes/auth.js
 
 8) ALMOXARIFADO
 - Tela: app/templates/almoxarifado/index.html
 - CSS módulo: app/static/css/almoxarifado.css
-- Rotas e APIs: src/routes/almox.js
+- Rotas/APIs: src/routes/almox.js
 - Serviço: src/services/inventoryService.js
 - Validação: src/validators/inventoryValidators.js
 - Persistência: src/database.js
@@ -56,34 +64,34 @@ REGRA: quer alterar X -> abra os arquivos abaixo.
 9) PRESENÇA
 - Tela: app/templates/presenca/index.html
 - Rotas: src/routes/auth.js
-- Leitura/gravação XLSX: função registerPresenceInWorkbook em src/app.js
-- Arquivo: PRESENCE_WORKBOOK_PATH
+- Leitura/gravação XLSX: registerPresenceInWorkbook em src/app.js
+- Arquivo alvo: PRESENCE_WORKBOOK_PATH
 
 10) TEMA / LAYOUT GLOBAL
-- Base e sidebar: app/templates/base.html
+- Base/sidebar/menu: app/templates/base.html
 - CSS shell: app/static/css/admin_dashboard_style.css
-- CSS compartilhado (dark/light, componentes): app/static/css/custom_styles.css
-- Script do menu mobile: app/static/js/admin_dashboard_script.js
+- CSS compartilhado: app/static/css/custom_styles.css
+- JS menu mobile: app/static/js/admin_dashboard_script.js
 
 11) UPLOAD DE FOTOS / LOGOS
 - Integração de mídia: src/media.js
 - Upload (multer + Cloudinary): src/app.js
-- Uso nos templates: mediaUrl(...)
+- Uso em templates: mediaUrl(...)
 
 12) OPERAÇÃO
 - Deploy Render: render.yaml
 - Runbook: RUNBOOK_PRODUCAO.md
-- Permissões (fonte única): MATRIZ_PERMISSOES.md
+- Permissões: MATRIZ_PERMISSOES.md
 - Arquitetura: GUIA_ARQUITETURA.md
 - Banco: MODELAGEM_BANCO.md
 
 13) PERMISSÕES E PERFIS (ONDE MEXER)
-- Guardas e helpers centrais: src/app.js
+- Guardas centrais: src/app.js
   - requireAuth / requireAdminPage / requireAdminApi
   - canManageProject
   - canManageReportGoal
   - canDeleteCompletedGoalFromOthers
-- Planner (quem cria/move/conclui/exclui): src/routes/auth.js
-- Relatórios (quem cria/edita/exclui metas): src/routes/reports.js
-- Projetos (quem vincula membros/coordenadores): src/routes/projects.js
-- Matriz de referência funcional: MATRIZ_PERMISSOES.md
+- Planner (criar/mover/concluir/excluir): src/routes/auth.js
+- Relatórios (criar/editar/excluir meta + não feitas): src/routes/reports.js
+- Projetos (vínculo de membros/coordenadores): src/routes/projects.js
+- Referência funcional final: MATRIZ_PERMISSOES.md

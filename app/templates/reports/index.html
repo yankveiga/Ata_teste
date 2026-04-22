@@ -22,7 +22,6 @@
  <div class="page-header page-header-split">
  <div>
  <h1>Relatórios Quinzenais</h1>
- <p class="lead">Selecione um membro e acompanhe as metas quinzenais por atividade e descrição.</p>
  </div>
  </div>
 
@@ -30,7 +29,6 @@
  <div class="panel-header">
  <div>
  <h2>Membros</h2>
- <p>Escolha um membro para abrir as metas da quinzena.</p>
  </div>
  </div>
  <div class="panel-body">
@@ -64,13 +62,6 @@
  <div class="panel-header">
  <div>
  <h2>Metas da Quinzena</h2>
- <p>
- {% if selectedMember %}
- Atrasadas ficam no topo em vermelho. Prioridade automática pelos itens mais antigos não concluídos.
- {% else %}
- Selecione um membro para visualizar e organizar as metas da quinzena.
- {% endif %}
- </p>
  </div>
  </div>
  <div class="panel-body">
@@ -141,7 +132,7 @@
 
  {% if selectedMember %}
  <div class="report-goal-section-header">
- <h3>Quadro Scrum da Quinzena</h3>
+ <h3>Quadro da Quinzena</h3>
  {% if canCreateGoalsForSelectedMember %}
  <details class="report-goal-create-details report-goal-create-details-inline" {% if goalFormErrors.projectId or goalFormErrors.activity or goalFormErrors.description %}open{% endif %}>
  <summary>Adicionar Nova Meta da Quinzena</summary>
@@ -167,31 +158,43 @@
 
  <div class="report-goal-grid-header" role="presentation">
  <span>Atividades</span>
- <span>Descrição</span>
+ <span>Descrição e Prazo</span>
  </div>
 
  <div class="report-goal-create-row">
  <div class="report-goal-create-activity">
  <label class="report-goal-checkline" for="goal_activity">
  <input id="goal_is_completed" type="checkbox" name="is_completed" value="1" aria-label="Meta concluída" {% if goalFormData.isCompleted %}checked{% endif %}>
- <input id="goal_activity" name="activity" class="form-control" value="{{ goalFormData.activity }}" placeholder="Ex.: Falar com o professor Fulano">
+ <input id="goal_activity" name="activity" class="form-control" value="{{ goalFormData.activity }}" placeholder="Título da tarefa" required>
  </label>
  {% if goalFormErrors.activity %}
  <ul class="errors form-error-list">
  {% for error in goalFormErrors.activity %}<li>{{ error }}</li>{% endfor %}
  </ul>
  {% endif %}
- <small class="form-hint">Marque o checkbox se já estiver concluída.</small>
  </div>
  <div class="report-goal-create-description">
- <label class="form-label" for="goal_description">Descrição (Opcional)</label>
- <textarea id="goal_description" name="description" rows="3" class="form-control" placeholder="Feita parcialmente, dificuldades, próximos passos...">{{ goalFormData.description }}</textarea>
+ <label class="form-label" for="goal_description">Descrição</label>
+ <textarea id="goal_description" name="description" rows="3" class="form-control" placeholder="Descrição objetiva da entrega." required>{{ goalFormData.description }}</textarea>
  {% if goalFormErrors.description %}
  <ul class="errors form-error-list">
  {% for error in goalFormErrors.description %}<li>{{ error }}</li>{% endfor %}
  </ul>
  {% endif %}
- <small class="form-hint">Pode deixar em branco e completar depois.</small>
+ <label class="form-label" for="goal_due_at">Data de Entrega</label>
+ <input
+ id="goal_due_at"
+ name="due_at"
+ type="datetime-local"
+ class="form-control"
+ value="{{ goalFormData.dueAt }}"
+ required
+ >
+ {% if goalFormErrors.dueAt %}
+ <ul class="errors form-error-list">
+ {% for error in goalFormErrors.dueAt %}<li>{{ error }}</li>{% endfor %}
+ </ul>
+ {% endif %}
  </div>
  </div>
  <div class="form-actions">
@@ -215,9 +218,10 @@
  {% for goal in overduePendingGoals %}
  <li class="report-goal-item is-overdue" style="--goal-project-color: {{ goal.project.primary_color }};">
  {% if goal.can_manage %}
- <form action="/relatorios/goals/{{ goal.id }}/update#report-goals-panel" method="post" class="report-goal-row report-goal-row-kanban js-goal-auto-save-form" novalidate>
+ <form action="/relatorios/goals/{{ goal.id }}/update#report-goals-panel" method="post" class="report-goal-row report-goal-row-kanban js-goal-auto-save-form" novalidate data-goal-id="{{ goal.id }}" data-can-delete-from-checkbox="{{ '1' if goal.can_delete_from_execution else '0' }}">
  <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
  <input type="hidden" name="return_project_id" value="{{ selectedProjectId if selectedProjectId else '' }}">
+ <input type="hidden" name="goal_action" value="save">
  <div class="report-goal-activity-col">
  <label class="report-goal-checkline">
  <input type="checkbox" name="is_completed" value="1" aria-label="Marcar meta atrasada {{ goal.activity }} como concluída" {% if goal.is_completed %}checked{% endif %}>
@@ -230,7 +234,10 @@
  </small>
  </div>
  <div class="report-goal-description-col">
+ <label class="sr-only" for="goal_due_{{ goal.id }}">Data de entrega</label>
+ <input id="goal_due_{{ goal.id }}" type="datetime-local" name="due_at" value="{{ goal.due_at | dateTimeLocal }}" class="form-control">
  <textarea name="description" rows="3" class="form-control js-goal-auto-save-description">{{ goal.description }}</textarea>
+ <p class="report-goal-save-state js-goal-save-state" aria-live="polite"></p>
  </div>
  </form>
  {% else %}
@@ -247,6 +254,7 @@
  </small>
  </div>
  <div class="report-goal-description-col">
+ <p>Entrega: {{ goal.due_at | formatDateTime if goal.due_at else 'Sem prazo' }}</p>
  <p>{{ goal.description if goal.description else 'Sem descrição registrada.' }}</p>
  </div>
  </div>
@@ -269,9 +277,10 @@
  {% for goal in inProgressGoals %}
  <li class="report-goal-item" style="--goal-project-color: {{ goal.project.primary_color }}; background-color: {{ goal.project.primary_color }}14; border-color: {{ goal.project.primary_color }}44;">
  {% if goal.can_manage %}
- <form action="/relatorios/goals/{{ goal.id }}/update#report-goals-panel" method="post" class="report-goal-row report-goal-row-kanban js-goal-auto-save-form" novalidate>
+ <form action="/relatorios/goals/{{ goal.id }}/update#report-goals-panel" method="post" class="report-goal-row report-goal-row-kanban js-goal-auto-save-form" novalidate data-goal-id="{{ goal.id }}" data-can-delete-from-checkbox="{{ '1' if goal.can_delete_from_execution else '0' }}">
  <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
  <input type="hidden" name="return_project_id" value="{{ selectedProjectId if selectedProjectId else '' }}">
+ <input type="hidden" name="goal_action" value="save">
  <div class="report-goal-activity-col">
  <label class="report-goal-checkline">
  <input type="checkbox" name="is_completed" value="1" aria-label="Marcar meta {{ goal.activity }} como concluída" {% if goal.is_completed %}checked{% endif %}>
@@ -283,7 +292,10 @@
  </small>
  </div>
  <div class="report-goal-description-col">
+ <label class="sr-only" for="goal_due_{{ goal.id }}">Data de entrega</label>
+ <input id="goal_due_{{ goal.id }}" type="datetime-local" name="due_at" value="{{ goal.due_at | dateTimeLocal }}" class="form-control">
  <textarea name="description" rows="3" class="form-control js-goal-auto-save-description">{{ goal.description }}</textarea>
+ <p class="report-goal-save-state js-goal-save-state" aria-live="polite"></p>
  </div>
  </form>
  {% else %}
@@ -299,6 +311,7 @@
  </small>
  </div>
  <div class="report-goal-description-col">
+ <p>Entrega: {{ goal.due_at | formatDateTime if goal.due_at else 'Sem prazo' }}</p>
  <p>{{ goal.description if goal.description else 'Sem descrição registrada.' }}</p>
  </div>
  </div>
@@ -321,9 +334,10 @@
  {% for goal in futurePendingGoals %}
  <li class="report-goal-item" style="--goal-project-color: {{ goal.project.primary_color }}; background-color: {{ goal.project.primary_color }}12; border-color: {{ goal.project.primary_color }}44;">
  {% if goal.can_manage %}
- <form action="/relatorios/goals/{{ goal.id }}/update#report-goals-panel" method="post" class="report-goal-row report-goal-row-kanban js-goal-auto-save-form" novalidate>
+ <form action="/relatorios/goals/{{ goal.id }}/update#report-goals-panel" method="post" class="report-goal-row report-goal-row-kanban js-goal-auto-save-form" novalidate data-goal-id="{{ goal.id }}" data-can-delete-from-checkbox="{{ '1' if goal.can_delete_from_execution else '0' }}">
  <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
  <input type="hidden" name="return_project_id" value="{{ selectedProjectId if selectedProjectId else '' }}">
+ <input type="hidden" name="goal_action" value="save">
  <div class="report-goal-activity-col">
  <label class="report-goal-checkline">
  <input type="checkbox" name="is_completed" value="1" aria-label="Marcar meta futura {{ goal.activity }} como concluída" {% if goal.is_completed %}checked{% endif %}>
@@ -336,7 +350,10 @@
  </small>
  </div>
  <div class="report-goal-description-col">
+ <label class="sr-only" for="goal_due_{{ goal.id }}">Data de entrega</label>
+ <input id="goal_due_{{ goal.id }}" type="datetime-local" name="due_at" value="{{ goal.due_at | dateTimeLocal }}" class="form-control">
  <textarea name="description" rows="3" class="form-control js-goal-auto-save-description">{{ goal.description }}</textarea>
+ <p class="report-goal-save-state js-goal-save-state" aria-live="polite"></p>
  </div>
  </form>
  {% else %}
@@ -353,6 +370,7 @@
  </small>
  </div>
  <div class="report-goal-description-col">
+ <p>Entrega: {{ goal.due_at | formatDateTime if goal.due_at else 'Sem prazo' }}</p>
  <p>{{ goal.description if goal.description else 'Sem descrição registrada.' }}</p>
  </div>
  </div>
@@ -366,17 +384,77 @@
  </section>
  </div>
 
- <details class="report-goal-completed-details">
+ <details class="report-goal-completed-details" open>
+ <summary>Não feitas (48h) ({{ missedGoals.length }})</summary>
+ {% if missedGoals.length %}
+ <ul class="report-goal-list report-goal-list-completed">
+ {% for goal in missedGoals %}
+ <li class="report-goal-item report-goal-item-missed" style="--goal-project-color: {{ goal.project.primary_color }};">
+ <div class="report-goal-row report-goal-row-kanban">
+ <div class="report-goal-activity-col">
+ <strong>{{ goal.activity }}</strong>
+ <small>
+ <span class="report-goal-project-tag"><span class="report-goal-project-dot" aria-hidden="true"></span>{{ goal.project.name }}</span>
+ <span>Entrega {{ goal.due_at | formatDateTime if goal.due_at else 'não informada' }}</span>
+ <span class="report-goal-flag">Não feita</span>
+ </small>
+ </div>
+ <div class="report-goal-description-col">
+ <p>{{ goal.description if goal.description else 'Sem descrição registrada.' }}</p>
+ {% if goal.can_manage %}
+ <button
+ type="button"
+ class="btn-submit btn-submit-small js-missed-open"
+ data-goal-id="{{ goal.id }}"
+ data-goal-activity="{{ goal.activity | escape }}"
+ data-goal-description="{{ goal.description | escape }}"
+ data-goal-due-at="{{ goal.due_at | dateTimeLocal }}"
+ data-goal-project="{{ goal.project.name | escape }}"
+ >
+ Resolver
+ </button>
+ {% endif %}
+ </div>
+ </div>
+ </li>
+ {% endfor %}
+ </ul>
+ {% else %}
+ <p class="ui-empty-state">Nenhuma tarefa em não feitas.</p>
+ {% endif %}
+ </details>
+
+ <details class="report-goal-completed-details" open>
  <summary>Tarefas executadas ({{ completedGoals.length }})</summary>
  {% if completedGoals.length %}
+ <div class="report-completed-filters">
+ <input id="completed_goal_search" type="search" class="form-control" placeholder="Buscar por tarefa, descrição ou projeto">
+ <select id="completed_goal_project_filter" class="form-control">
+ <option value="">Todos os projetos</option>
+ {% for project in reportProjectOptions %}
+ <option value="{{ project.id }}">{{ project.name }}</option>
+ {% endfor %}
+ </select>
+ <input id="completed_goal_month_filter" type="month" class="form-control">
+ </div>
  <ul class="report-goal-list report-goal-list-completed">
  {% for goal in completedGoals %}
- <li class="report-goal-item report-goal-item-completed" style="--goal-project-color: {{ goal.project.primary_color }}; background-color: {{ goal.project.primary_color }}12; border-color: {{ goal.project.primary_color }}3f;">
+ <li
+ class="report-goal-item report-goal-item-completed js-completed-goal-item"
+ style="--goal-project-color: {{ goal.project.primary_color }}; background-color: {{ goal.project.primary_color }}12; border-color: {{ goal.project.primary_color }}3f;"
+ data-goal-project-id="{{ goal.project_id }}"
+ data-goal-completed-at="{{ goal.completed_at if goal.completed_at else '' }}"
+ data-goal-week-start="{{ goal.week_start }}"
+ data-goal-search="{{ (goal.activity ~ ' ' ~ goal.description ~ ' ' ~ goal.project.name) | lower }}"
+ >
  <div class="report-goal-row report-goal-row-readonly report-goal-row-kanban">
  <div class="report-goal-activity-col">
  <div class="report-goal-checkline">
  <input type="checkbox" checked disabled>
+ <span class="report-goal-title-wrap">
  <strong>{{ goal.activity }}</strong>
+ {% if goal.completed_late %}<span class="report-goal-late-badge">ATRASADA</span>{% endif %}
+ </span>
  </div>
  <small>
  <span class="report-goal-project-tag"><span class="report-goal-project-dot" aria-hidden="true"></span>{{ goal.project.name }}</span>
@@ -397,6 +475,7 @@
  </li>
  {% endfor %}
  </ul>
+ <p id="completed_goal_filter_empty" class="ui-empty-state" hidden>Nenhuma tarefa executada encontrada com esse filtro.</p>
  {% else %}
  <p class="ui-empty-state">Nenhuma tarefa executada ainda.</p>
  {% endif %}
@@ -422,11 +501,72 @@
  {% endif %}
  </details>
 
+ <details class="report-goal-completed-details">
+ <summary>Histórico de tarefas ({{ taskAuditLogs.length }})</summary>
+ {% if taskAuditLogs.length %}
+ <ul class="report-deletion-log-list">
+ {% for log in taskAuditLogs %}
+ <li>
+ <strong>
+ {% if log.event_type == 'task_created' %}Tarefa criada
+ {% elif log.event_type == 'task_updated' %}Tarefa editada
+ {% elif log.event_type == 'task_completed' %}Tarefa concluída
+ {% elif log.event_type == 'task_done_late' or log.event_type == 'done_with_delay' %}Concluída com atraso
+ {% elif log.event_type == 'task_reopened' %}Tarefa reaberta
+ {% elif log.event_type == 'deadline_extended' %}Prazo estendido
+ {% elif log.event_type == 'task_marked_missed' %}Movida para não feitas
+ {% elif log.event_type == 'task_deleted' %}Tarefa excluída{% if log.task_title %}: {{ log.task_title }}{% endif %}
+ {% elif log.event_type == 'status_changed' %}Status alterado
+ {% else %}Evento: {{ log.event_type }}{% endif %}
+ </strong>
+ <small>
+ {{ log.project_name if log.project_name else 'Projeto não identificado' }}
+ • por {{ log.actor_name if log.actor_name else 'sistema' }}
+ em {{ log.created_at | formatDateTime }}
+ </small>
+ </li>
+ {% endfor %}
+ </ul>
+ {% else %}
+ <p class="ui-empty-state">Nenhum evento de tarefa registrado até agora.</p>
+ {% endif %}
+ </details>
+
  {% else %}
  <p class="ui-empty-state">Selecione um membro para exibir as metas da quinzena.</p>
  {% endif %}
  </div>
  </section>
+
+ <div id="report_missed_modal" class="report-missed-modal" hidden>
+ <button type="button" class="report-missed-modal-backdrop js-missed-close" aria-label="Fechar"></button>
+ <div class="report-missed-modal-card" role="dialog" aria-modal="true" aria-labelledby="report_missed_modal_title">
+ <header class="report-missed-modal-head">
+ <h3 id="report_missed_modal_title">Resolver tarefa não feita</h3>
+ <button type="button" class="report-missed-modal-close js-missed-close" aria-label="Fechar">×</button>
+ </header>
+ <p id="report_missed_modal_subtitle" class="report-missed-modal-subtitle"></p>
+ <form id="report_missed_done_form" method="post" class="report-missed-modal-form">
+ <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+ <input type="hidden" name="return_project_id" value="{{ selectedProjectId if selectedProjectId else '' }}">
+ <input type="hidden" name="activity" id="report_missed_done_activity" value="">
+ <input type="hidden" name="description" id="report_missed_done_description" value="">
+ <input type="hidden" name="due_at" id="report_missed_done_due_at" value="">
+ <button type="submit" name="goal_action" value="done_late" class="btn-submit btn-submit-small">Feito com atraso</button>
+ </form>
+ <form id="report_missed_extend_form" method="post" class="report-missed-modal-form">
+ <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+ <input type="hidden" name="return_project_id" value="{{ selectedProjectId if selectedProjectId else '' }}">
+ <input type="hidden" name="activity" id="report_missed_extend_activity" value="">
+ <input type="hidden" name="description" id="report_missed_extend_description" value="">
+ <label class="sr-only" for="report_missed_extend_due_input">Nova data</label>
+ <input id="report_missed_extend_due_input" type="datetime-local" name="due_at" class="form-control" required>
+ <input type="text" name="extension_reason" class="form-control" placeholder="Motivo da extensão (opcional)">
+ <button type="submit" name="goal_action" value="extend_deadline" class="btn-submit btn-submit-small">Estender prazo</button>
+ </form>
+ </div>
+ </div>
+
 {% endblock %}
 
 {% block scripts %}
@@ -434,8 +574,15 @@
 document.addEventListener('DOMContentLoaded', function() {
   const forms = Array.from(document.querySelectorAll('.js-goal-auto-save-form'));
   const deleteForms = Array.from(document.querySelectorAll('.js-report-delete-form'));
+  const completedItems = Array.from(document.querySelectorAll('.js-completed-goal-item'));
+  const completedSearch = document.getElementById('completed_goal_search');
+  const completedProjectFilter = document.getElementById('completed_goal_project_filter');
+  const completedMonthFilter = document.getElementById('completed_goal_month_filter');
+  const completedFilterEmpty = document.getElementById('completed_goal_filter_empty');
+  const missedModal = document.getElementById('report_missed_modal');
   let confirmBox = null;
   let activeCleanup = null;
+  let missedModalHideTimeout = null;
 
   function ensureConfirmBox() {
     if (confirmBox) {
@@ -448,14 +595,15 @@ document.addEventListener('DOMContentLoaded', function() {
       '<strong class="report-inline-confirm-brand">FURG • Relatórios</strong>',
       '<span class="report-inline-confirm-text">Confirma a alteração?</span>',
       '<button type="button" class="report-inline-confirm-yes">Confirmar</button>',
-      '<button type="button" class="report-inline-confirm-no">Cancelar</button>'
+      '<button type="button" class="report-inline-confirm-no">Cancelar</button>',
+      '<button type="button" class="report-inline-confirm-delete" hidden>Excluir</button>'
     ].join('');
     document.body.appendChild(container);
     confirmBox = container;
     return confirmBox;
   }
 
-  function askFurgConfirmation(message, onConfirm, onCancel) {
+  function askFurgConfirmation(message, onConfirm, onCancel, options) {
     const box = ensureConfirmBox();
     if (activeCleanup) {
       activeCleanup();
@@ -464,12 +612,16 @@ document.addEventListener('DOMContentLoaded', function() {
     const text = box.querySelector('.report-inline-confirm-text');
     const yesButton = box.querySelector('.report-inline-confirm-yes');
     const noButton = box.querySelector('.report-inline-confirm-no');
+    const deleteButton = box.querySelector('.report-inline-confirm-delete');
+    const hasDeleteOption = Boolean(options && typeof options.onDelete === 'function');
     text.textContent = message;
+    deleteButton.hidden = !hasDeleteOption;
     box.hidden = false;
 
     function cleanup() {
       yesButton.removeEventListener('click', handleYes);
       noButton.removeEventListener('click', handleNo);
+      deleteButton.removeEventListener('click', handleDelete);
       box.hidden = true;
       box.style.display = 'none';
     }
@@ -488,51 +640,181 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     }
 
+    function handleDelete() {
+      cleanup();
+      activeCleanup = null;
+      if (hasDeleteOption) {
+        options.onDelete();
+      }
+    }
+
     yesButton.addEventListener('click', handleYes);
     noButton.addEventListener('click', handleNo);
+    if (hasDeleteOption) {
+      deleteButton.addEventListener('click', handleDelete);
+    }
     box.style.display = 'inline-flex';
     activeCleanup = cleanup;
   }
 
-  forms.forEach((form) => {
-    const checkbox = form.querySelector('input[type="checkbox"][name="is_completed"]');
-    const textFields = Array.from(form.querySelectorAll('input[type="text"][name="activity"], textarea[name="description"]'));
+  function setSaveState(form, state, text) {
+    const stateEl = form.querySelector('.js-goal-save-state');
+    if (!stateEl) {
+      return;
+    }
+    stateEl.textContent = text || '';
+    stateEl.dataset.state = state || 'idle';
+    if (state === 'idle' && !text) {
+      stateEl.hidden = true;
+      return;
+    }
+    stateEl.hidden = false;
+  }
 
+  function syncInitialSnapshots(form) {
+    const checkbox = form.querySelector('input[type="checkbox"][name="is_completed"]');
     if (checkbox) {
       checkbox.dataset.initialChecked = checkbox.checked ? '1' : '0';
+    }
+    const watchedFields = form.querySelectorAll(
+      'input[type="text"][name="activity"], input[name="due_at"], textarea[name="description"]',
+    );
+    watchedFields.forEach((field) => {
+      field.dataset.initialValue = field.value;
+    });
+  }
+
+  async function submitGoalForm(form, options) {
+    if (form.dataset.saving === '1') {
+      return false;
+    }
+    form.dataset.saving = '1';
+    setSaveState(form, 'saving', 'Salvando...');
+
+    try {
+      const formData = new URLSearchParams(new FormData(form));
+      const response = await fetch(form.action, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: formData.toString(),
+      });
+
+      let payload = null;
+      try {
+        payload = await response.json();
+      } catch (_error) {
+        payload = null;
+      }
+
+      if (!response.ok || !payload || !payload.ok) {
+        throw new Error((payload && payload.message) || 'Não foi possível salvar a meta.');
+      }
+
+      syncInitialSnapshots(form);
+      setSaveState(form, 'saved', 'Salvo');
+      window.setTimeout(() => {
+        if (form.querySelector('.js-goal-save-state')?.dataset.state === 'saved') {
+          setSaveState(form, 'idle', '');
+        }
+      }, 2200);
+      return true;
+    } catch (error) {
+      if (options && typeof options.onError === 'function') {
+        options.onError(error);
+      }
+      setSaveState(form, 'error', error && error.message ? error.message : 'Falha ao salvar');
+      return false;
+    } finally {
+      form.dataset.saving = '0';
+    }
+  }
+
+  function submitGoalDeleteFromCheckbox(form, goalId) {
+    const csrfToken = form.querySelector('input[name="csrf_token"]')?.value || '';
+    if (!goalId || !csrfToken) {
+      return;
+    }
+    const returnProjectId = form.querySelector('input[name="return_project_id"]')?.value || '';
+    const deleteForm = document.createElement('form');
+    deleteForm.method = 'post';
+    deleteForm.action = '/relatorios/goals/' + encodeURIComponent(goalId) + '/delete#report-goals-panel';
+
+    const csrfInput = document.createElement('input');
+    csrfInput.type = 'hidden';
+    csrfInput.name = 'csrf_token';
+    csrfInput.value = csrfToken;
+    deleteForm.appendChild(csrfInput);
+
+    if (returnProjectId) {
+      const projectInput = document.createElement('input');
+      projectInput.type = 'hidden';
+      projectInput.name = 'return_project_id';
+      projectInput.value = returnProjectId;
+      deleteForm.appendChild(projectInput);
+    }
+
+    document.body.appendChild(deleteForm);
+    deleteForm.submit();
+  }
+
+  forms.forEach((form) => {
+    const checkbox = form.querySelector('input[type="checkbox"][name="is_completed"]');
+    const textFields = Array.from(form.querySelectorAll(
+      'input[type="text"][name="activity"], input[name="due_at"], textarea[name="description"]',
+    ));
+
+    syncInitialSnapshots(form);
+    setSaveState(form, 'idle', '');
+
+    form.addEventListener('submit', function(event) {
+      event.preventDefault();
+      submitGoalForm(form);
+    });
+
+    if (checkbox) {
       checkbox.addEventListener('change', function() {
         const changed = (this.checked ? '1' : '0') !== (this.dataset.initialChecked || '0');
         if (!changed) {
           return;
         }
+        const canDeleteFromCheckbox = form.dataset.canDeleteFromCheckbox === '1';
+        const goalId = String(form.dataset.goalId || '').trim();
         askFurgConfirmation(
           'Confirmar alteração desta meta da quinzena?',
           function() {
-            form.requestSubmit();
+            submitGoalForm(form, {
+              onError: function() {
+                checkbox.checked = checkbox.dataset.initialChecked === '1';
+              },
+            });
           },
           function() {
             checkbox.checked = checkbox.dataset.initialChecked === '1';
+            setSaveState(form, 'idle', '');
           },
+          canDeleteFromCheckbox && goalId
+            ? {
+                onDelete: function() {
+                  submitGoalDeleteFromCheckbox(form, goalId);
+                },
+              }
+            : null,
         );
       });
     }
 
     textFields.forEach((field) => {
-      field.dataset.initialValue = field.value;
       field.addEventListener('change', function() {
         const initial = this.dataset.initialValue || '';
         if (this.value === initial) {
           return;
         }
-        askFurgConfirmation(
-          'Salvar atualização desta meta?',
-          function() {
-            form.requestSubmit();
-          },
-          function() {
-            field.value = initial;
-          },
-        );
+        submitGoalForm(form);
       });
     });
   });
@@ -545,6 +827,128 @@ document.addEventListener('DOMContentLoaded', function() {
       });
     });
   });
+
+  function monthKey(value) {
+    const normalized = String(value || '').trim();
+    if (!normalized) {
+      return '';
+    }
+    return normalized.slice(0, 7);
+  }
+
+  function applyCompletedFilters() {
+    if (!completedItems.length) {
+      return;
+    }
+    const search = String(completedSearch?.value || '').trim().toLowerCase();
+    const projectId = String(completedProjectFilter?.value || '').trim();
+    const month = String(completedMonthFilter?.value || '').trim();
+    let visibleCount = 0;
+
+    completedItems.forEach((item) => {
+      const itemSearch = String(item.dataset.goalSearch || '').toLowerCase();
+      const itemProjectId = String(item.dataset.goalProjectId || '').trim();
+      const itemMonth = monthKey(item.dataset.goalCompletedAt) || monthKey(item.dataset.goalWeekStart);
+      const matchesSearch = !search || itemSearch.includes(search);
+      const matchesProject = !projectId || itemProjectId === projectId;
+      const matchesMonth = !month || itemMonth === month;
+      const visible = matchesSearch && matchesProject && matchesMonth;
+      item.hidden = !visible;
+      if (visible) {
+        visibleCount += 1;
+      }
+    });
+
+    if (completedFilterEmpty) {
+      completedFilterEmpty.hidden = visibleCount > 0;
+    }
+  }
+
+  if (completedSearch) {
+    completedSearch.addEventListener('input', applyCompletedFilters);
+  }
+  if (completedProjectFilter) {
+    completedProjectFilter.addEventListener('change', applyCompletedFilters);
+  }
+  if (completedMonthFilter) {
+    completedMonthFilter.addEventListener('change', applyCompletedFilters);
+  }
+  applyCompletedFilters();
+
+  if (missedModal) {
+    const subtitle = document.getElementById('report_missed_modal_subtitle');
+    const doneForm = document.getElementById('report_missed_done_form');
+    const extendForm = document.getElementById('report_missed_extend_form');
+    const doneActivity = document.getElementById('report_missed_done_activity');
+    const doneDescription = document.getElementById('report_missed_done_description');
+    const doneDueAt = document.getElementById('report_missed_done_due_at');
+    const extendActivity = document.getElementById('report_missed_extend_activity');
+    const extendDescription = document.getElementById('report_missed_extend_description');
+    const extendDueInput = document.getElementById('report_missed_extend_due_input');
+    const openButtons = Array.from(document.querySelectorAll('.js-missed-open'));
+    const closeButtons = Array.from(document.querySelectorAll('.js-missed-close'));
+
+    function closeMissedModal() {
+      missedModal.classList.remove('is-open');
+      if (missedModalHideTimeout) {
+        window.clearTimeout(missedModalHideTimeout);
+      }
+      missedModalHideTimeout = window.setTimeout(() => {
+        missedModal.hidden = true;
+      }, 120);
+    }
+
+    function openMissedModal(button) {
+      const goalId = String(button.dataset.goalId || '').trim();
+      if (!goalId) {
+        return;
+      }
+      const activity = String(button.dataset.goalActivity || '').trim();
+      const description = String(button.dataset.goalDescription || '').trim();
+      const dueAt = String(button.dataset.goalDueAt || '').trim();
+      const project = String(button.dataset.goalProject || '').trim();
+      const updateAction = '/relatorios/goals/' + goalId + '/update#report-goals-panel';
+
+      doneForm.action = updateAction;
+      extendForm.action = updateAction;
+      doneActivity.value = activity;
+      doneDescription.value = description;
+      doneDueAt.value = dueAt;
+      extendActivity.value = activity;
+      extendDescription.value = description;
+      extendDueInput.value = dueAt;
+
+      if (subtitle) {
+        subtitle.textContent = project ? (activity + ' • ' + project) : activity;
+      }
+
+      if (missedModalHideTimeout) {
+        window.clearTimeout(missedModalHideTimeout);
+      }
+      missedModal.hidden = false;
+      window.requestAnimationFrame(() => {
+        missedModal.classList.add('is-open');
+      });
+    }
+
+    openButtons.forEach((button) => {
+      button.addEventListener('click', function() {
+        openMissedModal(button);
+      });
+    });
+
+    closeButtons.forEach((button) => {
+      button.addEventListener('click', function() {
+        closeMissedModal();
+      });
+    });
+
+    document.addEventListener('keydown', function(event) {
+      if (event.key === 'Escape' && !missedModal.hidden) {
+        closeMissedModal();
+      }
+    });
+  }
 });
 </script>
 {% endblock %}
