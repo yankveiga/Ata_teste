@@ -20,8 +20,8 @@ function registerProjectRoutes(ctx) {
     renderProjectForm,
     normalizeProjectColor,
     DEFAULT_PROJECT_COLOR,
-    listAccessibleProjects,
     canManageProject,
+    canCreateAtaForProject,
     persistUploadedImage,
     deleteStoredImage,
     isUniqueConstraintError,
@@ -35,18 +35,12 @@ function registerProjectRoutes(ctx) {
   }
 
 app.get("/projects", requireAuth, (req, res) => {
-    const projects = listAccessibleProjects(req).map((project) => {
-      const detailed = database.getProjectById(project.id);
-      if (!detailed) {
-        return null;
-      }
-      return {
-        ...detailed,
-        can_manage: canManageProject(req, detailed),
-        can_assign_members: canAssignMembersToProject(req, detailed),
-        can_create_ata_shortcut: Boolean(req.currentUser?.is_admin || canManageProject(req, detailed)),
-      };
-    }).filter(Boolean);
+    const projects = database.listProjectsWithMembers().map((project) => ({
+      ...project,
+      can_manage: canManageProject(req, project),
+      can_assign_members: canAssignMembersToProject(req, project),
+      can_create_ata_shortcut: canCreateAtaForProject(req, project),
+    }));
     const showProjectActions = projects.some((project) => project.can_create_ata_shortcut || project.can_assign_members);
 
     return render(res, "projects/list.html", {
