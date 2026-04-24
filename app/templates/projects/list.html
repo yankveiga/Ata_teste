@@ -6,11 +6,8 @@
   - Alterar dados exibidos exige manter consistencia com o payload entregue pela rota.
 #}
 {% extends "base.html" %}
-{% set activeAtaTab = 'projects' %}
 
 {% block content %}
-    {% include "partials/atas_tabs.html" %}
-
     <div class="page-header page-header-split">
         <div>
             <h1>{{ title if title else "Projetos" }}</h1>
@@ -47,7 +44,9 @@
                             <th>Nome do Projeto</th>
                             <th>Membros</th>
                             <th>Coordenação</th>
-                            <th class="actions-col actions-col-wide">Ações</th>
+                            {% if showProjectActions %}
+                                <th class="actions-col actions-col-wide">Ações</th>
+                            {% endif %}
                         </tr>
                     </thead>
                     <tbody>
@@ -78,24 +77,28 @@
                                         <span class="text-muted">Sem coordenação definida</span>
                                     {% endif %}
                                 </td>
-                                <td class="actions-cell">
-                                    <a href="{{ urlFor('create_ata', { project_id: project.id }) }}" class="btn-icon btn-add-ata" title="Criar Ata para {{ project.name }}" aria-label="Criar ata para o projeto {{ project.name }}">
-                                        <ion-icon name="document-text-outline"></ion-icon>
-                                    </a>
-                                    {% if project.can_assign_members %}
-                                        <a href="{{ urlFor('edit_project', { id: project.id }) }}" class="btn-icon btn-edit" title="Editar Projeto" aria-label="Editar projeto {{ project.name }}">
-                                            <ion-icon name="create-outline"></ion-icon>
-                                        </a>
-                                    {% endif %}
-                                    {% if currentUser.is_admin %}
-                                        <form action="{{ urlFor('delete_project', { id: project.id }) }}" method="POST" class="inline-action-form" onsubmit="return confirm('Tem certeza que deseja excluir o projeto \'{{ project.name }}\' e TODAS as suas atas associadas? Esta ação não pode ser desfeita.');">
-                                            <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
-                                            <button type="submit" class="btn-icon btn-delete" title="Excluir Projeto" aria-label="Excluir projeto {{ project.name }}">
-                                                <ion-icon name="trash-outline"></ion-icon>
-                                            </button>
-                                        </form>
-                                    {% endif %}
-                                </td>
+                                {% if showProjectActions %}
+                                    <td class="actions-cell">
+                                        {% if project.can_create_ata_shortcut %}
+                                            <a href="{{ urlFor('create_ata', { project_id: project.id }) }}" class="btn-icon btn-add-ata" title="Criar Ata para {{ project.name }}" aria-label="Criar ata para o projeto {{ project.name }}">
+                                                <ion-icon name="document-text-outline"></ion-icon>
+                                            </a>
+                                        {% endif %}
+                                        {% if project.can_assign_members %}
+                                            <a href="{{ urlFor('edit_project', { id: project.id }) }}" class="btn-icon btn-edit" title="Editar Projeto" aria-label="Editar projeto {{ project.name }}">
+                                                <ion-icon name="create-outline"></ion-icon>
+                                            </a>
+                                        {% endif %}
+                                        {% if currentUser.is_admin %}
+                                            <form action="{{ urlFor('delete_project', { id: project.id }) }}" method="POST" class="inline-action-form" onsubmit="return confirm('Tem certeza que deseja excluir o projeto \'{{ project.name }}\' e TODAS as suas atas associadas? Esta ação não pode ser desfeita.');">
+                                                <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+                                                <button type="submit" class="btn-icon btn-delete" title="Excluir Projeto" aria-label="Excluir projeto {{ project.name }}">
+                                                    <ion-icon name="trash-outline"></ion-icon>
+                                                </button>
+                                            </form>
+                                        {% endif %}
+                                    </td>
+                                {% endif %}
                             </tr>
                         {% endfor %}
                     </tbody>

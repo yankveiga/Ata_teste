@@ -38,9 +38,6 @@
             <a href="{{ urlFor('almox_home') }}?tab=overview" class="almox-tab-link {{ 'is-active' if activeTab == 'overview' else '' }}" data-tab-link="overview">
                 Visão Geral
             </a>
-            <a href="{{ urlFor('almox_home') }}?tab=users" class="almox-tab-link {{ 'is-active' if activeTab == 'users' else '' }}" data-tab-link="users">
-                Usuários
-            </a>
             <a href="{{ urlFor('almox_home') }}?tab=stock" class="almox-tab-link {{ 'is-active' if activeTab == 'stock' else '' }}" data-tab-link="stock">
                 Estoque
             </a>
@@ -184,7 +181,9 @@
                             <h2>Usuários recentes</h2>
                             <p>Últimos acessos cadastrados no banco compartilhado.</p>
                         </div>
-                        <a href="{{ urlFor('almox_home') }}?tab=users" class="almox-panel-link">Abrir usuários</a>
+                        {% if currentUser.is_admin %}
+                            <a href="{{ urlFor('user_maintenance') }}" class="almox-panel-link">Abrir usuários</a>
+                        {% endif %}
                     </div>
 
                     {% if dashboard.recent_users.length %}
@@ -228,158 +227,6 @@
                             <span>Apenas administradores podem estender o prazo do empréstimo.</span>
                         </li>
                     </ul>
-                </article>
-            </div>
-        </section>
-
-        {# SECAO: aba Usuarios para vinculos de acesso e historico de uso. #}
-        <section class="almox-tab-panel {{ 'is-active' if activeTab == 'users' else '' }}" data-tab-panel="users">
-            {# BLOCO: administracao de usuarios (vinculo, senha e exclusao). #}
-            <div class="almox-two-column">
-                <article class="almox-panel">
-                    <div class="almox-panel-header">
-                        <div>
-                            <h2>Usuários do portal</h2>
-                            <p>Todos compartilham o mesmo login entre Atas e Almoxarifado.</p>
-                        </div>
-                    </div>
-
-                    {% if users.length %}
-                        <div class="table-wrap">
-                            <table class="almox-table">
-                                <thead>
-                                    <tr>
-                                        <th>ID</th>
-                                        <th>Nome</th>
-                                        <th>Usuário</th>
-                                        <th>Membro Vinculado</th>
-                                        <th>Perfil</th>
-                                        {% if currentUser.is_admin %}
-                                            <th>Ações</th>
-                                        {% endif %}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for user in users %}
-                                        <tr>
-                                            <td>#{{ user.id }}</td>
-                                            <td>{{ user.name }}</td>
-                                            <td>@{{ user.username }}</td>
-                                            <td>{{ user.member_name if user.member_name else 'Não vinculado' }}</td>
-                                            <td>
-                                                <span class="role-chip {{ 'role-chip-admin' if user.is_admin else 'role-chip-common' }}">
-                                                    {{ 'Administrador' if user.is_admin else 'Comum' }}
-                                                </span>
-                                            </td>
-                                            {% if currentUser.is_admin %}
-                                                <td>
-                                                    {# FORM: vincula ou remove vinculo entre usuario e membro. #}
-                                                    <form action="{{ urlFor('almox_home') }}/users/link/{{ user.id }}" method="post" class="inline-form">
-                                                        <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
-                                                        <input type="hidden" name="tab" value="users">
-                                                        <select name="member_id">
-                                                            <option value="">Sem vínculo</option>
-                                                            {% for member in members %}
-                                                                <option
-                                                                    value="{{ member.id }}"
-                                                                    {% if user.member_id == member.id or user.member_id == (member.id ~ '') %}selected{% endif %}
-                                                                >
-                                                                    {{ member.name }}
-                                                                </option>
-                                                            {% endfor %}
-                                                        </select>
-                                                        <button type="submit" class="secondary-button">Vincular</button>
-                                                    </form>
-                                                    <details class="almox-user-actions">
-                                                        <summary>Mais ações</summary>
-                                                        {# FORM: redefine senha manualmente para recuperacao de acesso. #}
-                                                        <form action="{{ urlFor('almox_home') }}/users/reset-password/{{ user.id }}" method="post" class="inline-form">
-                                                            <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
-                                                            <input type="hidden" name="tab" value="users">
-                                                            <input type="password" name="new_password" minlength="6" placeholder="Nova senha" required>
-                                                            <button type="submit" class="secondary-button">Redefinir senha</button>
-                                                        </form>
-                                                        {% if currentUser.id != user.id %}
-                                                            {# FORM: exclui perfil de usuario (acao administrativa). #}
-                                                            <form action="{{ urlFor('almox_home') }}/users/delete/{{ user.id }}" method="post" onsubmit="return confirm('Deseja excluir o usuário @{{ user.username }}?');">
-                                                                <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
-                                                                <input type="hidden" name="tab" value="users">
-                                                                <button type="submit" class="danger-button">Excluir perfil</button>
-                                                            </form>
-                                                        {% endif %}
-                                                    </details>
-                                                </td>
-                                            {% endif %}
-                                        </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                    {% else %}
-                        <p class="empty-state">Nenhum usuário cadastrado.</p>
-                    {% endif %}
-                </article>
-
-                <article class="almox-panel">
-                    <div class="almox-panel-header">
-                        <div>
-                            <h2>Novo usuário</h2>
-                            <p>A criação de usuários fica disponível apenas para administradores.</p>
-                        </div>
-                    </div>
-
-                    {% if currentUser.is_admin %}
-                        {# FORM: cria um novo usuario de acesso ao portal. #}
-                        <form action="{{ urlFor('almox_home') }}/users/create" method="post" class="stacked-form">
-                            <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
-                            <input type="hidden" name="tab" value="users">
-
-                            <label>
-                                <span>Nome completo</span>
-                                <input type="text" name="name" value="{{ userFormData.name }}">
-                                {% if userErrors.name %}<small class="field-error">{{ userErrors.name[0] }}</small>{% endif %}
-                            </label>
-
-                            <label>
-                                <span>Usuário</span>
-                                <input type="text" name="username" value="{{ userFormData.username }}">
-                                {% if userErrors.username %}<small class="field-error">{{ userErrors.username[0] }}</small>{% endif %}
-                            </label>
-
-                            <label>
-                                <span>Senha</span>
-                                <input type="password" name="password">
-                                {% if userErrors.password %}<small class="field-error">{{ userErrors.password[0] }}</small>{% endif %}
-                            </label>
-
-                            <label>
-                                <span>Perfil</span>
-                                <select name="role">
-                                    <option value="common" {% if userFormData.role == 'common' %}selected{% endif %}>Comum</option>
-                                    <option value="admin" {% if userFormData.role == 'admin' %}selected{% endif %}>Administrador</option>
-                                </select>
-                            </label>
-
-                            <label>
-                                <span>Membro vinculado (opcional)</span>
-                                <select name="member_id">
-                                    <option value="">Sem vínculo</option>
-                                    {% for member in members %}
-                                        <option value="{{ member.id }}" {% if userFormData.memberId == member.id or userFormData.memberId == (member.id ~ '') %}selected{% endif %}>
-                                            {{ member.name }}
-                                        </option>
-                                    {% endfor %}
-                                </select>
-                                {% if userErrors.memberId %}<small class="field-error">{{ userErrors.memberId[0] }}</small>{% endif %}
-                            </label>
-
-                            <button type="submit" class="primary-button">Criar usuário</button>
-                        </form>
-                    {% else %}
-                        <p class="readonly-box">
-                            Seu perfil pode consultar os usuários do portal, mas não criar novos acessos.
-                        </p>
-                    {% endif %}
                 </article>
             </div>
         </section>

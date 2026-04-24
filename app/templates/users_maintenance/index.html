@@ -1,75 +1,144 @@
 {#
   TEMPLATE: users_maintenance/index.html
-  FUNCAO: centralizar manutencao de membros, projetos e usuarios do almoxarifado em uma unica area.
+  FUNCAO: centralizar manutencao administrativa de membros, projetos e usuarios de acesso.
 #}
 {% extends "base.html" %}
 
+{% block styles %}
+    <link rel="stylesheet" href="{{ urlFor('static', { filename: 'css/almoxarifado.css' }) }}">
+{% endblock %}
+
 {% block content %}
-    <div class="page-header page-header-split">
-        <div>
-            <h1>Manutenção de Usuários</h1>
-            <p class="lead">
-                Central administrativa para cadastro de membros, vinculação em projetos e criação de usuários do almoxarifado.
-            </p>
-        </div>
-        <span class="page-badge">{{ summary.usersTotal }} usuários do sistema</span>
-    </div>
-
-    <section class="user-maintenance-grid">
-        <article class="content-panel user-maintenance-card">
-            <div class="panel-header">
+    <section class="almox-two-column" id="user-access-list">
+        <article class="almox-panel">
+            <div class="almox-panel-header">
                 <div>
-                    <h2>Membros do Projeto</h2>
-                    <p>Cadastre pessoas com foto e mantenha os dados base dos participantes.</p>
+                    <h2>Usuários do portal</h2>
+                    <p>Acesso único para Ata, Relatórios, Planner, Presença e Almoxarifado.</p>
                 </div>
             </div>
-            <div class="panel-body">
-                <p class="user-maintenance-stat"><strong>{{ summary.membersTotal }}</strong> membros ativos</p>
-                <div class="user-maintenance-actions">
-                    <a href="{{ urlFor('add_member') }}" class="btn-primary-action">
-                        <ion-icon name="person-add-outline"></ion-icon> Novo membro
-                    </a>
-                    <a href="{{ urlFor('list_members') }}" class="btn-cancel">Listar/Editar membros</a>
+
+            {% if users.length %}
+                <div class="table-wrap">
+                    <table class="almox-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Nome</th>
+                                <th>Usuário</th>
+                                <th>Membro Vinculado</th>
+                                <th>Perfil</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for user in users %}
+                                <tr>
+                                    <td>#{{ user.id }}</td>
+                                    <td>{{ user.name }}</td>
+                                    <td>@{{ user.username }}</td>
+                                    <td>{{ user.member_name if user.member_name else 'Não vinculado' }}</td>
+                                    <td>
+                                        <span class="role-chip {{ 'role-chip-admin' if user.is_admin else 'role-chip-common' }}">
+                                            {{ 'Administrador' if user.is_admin else 'Comum' }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <form action="{{ urlFor('user_maintenance') }}/users/link/{{ user.id }}" method="post" class="inline-form">
+                                            <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+                                            <select name="member_id">
+                                                <option value="">Sem vínculo</option>
+                                                {% for member in members %}
+                                                    <option
+                                                        value="{{ member.id }}"
+                                                        {% if user.member_id == member.id or user.member_id == (member.id ~ '') %}selected{% endif %}
+                                                    >
+                                                        {{ member.name }}
+                                                    </option>
+                                                {% endfor %}
+                                            </select>
+                                            <button type="submit" class="secondary-button">Vincular</button>
+                                        </form>
+
+                                        <details class="almox-user-actions">
+                                            <summary>Mais ações</summary>
+
+                                            <form action="{{ urlFor('user_maintenance') }}/users/reset-password/{{ user.id }}" method="post" class="inline-form">
+                                                <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+                                                <input type="password" name="new_password" minlength="6" placeholder="Nova senha" required>
+                                                <button type="submit" class="secondary-button">Redefinir senha</button>
+                                            </form>
+
+                                            {% if currentUser.id != user.id %}
+                                                <form action="{{ urlFor('user_maintenance') }}/users/delete/{{ user.id }}" method="post" onsubmit="return confirm('Deseja excluir o usuário @{{ user.username }}?');">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+                                                    <button type="submit" class="danger-button">Excluir perfil</button>
+                                                </form>
+                                            {% endif %}
+                                        </details>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
-            </div>
+            {% else %}
+                <p class="empty-state">Nenhum usuário cadastrado.</p>
+            {% endif %}
         </article>
 
-        <article class="content-panel user-maintenance-card">
-            <div class="panel-header">
+        <article class="almox-panel" id="user-access-create">
+            <div class="almox-panel-header">
                 <div>
-                    <h2>Projetos e Vínculos</h2>
-                    <p>Defina em quais projetos cada membro está e quem coordena cada projeto.</p>
+                    <h2>Novo usuário</h2>
+                    <p>Crie um novo acesso, escolha o perfil e vincule (opcionalmente) a um membro.</p>
                 </div>
             </div>
-            <div class="panel-body">
-                <p class="user-maintenance-stat"><strong>{{ summary.projectsTotal }}</strong> projetos cadastrados</p>
-                <div class="user-maintenance-actions">
-                    <a href="{{ urlFor('add_project') }}" class="btn-primary-action">
-                        <ion-icon name="folder-open-outline"></ion-icon> Novo projeto
-                    </a>
-                    <a href="{{ urlFor('list_projects') }}" class="btn-cancel">Gerenciar projetos e membros</a>
-                </div>
-            </div>
-        </article>
 
-        <article class="content-panel user-maintenance-card">
-            <div class="panel-header">
-                <div>
-                    <h2>Usuários do Almoxarifado</h2>
-                    <p>Crie acesso ao sistema e defina permissões de administração (mover/cadastrar/excluir).</p>
-                </div>
-            </div>
-            <div class="panel-body">
-                <p class="user-maintenance-stat">
-                    <strong>{{ summary.adminsTotal }}</strong> admins · <strong>{{ summary.commonTotal }}</strong> comuns
-                </p>
-                <div class="user-maintenance-actions">
-                    <a href="{{ urlFor('almox_home') }}?tab=users#almox-users-create" class="btn-primary-action">
-                        <ion-icon name="key-outline"></ion-icon> Novo usuário
-                    </a>
-                    <a href="{{ urlFor('almox_home') }}?tab=users" class="btn-cancel">Abrir gestão de usuários</a>
-                </div>
-            </div>
+            <form action="{{ urlFor('user_maintenance') }}/users/create" method="post" class="stacked-form">
+                <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+
+                <label>
+                    <span>Nome completo</span>
+                    <input type="text" name="name" value="{{ userFormData.name }}">
+                    {% if userErrors.name %}<small class="field-error">{{ userErrors.name[0] }}</small>{% endif %}
+                </label>
+
+                <label>
+                    <span>Usuário</span>
+                    <input type="text" name="username" value="{{ userFormData.username }}">
+                    {% if userErrors.username %}<small class="field-error">{{ userErrors.username[0] }}</small>{% endif %}
+                </label>
+
+                <label>
+                    <span>Senha</span>
+                    <input type="password" name="password">
+                    {% if userErrors.password %}<small class="field-error">{{ userErrors.password[0] }}</small>{% endif %}
+                </label>
+
+                <label>
+                    <span>Perfil</span>
+                    <select name="role">
+                        <option value="common" {% if userFormData.role == 'common' %}selected{% endif %}>Comum</option>
+                        <option value="admin" {% if userFormData.role == 'admin' %}selected{% endif %}>Administrador</option>
+                    </select>
+                </label>
+
+                <label>
+                    <span>Membro vinculado (opcional)</span>
+                    <select name="member_id">
+                        <option value="">Sem vínculo</option>
+                        {% for member in members %}
+                            <option value="{{ member.id }}" {% if userFormData.memberId == member.id or userFormData.memberId == (member.id ~ '') %}selected{% endif %}>
+                                {{ member.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                    {% if userErrors.memberId %}<small class="field-error">{{ userErrors.memberId[0] }}</small>{% endif %}
+                </label>
+
+                <button type="submit" class="primary-button">Criar usuário</button>
+            </form>
         </article>
     </section>
 {% endblock %}

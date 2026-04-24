@@ -6,11 +6,8 @@
   - Alterar colunas/rotas de acao afeta manutencao e navegacao do modulo.
 #}
 {% extends "base.html" %}
-{% set activeAtaTab = 'members' %}
 
 {% block content %}
-    {% include "partials/atas_tabs.html" %}
-
     <div class="page-header page-header-split">
         <div>
             <h1>{{ title if title else "Membros" }}</h1>
@@ -25,6 +22,9 @@
         <div class="page-actions">
             <a href="{{ urlFor('add_member') }}" class="btn-primary-action">
                 <ion-icon name="add-circle-outline"></ion-icon> Adicionar Membro
+            </a>
+            <a href="{{ urlFor('user_maintenance') }}" class="btn-secondary-action">
+                <ion-icon name="person-circle-outline"></ion-icon> Usuários e Senhas
             </a>
         </div>
     {% endif %}

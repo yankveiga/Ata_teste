@@ -17,21 +17,21 @@
    Alterar aqui muda cor, contraste e identidade visual de todo o portal autenticado. */
 
 :root {
-  --primary-accent: #2563eb;
-  --primary-accent-soft: #dbeafe;
-  --shell-bg: #f5efe8;
-  --shell-bg-alt: #fcfaf7;
-  --shell-text: #1f2937;
-  --shell-muted: #6b7280;
-  --shell-line: rgba(71, 85, 105, 0.14);
-  --shell-surface: rgba(255, 252, 247, 0.78);
-  --shell-surface-strong: #fffdf9;
-  --shell-shadow: 0 24px 48px rgba(15, 23, 42, 0.08);
-  --sidebar-bg: linear-gradient(180deg, #111827 0%, #172033 58%, #1d2940 100%);
-  --sidebar-border: rgba(148, 163, 184, 0.16);
-  --sidebar-text: rgba(226, 232, 240, 0.78);
+  --primary-accent: #1f5be6;
+  --primary-accent-soft: #dbe8ff;
+  --shell-bg: #eaf0f8;
+  --shell-bg-alt: #f7faff;
+  --shell-text: #0f172a;
+  --shell-muted: #475569;
+  --shell-line: rgba(71, 85, 105, 0.2);
+  --shell-surface: rgba(255, 255, 255, 0.82);
+  --shell-surface-strong: #ffffff;
+  --shell-shadow: 0 24px 46px rgba(15, 23, 42, 0.1);
+  --sidebar-bg: linear-gradient(180deg, #0c1628 0%, #132544 56%, #1b3160 100%);
+  --sidebar-border: rgba(148, 163, 184, 0.22);
+  --sidebar-text: rgba(226, 232, 240, 0.84);
   --sidebar-text-strong: #f8fafc;
-  --sidebar-hover: rgba(255, 255, 255, 0.08);
+  --sidebar-hover: rgba(123, 165, 255, 0.18);
 }
 
 html {
@@ -44,28 +44,28 @@ body {
   font-family: "Manrope", sans-serif;
   color: var(--shell-text);
   background:
-    radial-gradient(circle at top left, rgba(37, 99, 235, 0.08), transparent 30%),
-    radial-gradient(circle at bottom right, rgba(217, 119, 6, 0.09), transparent 24%),
+    radial-gradient(circle at top left, rgba(37, 99, 235, 0.14), transparent 30%),
+    radial-gradient(circle at bottom right, rgba(16, 185, 129, 0.09), transparent 26%),
     linear-gradient(180deg, var(--shell-bg-alt) 0%, var(--shell-bg) 100%);
 }
 
 html.theme-dark body,
 body.theme-dark {
-  --primary-accent: #8ea9ff;
-  --primary-accent-soft: rgba(142, 169, 255, 0.2);
-  --shell-bg: #0a1020;
-  --shell-bg-alt: #070c19;
-  --shell-text: #dbe5ff;
-  --shell-muted: #9db0d8;
-  --shell-line: rgba(113, 131, 177, 0.28);
-  --shell-surface: rgba(20, 29, 52, 0.78);
-  --shell-surface-strong: #1a2645;
-  --shell-shadow: 0 24px 52px rgba(2, 6, 23, 0.52);
-  --sidebar-bg: linear-gradient(180deg, #0b1020 0%, #101936 58%, #162248 100%);
-  --sidebar-border: rgba(115, 130, 170, 0.34);
+  --primary-accent: #9ab4ff;
+  --primary-accent-soft: rgba(154, 180, 255, 0.22);
+  --shell-bg: #060d1c;
+  --shell-bg-alt: #0a1224;
+  --shell-text: #e5edff;
+  --shell-muted: #9eb2db;
+  --shell-line: rgba(123, 143, 189, 0.34);
+  --shell-surface: rgba(16, 27, 49, 0.84);
+  --shell-surface-strong: #1b2a49;
+  --shell-shadow: 0 24px 52px rgba(2, 6, 23, 0.58);
+  --sidebar-bg: linear-gradient(180deg, #070e1d 0%, #0d1b37 56%, #152a52 100%);
+  --sidebar-border: rgba(125, 145, 194, 0.42);
   --sidebar-text: rgba(207, 219, 245, 0.84);
   --sidebar-text-strong: #f4f8ff;
-  --sidebar-hover: rgba(124, 142, 194, 0.18);
+  --sidebar-hover: rgba(138, 170, 245, 0.2);
 }
 
 body.theme-transition * {
@@ -110,7 +110,7 @@ a {
   border-radius: 30px;
   background: var(--sidebar-bg);
   border: 1px solid var(--sidebar-border);
-  box-shadow: 0 28px 48px rgba(15, 23, 42, 0.22);
+  box-shadow: 0 30px 52px rgba(7, 13, 30, 0.32);
   transition: width 0.35s ease, transform 0.35s ease;
   overflow: hidden;
   z-index: 100;
@@ -147,7 +147,7 @@ a {
   inset: 10px auto 10px 0;
   width: 4px;
   border-radius: 999px;
-  background: linear-gradient(180deg, #60a5fa, #38bdf8);
+  background: linear-gradient(180deg, #7aa7ff, #49d2ff);
 }
 
 .navigation ul li a {
@@ -288,7 +288,7 @@ a {
   justify-content: space-between;
   align-items: center;
   gap: 16px;
-  padding: 18px 24px 0;
+  padding: 14px 24px 0;
 }
 
 .toggle {
@@ -300,18 +300,18 @@ a {
   align-items: center;
   justify-content: center;
   border-radius: 18px;
-  background: rgba(255, 253, 249, 0.72);
+  background: var(--shell-surface);
   backdrop-filter: blur(16px);
-  box-shadow: 0 16px 28px rgba(15, 23, 42, 0.08);
+  box-shadow: var(--shell-shadow);
   color: var(--shell-text);
   cursor: pointer;
 }
 
 html.theme-dark .toggle,
 body.theme-dark .toggle {
-  background: rgba(25, 36, 64, 0.8);
+  background: var(--shell-surface);
   color: #dfe8ff;
-  box-shadow: 0 14px 28px rgba(4, 8, 22, 0.52);
+  box-shadow: var(--shell-shadow);
 }
 
 .toggle ion-icon {
@@ -324,20 +324,20 @@ body.theme-dark .toggle {
   justify-content: center;
   padding: 0.86rem 1.1rem;
   border-radius: 999px;
-  background: rgba(255, 253, 249, 0.78);
+  background: var(--shell-surface);
   backdrop-filter: blur(16px);
-  border: 1px solid rgba(148, 163, 184, 0.18);
+  border: 1px solid var(--shell-line);
   color: var(--shell-text);
   font-weight: 700;
-  box-shadow: 0 16px 28px rgba(15, 23, 42, 0.06);
+  box-shadow: var(--shell-shadow);
 }
 
 html.theme-dark .user-info-topbar,
 body.theme-dark .user-info-topbar {
-  background: rgba(25, 36, 64, 0.84);
-  border-color: rgba(113, 131, 177, 0.32);
+  background: var(--shell-surface);
+  border-color: var(--shell-line);
   color: #dbe5ff;
-  box-shadow: 0 14px 28px rgba(4, 8, 22, 0.45);
+  box-shadow: var(--shell-shadow);
 }
 
 html.theme-dark .nav-theme-item .nav-theme-button,

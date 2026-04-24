@@ -67,7 +67,6 @@ const {
 
 const ALMOX_TABS = new Set([
   "overview",
-  "users",
   "stock",
   "manage",
   "withdraw",
@@ -940,8 +939,6 @@ function render(res, template, data = {}) {
       activeSection: "almox",
       activeTab,
       dashboard: database.getInventoryDashboardData(),
-      users: database.listUsers(),
-      members: database.listActiveMembers(),
       inventoryItems: database.listInventoryItems(),
       stockItems: database.listInventoryItems({ type: "stock" }),
       patrimonyItems: database.listInventoryItems({ type: "patrimony" }),
@@ -951,15 +948,6 @@ function render(res, template, data = {}) {
       activeLoans: database.listInventoryLoans({ status: "active" }),
       returnedLoans: database.listInventoryLoans({ status: "returned", limit: 12 }),
       overdueLoans: database.listInventoryLoans({ status: "overdue" }),
-      userFormData: {
-        name: "",
-        username: "",
-        password: "",
-        role: "common",
-        memberId: "",
-        ...(data.userFormData || {}),
-      },
-      userErrors: data.userErrors || {},
       itemFormData: {
         name: "",
         itemType: "stock",
@@ -997,6 +985,40 @@ function render(res, template, data = {}) {
       loanExtendDefaults: {
         extraDays: "7",
       },
+    });
+  }
+
+  // DETALHE: Renderiza central de manutencao de usuarios com criacao, vinculo, senha e exclusao.
+
+  function renderUserMaintenance(res, data = {}) {
+    const users = database.listUsers();
+    const members = database.listActiveMembers();
+    const projects = database.listProjectsWithMembers();
+    const adminUsers = users.filter((user) => user.is_admin);
+    const commonUsers = users.filter((user) => !user.is_admin);
+
+    return render(res, "users_maintenance/index.html", {
+      title: "Manutenção de Usuários",
+      activeSection: "user_maintenance",
+      users,
+      members,
+      projects,
+      summary: {
+        usersTotal: users.length,
+        adminsTotal: adminUsers.length,
+        commonTotal: commonUsers.length,
+        membersTotal: members.length,
+        projectsTotal: projects.length,
+      },
+      userFormData: {
+        name: "",
+        username: "",
+        password: "",
+        role: "common",
+        memberId: "",
+        ...(data.userFormData || {}),
+      },
+      userErrors: data.userErrors || {},
     });
   }
 
@@ -1057,6 +1079,7 @@ function render(res, template, data = {}) {
     renderProjectForm,
     renderAtaForm,
     renderReportPage,
+    renderUserMaintenance,
     runMemberPhotoUpload,
     runLogoUpload,
     ensureValidCsrf,

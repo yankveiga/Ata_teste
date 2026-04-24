@@ -5,6 +5,39 @@
  * - Ajustes aqui podem causar regressao visual em varias paginas ao mesmo tempo.
  * - Antes de alterar classe reutilizada, verificar ocorrencias nos templates para evitar efeitos colaterais.
  */
+/* SECAO: tokens visuais globais para contraste e consistencia entre modulos. */
+
+:root {
+  --ui-text-strong: #0f172a;
+  --ui-text: #1e293b;
+  --ui-muted: #475569;
+  --ui-border: rgba(100, 116, 139, 0.24);
+  --ui-border-strong: rgba(100, 116, 139, 0.34);
+  --ui-surface: rgba(255, 255, 255, 0.84);
+  --ui-surface-soft: rgba(248, 251, 255, 0.9);
+  --ui-accent: #1f5be6;
+  --ui-accent-strong: #1744b7;
+  --ui-accent-soft: rgba(31, 91, 230, 0.14);
+  --ui-shadow-sm: 0 14px 24px rgba(15, 23, 42, 0.07);
+  --ui-shadow-md: 0 22px 38px rgba(15, 23, 42, 0.1);
+}
+
+html.theme-dark,
+body.theme-dark {
+  --ui-text-strong: #eef3ff;
+  --ui-text: #d8e3ff;
+  --ui-muted: #a9bcdf;
+  --ui-border: rgba(124, 144, 191, 0.34);
+  --ui-border-strong: rgba(136, 158, 210, 0.45);
+  --ui-surface: rgba(18, 29, 53, 0.86);
+  --ui-surface-soft: rgba(14, 24, 45, 0.9);
+  --ui-accent: #8ea8ff;
+  --ui-accent-strong: #6f8cff;
+  --ui-accent-soft: rgba(142, 168, 255, 0.2);
+  --ui-shadow-sm: 0 16px 28px rgba(2, 6, 23, 0.45);
+  --ui-shadow-md: 0 24px 42px rgba(2, 6, 23, 0.56);
+}
+
 /* SECAO: mensagens globais de feedback (flash success/error/info/warning). */
 
 .flash-messages {
@@ -150,11 +183,18 @@ summary:focus-visible {
   border-radius: 999px;
   text-decoration: none;
   font-weight: 800;
-  color: #516074;
-  background: rgba(255, 253, 249, 0.72);
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  box-shadow: 0 14px 24px rgba(15, 23, 42, 0.05);
+  color: var(--ui-text);
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border);
+  box-shadow: var(--ui-shadow-sm);
   backdrop-filter: blur(12px);
+  transition: border-color 160ms ease, background-color 160ms ease, color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.module-tab-link:hover {
+  border-color: var(--ui-border-strong);
+  background: var(--ui-surface-soft);
+  transform: translateY(-1px);
 }
 
 .module-tab-link ion-icon {
@@ -163,8 +203,9 @@ summary:focus-visible {
 
 .module-tab-link.is-active {
   color: #f8fbff;
-  background: linear-gradient(135deg, #1540b8, #2f7df6);
+  background: linear-gradient(135deg, var(--ui-accent-strong), var(--ui-accent));
   border-color: transparent;
+  box-shadow: 0 16px 30px rgba(31, 91, 230, 0.3);
 }
 
 /* SECAO: cabecalhos de pagina (titulo, subtitulo e badge lateral). */
@@ -183,13 +224,13 @@ summary:focus-visible {
 .page-header h1 {
   font-size: clamp(2rem, 3vw, 2.8rem);
   line-height: 1.04;
-  color: #152033;
+  color: var(--ui-text-strong);
 }
 
 .page-header .lead {
   margin-top: 10px;
   max-width: 72ch;
-  color: #637083;
+  color: var(--ui-muted);
   line-height: 1.7;
 }
 
@@ -199,20 +240,20 @@ summary:focus-visible {
   justify-content: center;
   padding: 0.8rem 1rem;
   border-radius: 18px;
-  background: rgba(255, 253, 249, 0.78);
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  color: #1540b8;
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border);
+  color: var(--ui-accent-strong);
   font-weight: 800;
-  box-shadow: 0 14px 24px rgba(15, 23, 42, 0.05);
+  box-shadow: var(--ui-shadow-sm);
 }
 
 /* SECAO: containers principais de conteudo (cards/paineis reutilizaveis). */
 
 .content-panel {
-  background: rgba(255, 253, 249, 0.8);
-  border: 1px solid rgba(148, 163, 184, 0.16);
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border);
   border-radius: 28px;
-  box-shadow: 0 24px 40px rgba(15, 23, 42, 0.06);
+  box-shadow: var(--ui-shadow-md);
   backdrop-filter: blur(16px);
 }
 
@@ -258,7 +299,7 @@ html.theme-dark .panel-header h2,
 body.theme-dark .panel-header h2,
 html.theme-dark .form-label,
 body.theme-dark .form-label {
-  color: #e8eeff;
+  color: var(--ui-text-strong);
 }
 
 html.theme-dark .page-header .lead,
@@ -269,7 +310,7 @@ html.theme-dark .form-hint,
 body.theme-dark .form-hint,
 html.theme-dark .member-list-cell,
 body.theme-dark .member-list-cell {
-  color: #a8b6d9;
+  color: var(--ui-muted);
 }
 
 html.theme-dark .content-panel,
@@ -278,56 +319,58 @@ html.theme-dark .module-tab-link,
 body.theme-dark .module-tab-link,
 html.theme-dark .page-badge,
 body.theme-dark .page-badge,
+html.theme-dark .btn-secondary-action,
+body.theme-dark .btn-secondary-action,
 html.theme-dark .btn-cancel,
 body.theme-dark .btn-cancel,
 html.theme-dark .ui-empty-state,
 body.theme-dark .ui-empty-state,
 html.theme-dark .ui-loading-state,
 body.theme-dark .ui-loading-state {
-  background: rgba(23, 34, 59, 0.84);
-  border-color: rgba(113, 131, 177, 0.32);
-  color: #dbe5ff;
-  box-shadow: 0 20px 36px rgba(2, 6, 23, 0.44);
+  background: var(--ui-surface);
+  border-color: var(--ui-border);
+  color: var(--ui-text);
+  box-shadow: var(--ui-shadow-md);
 }
 
 html.theme-dark .module-tab-link,
 body.theme-dark .module-tab-link {
-  color: #c8d4f1;
+  color: var(--ui-text);
 }
 
 html.theme-dark .styled-table th,
 html.theme-dark .styled-table td,
 body.theme-dark .styled-table th,
 body.theme-dark .styled-table td {
-  border-bottom-color: rgba(113, 131, 177, 0.3);
-  color: #d5e0fa;
+  border-bottom-color: var(--ui-border);
+  color: var(--ui-text);
 }
 
 html.theme-dark .styled-table thead th,
 body.theme-dark .styled-table thead th {
-  color: #9eb1d9;
+  color: var(--ui-muted);
 }
 
 html.theme-dark .styled-table tbody tr:hover,
 body.theme-dark .styled-table tbody tr:hover {
-  background: rgba(66, 93, 158, 0.22);
+  background: rgba(85, 110, 170, 0.24);
 }
 
 html.theme-dark .form-control,
 html.theme-dark .form-control-file,
 body.theme-dark .form-control,
 body.theme-dark .form-control-file {
-  background: rgba(14, 23, 43, 0.92);
-  border-color: rgba(113, 131, 177, 0.32);
-  color: #e6edff;
+  background: var(--ui-surface-soft);
+  border-color: var(--ui-border);
+  color: var(--ui-text-strong);
 }
 
 html.theme-dark .form-control:focus,
 html.theme-dark .form-control-file:focus,
 body.theme-dark .form-control:focus,
 body.theme-dark .form-control-file:focus {
-  border-color: rgba(124, 153, 241, 0.62);
-  box-shadow: 0 0 0 4px rgba(94, 129, 226, 0.2);
+  border-color: var(--ui-accent);
+  box-shadow: 0 0 0 4px var(--ui-accent-soft);
 }
 
 body.section-presenca .panel-header h2 {
@@ -486,6 +529,10 @@ body.section-reports .report-entries-panel .panel-header {
   flex-wrap: wrap;
 }
 
+body.section-user_maintenance #user-access-list {
+  margin-top: 16px;
+}
+
 body.theme-dark.section-user_maintenance .content-panel {
   background: linear-gradient(180deg, rgba(18, 27, 46, 0.94), rgba(13, 21, 38, 0.94));
   border-color: rgba(111, 130, 176, 0.34);
@@ -505,6 +552,54 @@ body.theme-dark.section-user_maintenance .user-maintenance-stat {
 
 body.theme-dark.section-user_maintenance .user-maintenance-stat strong {
   color: #f2f7ff;
+}
+
+body.theme-dark.section-user_maintenance .almox-panel {
+  background: linear-gradient(180deg, rgba(18, 27, 46, 0.94), rgba(13, 21, 38, 0.94));
+  border-color: rgba(111, 130, 176, 0.34);
+  box-shadow: 0 24px 42px rgba(2, 8, 22, 0.52);
+}
+
+body.theme-dark.section-user_maintenance .almox-panel-header h2,
+body.theme-dark.section-user_maintenance .almox-table td {
+  color: #edf3ff;
+}
+
+body.theme-dark.section-user_maintenance .almox-panel-header p,
+body.theme-dark.section-user_maintenance .almox-table td .field-note,
+body.theme-dark.section-user_maintenance .almox-user-actions summary {
+  color: #b7c6e6;
+}
+
+body.theme-dark.section-user_maintenance .almox-table thead th {
+  background: rgba(30, 47, 80, 0.85);
+  color: #cfe0ff;
+}
+
+body.theme-dark.section-user_maintenance .almox-table th,
+body.theme-dark.section-user_maintenance .almox-table td {
+  border-color: rgba(111, 130, 176, 0.28);
+}
+
+body.theme-dark.section-user_maintenance .stacked-form input,
+body.theme-dark.section-user_maintenance .stacked-form select,
+body.theme-dark.section-user_maintenance .stacked-form textarea,
+body.theme-dark.section-user_maintenance .inline-form input,
+body.theme-dark.section-user_maintenance .inline-form select {
+  background: rgba(18, 31, 57, 0.9);
+  border-color: rgba(111, 130, 176, 0.34);
+  color: #edf3ff;
+}
+
+body.theme-dark.section-user_maintenance .secondary-button,
+body.theme-dark.section-user_maintenance .danger-button,
+body.theme-dark.section-user_maintenance .ghost-danger-button {
+  border-color: rgba(118, 138, 184, 0.4);
+}
+
+body.theme-dark.section-user_maintenance .almox-user-actions {
+  background: rgba(15, 24, 43, 0.88);
+  border-color: rgba(111, 130, 176, 0.28);
 }
 
 @media (max-width: 1100px) {
@@ -535,12 +630,12 @@ body.section-planner .page-header {
 .planner-ui-toolbar h1 {
   margin: 0;
   font-size: clamp(1.4rem, 2vw, 1.9rem);
-  color: #173046;
+  color: #10253e;
 }
 
 .planner-ui-toolbar p {
   margin: 5px 0 0;
-  color: #5a677c;
+  color: #4c5f79;
 }
 
 .planner-ui-toolbar-right {
@@ -554,14 +649,15 @@ body.section-planner .page-header {
   font-weight: 800;
   padding: 0.55rem 0.8rem;
   border-radius: 999px;
-  border: 1px solid rgba(148, 163, 184, 0.24);
-  color: #4e6078;
-  background: rgba(255, 255, 255, 0.75);
+  border: 1px solid rgba(100, 116, 139, 0.3);
+  color: #324966;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.06);
 }
 
 .planner-ui-pill.is-active {
   color: #f8fbff;
-  background: linear-gradient(135deg, #2d7886, #5099a6);
+  background: linear-gradient(135deg, #1f5c8f, #2f7fbf);
   border-color: transparent;
 }
 
@@ -655,7 +751,7 @@ body.section-planner .page-header {
   font-weight: 800;
   font-size: 0.83rem;
   color: #f8fbff;
-  background: linear-gradient(135deg, #2d7886, #5099a6);
+  background: linear-gradient(135deg, #1f5c8f, #2f7fbf);
   border: 1px solid transparent;
 }
 
@@ -671,8 +767,8 @@ body.section-planner .page-header {
   width: min(860px, 94vw);
   max-height: calc(100dvh - max(20px, env(safe-area-inset-top) + 10px));
   z-index: 5000 !important;
-  background: rgba(255, 255, 255, 0.98);
-  border: 1px solid rgba(148, 163, 184, 0.24);
+  background: rgba(255, 255, 255, 0.99);
+  border: 1px solid rgba(100, 116, 139, 0.26);
   border-radius: 18px;
   box-shadow: 0 30px 60px rgba(15, 23, 42, 0.24);
   overflow: hidden;
@@ -680,8 +776,8 @@ body.section-planner .page-header {
 
 .planner-create-header {
   padding: 14px 16px 12px;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
-  background: linear-gradient(135deg, rgba(224, 242, 254, 0.7), rgba(240, 253, 250, 0.75));
+  border-bottom: 1px solid rgba(100, 116, 139, 0.2);
+  background: linear-gradient(135deg, rgba(219, 234, 254, 0.75), rgba(236, 246, 255, 0.84));
   position: relative;
 }
 
@@ -782,7 +878,7 @@ body.section-planner .page-header {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 300px;
   gap: 12px;
-  background: linear-gradient(180deg, rgba(251, 252, 255, 0.96), rgba(245, 248, 252, 0.94));
+  background: linear-gradient(180deg, rgba(251, 253, 255, 0.98), rgba(241, 246, 255, 0.95));
   position: relative;
   z-index: 1;
 }
@@ -792,7 +888,7 @@ body.section-planner .page-header {
 }
 
 .planner-calendar-main {
-  border: 1px solid rgba(148, 163, 184, 0.22);
+  border: 1px solid rgba(100, 116, 139, 0.24);
   border-radius: 16px;
   background: rgba(248, 250, 255, 0.95);
   padding: 12px;
@@ -953,7 +1049,7 @@ body.section-planner .page-header {
 }
 
 .planner-calendar-side {
-  border: 1px solid rgba(148, 163, 184, 0.22);
+  border: 1px solid rgba(100, 116, 139, 0.24);
   border-radius: 16px;
   background: rgba(243, 247, 253, 0.95);
   padding: 12px;
@@ -1123,8 +1219,8 @@ body.section-planner .page-header {
 /* SECAO: modo escuro do Planner (visual inspirado em suites modernas de planejamento). */
 
 body.theme-dark.section-planner .content-panel {
-  background: linear-gradient(180deg, rgba(16, 20, 37, 0.94), rgba(13, 16, 31, 0.94));
-  border-color: rgba(108, 123, 168, 0.28);
+  background: linear-gradient(180deg, rgba(14, 21, 40, 0.96), rgba(10, 16, 31, 0.96));
+  border-color: rgba(118, 138, 187, 0.34);
   box-shadow: 0 20px 40px rgba(2, 6, 23, 0.55);
 }
 
@@ -1137,13 +1233,13 @@ body.theme-dark.section-planner .planner-ui-toolbar p {
 }
 
 body.theme-dark.section-planner .planner-ui-pill {
-  background: rgba(36, 43, 72, 0.86);
-  color: #cad5f4;
-  border-color: rgba(131, 146, 188, 0.35);
+  background: rgba(31, 42, 71, 0.9);
+  color: #d8e4ff;
+  border-color: rgba(141, 159, 208, 0.4);
 }
 
 body.theme-dark.section-planner .planner-ui-pill.is-active {
-  background: linear-gradient(135deg, #4c68b6, #6f8ee8);
+  background: linear-gradient(135deg, #5a78ca, #7d9cf4);
   color: #f5f8ff;
 }
 
@@ -1433,19 +1529,19 @@ body.section-almox .form-control:focus {
 }
 
 body.theme-dark.section-reports .content-panel {
-  background: linear-gradient(180deg, rgba(20, 32, 24, 0.82), rgba(15, 24, 18, 0.86));
-  border-color: rgba(64, 115, 75, 0.42);
-  box-shadow: 0 22px 42px rgba(4, 12, 8, 0.5);
+  background: linear-gradient(180deg, rgba(16, 28, 46, 0.9), rgba(12, 22, 38, 0.92));
+  border-color: rgba(108, 131, 178, 0.4);
+  box-shadow: 0 24px 44px rgba(2, 8, 22, 0.54);
 }
 
 body.theme-dark.section-reports .page-header h1,
 body.theme-dark.section-reports .panel-header h2 {
-  color: #d1f3d9;
+  color: #eaf2ff;
 }
 
 body.theme-dark.section-reports .page-header .lead,
 body.theme-dark.section-reports .panel-header p {
-  color: #99c8a6;
+  color: #b6c8e8;
 }
 
 body.theme-dark.section-presenca .content-panel.presence-panel {
@@ -1484,27 +1580,30 @@ body.theme-dark.section-almox .form-control {
   justify-content: space-between;
   align-items: flex-start;
   gap: 16px;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+  border-bottom: 1px solid var(--ui-border);
 }
 
 .panel-header h2 {
   font-size: 1.18rem;
-  color: #152033;
+  color: var(--ui-text-strong);
 }
 
 .panel-header p {
   margin-top: 6px;
-  color: #637083;
+  color: var(--ui-muted);
   line-height: 1.65;
 }
 
 .page-actions {
   display: flex;
   justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
   margin-bottom: 18px;
 }
 
 .btn-primary-action,
+.btn-secondary-action,
 .btn-submit,
 .btn-cancel,
 .btn-create-ata {
@@ -1524,15 +1623,21 @@ body.theme-dark.section-almox .form-control {
 .btn-primary-action,
 .btn-submit,
 .btn-create-ata {
-  background: linear-gradient(135deg, #1540b8, #2f7df6);
+  background: linear-gradient(135deg, var(--ui-accent-strong), var(--ui-accent));
   color: #f8fbff;
-  box-shadow: 0 18px 30px rgba(37, 99, 235, 0.2);
+  box-shadow: 0 18px 30px rgba(31, 91, 230, 0.28);
+}
+
+.btn-secondary-action {
+  background: var(--ui-surface);
+  color: var(--ui-text);
+  border: 1px solid var(--ui-border);
 }
 
 .btn-cancel {
-  background: rgba(255, 253, 249, 0.84);
-  color: #516074;
-  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: var(--ui-surface);
+  color: var(--ui-muted);
+  border: 1px solid var(--ui-border);
 }
 
 /* SECAO: tabelas padrao (listagens de membros, projetos e afins). */
@@ -1545,7 +1650,7 @@ body.theme-dark.section-almox .form-control {
 .styled-table th,
 .styled-table td {
   padding: 1rem 0.9rem;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+  border-bottom: 1px solid var(--ui-border);
   text-align: left;
   vertical-align: middle;
 }
@@ -1554,7 +1659,7 @@ body.theme-dark.section-almox .form-control {
   font-size: 0.82rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: #718198;
+  color: var(--ui-muted);
 }
 
 .logo-col {
@@ -1572,7 +1677,7 @@ body.theme-dark.section-almox .form-control {
 }
 
 .styled-table tbody tr:hover {
-  background: rgba(219, 234, 254, 0.34);
+  background: var(--ui-accent-soft);
 }
 
 .centered-cell {
@@ -1627,11 +1732,11 @@ body.theme-dark.section-almox .form-control {
 
 .text-muted,
 .no-logo-placeholder {
-  color: #97a1af;
+  color: color-mix(in srgb, var(--ui-muted) 72%, transparent);
 }
 
 .member-list-cell {
-  color: #516074;
+  color: var(--ui-muted);
   line-height: 1.65;
 }
 
@@ -1649,7 +1754,7 @@ body.theme-dark.section-almox .form-control {
 
 .form-label {
   font-weight: 800;
-  color: #182235;
+  color: var(--ui-text-strong);
 }
 
 .form-control,
@@ -1657,26 +1762,26 @@ body.theme-dark.section-almox .form-control {
   width: 100%;
   padding: 0.96rem 1rem;
   border-radius: 18px;
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  background: rgba(248, 250, 252, 0.94);
-  color: #182235;
+  border: 1px solid var(--ui-border);
+  background: var(--ui-surface-soft);
+  color: var(--ui-text-strong);
   font: inherit;
 }
 
 .form-control-file {
   padding: 0.8rem;
-  background: rgba(255, 255, 255, 0.94);
+  background: var(--ui-surface);
 }
 
 .form-control:focus,
 .form-control-file:focus {
   outline: none;
-  border-color: rgba(37, 99, 235, 0.42);
-  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+  border-color: var(--ui-accent);
+  box-shadow: 0 0 0 4px var(--ui-accent-soft);
 }
 
 .form-hint {
-  color: #718198;
+  color: var(--ui-muted);
   line-height: 1.6;
 }
 
@@ -1737,18 +1842,18 @@ body.section-planner .planner-side-status-select {
 .ui-empty-state {
   padding: 14px 16px;
   border-radius: 14px;
-  border: 1px dashed rgba(148, 163, 184, 0.5);
-  background: rgba(248, 250, 252, 0.75);
-  color: #475467;
+  border: 1px dashed var(--ui-border-strong);
+  background: var(--ui-surface-soft);
+  color: var(--ui-muted);
   line-height: 1.6;
 }
 
 .ui-loading-state {
   padding: 12px 14px;
   border-radius: 14px;
-  border: 1px solid rgba(148, 163, 184, 0.24);
-  background: rgba(255, 255, 255, 0.75);
-  color: #344054;
+  border: 1px solid var(--ui-border);
+  background: var(--ui-surface);
+  color: var(--ui-text);
   font-weight: 600;
 }
 
@@ -2081,8 +2186,8 @@ body.theme-dark.section-projects .project-logo-preview img {
   padding: 10px 8px;
   border-radius: 14px;
   text-decoration: none;
-  border: 1px solid rgba(148, 163, 184, 0.16);
-  background: rgba(255, 255, 255, 0.84);
+  border: 1px solid rgba(100, 116, 139, 0.24);
+  background: rgba(255, 255, 255, 0.94);
   transition: transform 140ms ease, border-color 140ms ease, box-shadow 140ms ease, background-color 140ms ease;
 }
 
@@ -2124,7 +2229,7 @@ body.theme-dark.section-projects .project-logo-preview img {
   text-align: center;
   font-size: 0.78rem;
   line-height: 1.2;
-  color: #213047;
+  color: #10233b;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -2169,8 +2274,8 @@ body.theme-dark.section-projects .project-logo-preview img {
   gap: 8px;
   padding: 6px 10px;
   border-radius: 999px;
-  border: 1px solid rgba(49, 112, 57, 0.25);
-  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(49, 112, 57, 0.32);
+  background: rgba(255, 255, 255, 0.96);
   color: #1f5130;
   font-size: 0.8rem;
   font-weight: 700;
@@ -2209,12 +2314,12 @@ body.theme-dark.section-projects .project-logo-preview img {
   position: relative;
   display: flex;
   flex-direction: column;
-  border: 1px solid rgba(49, 112, 57, 0.18);
+  border: 1px solid rgba(49, 112, 57, 0.24);
   border-radius: 18px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.5));
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(247, 250, 255, 0.9));
   padding: 12px;
   min-height: 520px;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.46);
   backdrop-filter: blur(6px);
 }
 
@@ -2234,8 +2339,8 @@ body.theme-dark.section-projects .project-logo-preview img {
 }
 
 .report-kanban-future {
-  border-color: rgba(14, 116, 144, 0.28);
-  background: linear-gradient(180deg, rgba(236, 253, 255, 0.78), rgba(236, 253, 255, 0.52));
+  border-color: rgba(14, 116, 144, 0.34);
+  background: linear-gradient(180deg, rgba(236, 253, 255, 0.94), rgba(236, 253, 255, 0.78));
 }
 
 .report-kanban-future::before {
@@ -2248,8 +2353,8 @@ body.theme-dark.section-projects .project-logo-preview img {
 
 .report-kanban-overdue {
   max-width: 360px;
-  border-color: rgba(220, 38, 38, 0.32);
-  background: linear-gradient(180deg, rgba(254, 242, 242, 0.75), rgba(254, 242, 242, 0.5));
+  border-color: rgba(220, 38, 38, 0.4);
+  background: linear-gradient(180deg, rgba(254, 242, 242, 0.94), rgba(254, 242, 242, 0.82));
 }
 
 .report-kanban-overdue::before {
@@ -2307,7 +2412,7 @@ body.theme-dark.section-projects .project-logo-preview img {
   border-radius: 12px;
   background: rgba(49, 112, 57, 0.08);
   border: 1px solid rgba(49, 112, 57, 0.16);
-  color: #2a5832;
+  color: #1d4425;
   font-size: 0.8rem;
   font-weight: 800;
   text-transform: uppercase;
@@ -2324,10 +2429,10 @@ body.theme-dark.section-projects .project-logo-preview img {
 }
 
 .report-goal-item {
-  border: 1px solid rgba(148, 163, 184, 0.2);
+  border: 1px solid rgba(100, 116, 139, 0.24);
   border-left: 6px solid var(--goal-project-color, rgba(49, 112, 57, 0.35));
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.97);
   padding: 11px;
   box-shadow: 0 6px 14px rgba(15, 23, 42, 0.06);
   transition: transform 140ms ease, box-shadow 140ms ease;
@@ -2416,7 +2521,7 @@ body.theme-dark.section-projects .project-logo-preview img {
 
 .report-goal-description-col p {
   margin: 0;
-  color: #334155;
+  color: #243447;
   line-height: 1.55;
 }
 
@@ -2996,15 +3101,15 @@ body.theme-dark.section-reports .project-logo-preview,
 body.theme-dark.section-reports .member-photo-field,
 body.theme-dark.section-reports .member-select-panel,
 body.theme-dark.section-reports .checkbox-list-container {
-  background: rgba(20, 31, 24, 0.86);
-  border-color: rgba(75, 131, 88, 0.36);
-  color: #d7f0dd;
-  box-shadow: 0 12px 24px rgba(2, 9, 5, 0.42);
+  background: rgba(18, 30, 48, 0.9);
+  border-color: rgba(104, 128, 173, 0.38);
+  color: #d9e7ff;
+  box-shadow: 0 14px 28px rgba(1, 8, 22, 0.48);
 }
 
 body.theme-dark.section-reports .report-member-photo-card.is-active {
-  background: rgba(40, 88, 50, 0.36);
-  border-color: rgba(96, 176, 112, 0.52);
+  background: rgba(48, 75, 132, 0.38);
+  border-color: rgba(130, 162, 236, 0.56);
 }
 
 body.theme-dark.section-reports .report-member-photo-name,
@@ -3014,15 +3119,15 @@ body.theme-dark.section-reports .report-member-projects strong,
 body.theme-dark.section-reports .report-kanban-empty,
 body.theme-dark.section-reports .report-goal-activity-col small,
 body.theme-dark.section-reports .report-deletion-log-list li small {
-  color: #b5d8bc;
+  color: #b8c9ea;
 }
 
 body.theme-dark.section-reports .report-member-photo-avatar,
 body.theme-dark.section-reports .report-member-avatar,
 body.theme-dark.section-reports .member-photo-preview {
-  background: rgba(14, 22, 17, 0.9);
-  border-color: rgba(88, 138, 99, 0.42);
-  color: #c3e2ca;
+  background: rgba(12, 21, 38, 0.95);
+  border-color: rgba(113, 140, 190, 0.46);
+  color: #c7dafd;
 }
 
 body.theme-dark.section-reports .report-monthly-export-form,
@@ -3032,30 +3137,30 @@ body.theme-dark.section-reports .report-goal-create-description,
 body.theme-dark.section-reports .report-goal-grid-header,
 body.theme-dark.section-reports .report-goal-completed-details > summary,
 body.theme-dark.section-reports .report-goal-create-details > summary {
-  background: rgba(23, 41, 28, 0.84);
-  border-color: rgba(78, 136, 91, 0.36);
-  color: #d1ebd7;
+  background: rgba(20, 34, 55, 0.9);
+  border-color: rgba(105, 130, 178, 0.4);
+  color: #d7e6ff;
 }
 
 body.theme-dark.section-reports .report-kanban-overdue {
-  background: rgba(64, 26, 26, 0.82);
-  border-color: rgba(203, 85, 85, 0.44);
+  background: rgba(83, 33, 38, 0.88);
+  border-color: rgba(220, 104, 112, 0.52);
 }
 
 body.theme-dark.section-reports .report-kanban-future {
-  background: rgba(19, 49, 56, 0.86);
-  border-color: rgba(61, 148, 171, 0.44);
+  background: rgba(17, 47, 63, 0.9);
+  border-color: rgba(79, 173, 204, 0.5);
 }
 
 body.theme-dark.section-reports .report-goal-item.is-overdue {
-  background: rgba(87, 35, 35, 0.84);
-  border-color: rgba(214, 96, 96, 0.48);
+  background: rgba(102, 40, 48, 0.9);
+  border-color: rgba(232, 114, 122, 0.54);
 }
 
 body.theme-dark.section-reports .report-goal-flag-future {
-  background: rgba(16, 66, 79, 0.72);
-  border-color: rgba(66, 171, 197, 0.45);
-  color: #a8e7f5;
+  background: rgba(20, 79, 96, 0.76);
+  border-color: rgba(78, 190, 218, 0.52);
+  color: #b8f1ff;
 }
 
 body.theme-dark.section-reports .report-goal-create-details.report-goal-create-details-inline > summary {
@@ -3111,9 +3216,9 @@ body.theme-dark.section-reports .report-missed-modal-close {
 }
 
 body.theme-dark.section-reports .report-completed-filters .form-control {
-  background: rgba(12, 24, 17, 0.92);
-  color: #def1e3;
-  border-color: rgba(86, 146, 99, 0.34);
+  background: rgba(12, 23, 39, 0.95);
+  color: #e3eeff;
+  border-color: rgba(111, 143, 201, 0.4);
 }
 
 
@@ -3155,9 +3260,9 @@ body.theme-dark.section-reports .report-goal-create-details-inline > summary {
 body.theme-dark.section-reports .report-goal-project-tag,
 body.theme-dark.section-reports .report-goal-section-count,
 body.theme-dark.section-reports .report-scrum-chip {
-  background: rgba(42, 81, 50, 0.46);
-  border-color: rgba(96, 167, 111, 0.5);
-  color: #ccead3;
+  background: rgba(37, 66, 112, 0.52);
+  border-color: rgba(123, 163, 241, 0.54);
+  color: #d9e8ff;
 }
 
 body.theme-dark.section-reports .report-goal-late-badge {
@@ -3170,22 +3275,22 @@ body.theme-dark.section-reports .report-goal-create-details[open] .report-goal-c
   margin-top: 10px;
   padding: 12px;
   border-radius: 14px;
-  border: 1px solid rgba(86, 146, 99, 0.34);
-  background: rgba(14, 27, 18, 0.92);
+  border: 1px solid rgba(114, 145, 201, 0.4);
+  background: rgba(12, 24, 40, 0.94);
 }
 
 body.theme-dark.section-reports #goal_project_id,
 body.theme-dark.section-reports #monthly_report_member_id {
   color-scheme: dark;
-  background: rgba(12, 24, 17, 0.92);
-  color: #def1e3;
-  border-color: rgba(86, 146, 99, 0.34);
+  background: rgba(12, 23, 39, 0.95);
+  color: #e3eeff;
+  border-color: rgba(111, 143, 201, 0.4);
 }
 
 body.theme-dark.section-reports #goal_project_id option,
 body.theme-dark.section-reports #monthly_report_member_id option {
-  background: #152a1d;
-  color: #def1e3;
+  background: #10213a;
+  color: #e3eeff;
 }
 
 /* SECAO: home do Gestor de Atas (hero, resumo e lista recente). */

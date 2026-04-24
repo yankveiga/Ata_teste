@@ -44,13 +44,16 @@ app.get("/projects", requireAuth, (req, res) => {
         ...detailed,
         can_manage: canManageProject(req, detailed),
         can_assign_members: canAssignMembersToProject(req, detailed),
+        can_create_ata_shortcut: Boolean(req.currentUser?.is_admin || canManageProject(req, detailed)),
       };
     }).filter(Boolean);
+    const showProjectActions = projects.some((project) => project.can_create_ata_shortcut || project.can_assign_members);
 
     return render(res, "projects/list.html", {
       title: "Projetos",
       activeSection: "projects",
       projects,
+      showProjectActions,
     });
   });
 

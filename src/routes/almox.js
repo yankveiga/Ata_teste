@@ -17,7 +17,9 @@ function registerAlmoxRoutes(ctx) {
     parseId,
     database,
     renderAlmox,
+    renderUserMaintenance,
     almoxPath,
+    urlFor,
     parseInventoryPayload,
     validateInventoryPayload,
     validateCatalogName,
@@ -29,6 +31,11 @@ function registerAlmoxRoutes(ctx) {
     mapInventoryApiItem,
   } = ctx;
 
+  function userMaintenancePath(anchor = "user-access-list") {
+    const suffix = anchor ? `#${anchor}` : "";
+    return `${urlFor("user_maintenance")}${suffix}`;
+  }
+
 app.get("/almoxarifado", requireAuth, (req, res) => {
     return renderAlmox(res, {
       activeTab: req.query.tab,
@@ -38,7 +45,7 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
   // DETALHE: Inicio de bloco de rota declarada em multiplas linhas; revisar path e middlewares logo abaixo.
 
   app.post(
-    "/almoxarifado/users/create",
+    "/manutencao-usuarios/users/create",
     requireAuth,
     requireAdminPage,
     (req, res) => {
@@ -48,7 +55,6 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
         return;
       }
 
-      const activeTab = "users";
       const userFormData = {
         name: String(req.body.name || "").trim(),
         username: String(req.body.username || "").trim(),
@@ -98,8 +104,7 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
       // DETALHE: Se houver erro de validacao, encerra cedo para evitar persistencia inconsistente.
 
       if (Object.keys(userErrors).length > 0) {
-        return renderAlmox(res, {
-          activeTab,
+        return renderUserMaintenance(res, {
           userFormData,
           userErrors,
         });
@@ -117,7 +122,7 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
           "success",
           `Usuário "${createdUser.username}" criado com sucesso como ${createdUser.role === "admin" ? "administrador" : "comum"}.`,
         );
-        return res.redirect(almoxPath(activeTab));
+        return res.redirect(userMaintenancePath());
       } catch (error) {
         if (isUniqueConstraintError(error)) {
           userErrors.username = ["Já existe um usuário com esse nome de acesso."];
@@ -126,8 +131,7 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
           req.flash("danger", `Erro ao criar usuário: ${error.message}`);
         }
 
-        return renderAlmox(res, {
-          activeTab,
+        return renderUserMaintenance(res, {
           userFormData,
           userErrors,
         });
@@ -138,7 +142,7 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
   // DETALHE: Inicio de bloco de rota declarada em multiplas linhas; revisar path e middlewares logo abaixo.
 
   app.post(
-    "/almoxarifado/users/link/:id",
+    "/manutencao-usuarios/users/link/:id",
     requireAuth,
     requireAdminPage,
     (req, res) => {
@@ -148,31 +152,30 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
         return;
       }
 
-      const activeTab = "users";
       const userId = parseId(req.params.id);
       if (!userId) {
         req.flash("warning", "Usuário inválido para vinculação.");
-        return res.redirect(almoxPath(activeTab));
+        return res.redirect(userMaintenancePath());
       }
 
       const user = database.getUserById(userId);
       if (!user) {
         req.flash("warning", "Usuário não encontrado.");
-        return res.redirect(almoxPath(activeTab));
+        return res.redirect(userMaintenancePath());
       }
 
       const memberIdRaw = String(req.body.member_id || "").trim();
       const memberId = parseId(memberIdRaw);
       if (memberIdRaw && !memberId) {
         req.flash("warning", "Selecione um membro válido.");
-        return res.redirect(almoxPath(activeTab));
+        return res.redirect(userMaintenancePath());
       }
 
       if (memberId) {
         const member = database.getMemberById(memberId);
         if (!member || !member.is_active) {
           req.flash("warning", "Selecione um membro ativo válido.");
-          return res.redirect(almoxPath(activeTab));
+          return res.redirect(userMaintenancePath());
         }
       }
 
@@ -194,12 +197,12 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
         req.flash("danger", `Erro ao vincular usuário: ${error.message}`);
       }
 
-      return res.redirect(almoxPath(activeTab));
+      return res.redirect(userMaintenancePath());
     },
   );
 
   app.post(
-    "/almoxarifado/users/reset-password/:id",
+    "/manutencao-usuarios/users/reset-password/:id",
     requireAuth,
     requireAdminPage,
     (req, res) => {
@@ -207,23 +210,22 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
         return;
       }
 
-      const activeTab = "users";
       const userId = parseId(req.params.id);
       if (!userId) {
         req.flash("warning", "Usuário inválido para redefinição de senha.");
-        return res.redirect(almoxPath(activeTab));
+        return res.redirect(userMaintenancePath());
       }
 
       const user = database.getUserById(userId);
       if (!user) {
         req.flash("warning", "Usuário não encontrado.");
-        return res.redirect(almoxPath(activeTab));
+        return res.redirect(userMaintenancePath());
       }
 
       const rawPassword = String(req.body.new_password || "");
       if (!rawPassword || rawPassword.length < 6) {
         req.flash("warning", "A nova senha deve ter pelo menos 6 caracteres.");
-        return res.redirect(almoxPath(activeTab));
+        return res.redirect(userMaintenancePath());
       }
 
       try {
@@ -235,12 +237,12 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
         req.flash("danger", `Erro ao redefinir senha: ${error.message}`);
       }
 
-      return res.redirect(almoxPath(activeTab));
+      return res.redirect(userMaintenancePath());
     },
   );
 
   app.post(
-    "/almoxarifado/users/delete/:id",
+    "/manutencao-usuarios/users/delete/:id",
     requireAuth,
     requireAdminPage,
     (req, res) => {
@@ -248,16 +250,15 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
         return;
       }
 
-      const activeTab = "users";
       const userId = parseId(req.params.id);
       if (!userId) {
         req.flash("warning", "Usuário inválido para exclusão.");
-        return res.redirect(almoxPath(activeTab));
+        return res.redirect(userMaintenancePath());
       }
 
       if (req.currentUser?.id === userId) {
         req.flash("warning", "Você não pode excluir seu próprio usuário.");
-        return res.redirect(almoxPath(activeTab));
+        return res.redirect(userMaintenancePath());
       }
 
       try {
@@ -273,7 +274,7 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
           } else {
             req.flash("warning", "Não foi possível excluir o usuário.");
           }
-          return res.redirect(almoxPath(activeTab));
+          return res.redirect(userMaintenancePath());
         }
 
         req.flash("success", `Usuário @${result.user.username} excluído com sucesso.`);
@@ -282,7 +283,7 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
         req.flash("danger", `Erro ao excluir usuário: ${error.message}`);
       }
 
-      return res.redirect(almoxPath(activeTab));
+      return res.redirect(userMaintenancePath());
     },
   );
 

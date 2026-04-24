@@ -68,47 +68,17 @@
                     </a>
                 </li>
 
-                <li class="{{ 'hovered' if activeSection == 'almox' else '' }}">
-                    <a href="{{ urlFor('almox_home') }}">
-                        <span class="icon"><ion-icon name="cube-outline"></ion-icon></span>
-                        <span class="title">Almoxarifado</span>
-                    </a>
-                </li>
-
-                <li class="{{ 'hovered' if activeSection in ['home', 'atas', 'members', 'projects'] else '' }}">
-                    <a href="{{ urlFor('home') }}">
-                        <span class="icon"><ion-icon name="document-text-outline"></ion-icon></span>
-                        <span class="title">Atas</span>
-                    </a>
-                </li>
-
-                {% if currentUser.is_admin %}
-                <li class="{{ 'hovered' if activeSection == 'user_maintenance' else '' }}">
-                    <a href="{{ urlFor('user_maintenance') }}">
+                <li class="{{ 'hovered' if activeSection == 'members' else '' }}">
+                    <a href="{{ urlFor('list_members') }}">
                         <span class="icon"><ion-icon name="people-outline"></ion-icon></span>
-                        <span class="title">Manutenção Usuários</span>
-                    </a>
-                </li>
-                {% endif %}
-
-                <li class="{{ 'hovered' if activeSection == 'planner' else '' }}">
-                    <a href="{{ urlFor('planner') }}">
-                        <span class="icon"><ion-icon name="calendar-outline"></ion-icon></span>
-                        <span class="title">Planner</span>
+                        <span class="title">Membros</span>
                     </a>
                 </li>
 
-                <li class="{{ 'hovered' if activeSection == 'presenca' else '' }}">
-                    <a href="{{ urlFor('presenca') }}">
-                        <span class="icon"><ion-icon name="barcode-outline"></ion-icon></span>
-                        <span class="title">Presença</span>
-                    </a>
-                </li>
-
-                <li class="{{ 'hovered' if activeSection == 'reports' else '' }}">
-                    <a href="/relatorios">
-                        <span class="icon"><ion-icon name="clipboard-outline"></ion-icon></span>
-                        <span class="title">Relatórios</span>
+                <li class="{{ 'hovered' if activeSection == 'projects' else '' }}">
+                    <a href="{{ urlFor('list_projects') }}">
+                        <span class="icon"><ion-icon name="layers-outline"></ion-icon></span>
+                        <span class="title">Projetos</span>
                     </a>
                 </li>
 

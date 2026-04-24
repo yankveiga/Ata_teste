@@ -18,23 +18,23 @@
         {# SECAO: grade de cards de acesso aos modulos disponiveis para o usuario. #}
 
         <section class="service-grid">
-            {# SECAO: card do modulo Gestor de Atas. #}
+            {# SECAO: card do modulo Relatorios Semanais. #}
 
-            <article class="service-card service-card-atas">
+            <article class="service-card service-card-reports">
                 <div class="service-card-icon">
-                    <ion-icon name="document-text-outline"></ion-icon>
+                    <ion-icon name="clipboard-outline"></ion-icon>
                 </div>
-                <h2>Gestor de Atas</h2>
+                <h2>Relatórios Semanais</h2>
                 <p>
-                    Crie atas, baixe PDFs, acompanhe o histórico recente e organize as reuniões dos projetos.
+                    Registre atividades por projeto e acompanhe a evolução dos membros com foco quinzenal.
                 </p>
                 <ul class="service-feature-list">
-                    <li>Criar novas atas e baixar PDFs</li>
-                    <li>Consultar membros e projetos vinculados</li>
-                    <li>Gerenciar cadastros administrativos{% if not currentUser.is_admin %} bloqueado para seu perfil{% endif %}</li>
+                    <li>Quadro de metas por membro e projeto</li>
+                    <li>Histórico de tarefas executadas e exclusões</li>
+                    <li>Acesso ao Planner pela aba de Relatórios</li>
                 </ul>
-                <a href="{{ urlFor('home') }}" class="service-card-link">
-                    Abrir Gestor de Atas
+                <a href="/relatorios" class="service-card-link">
+                    Abrir Relatórios
                 </a>
             </article>
 
@@ -51,30 +51,30 @@
                 <ul class="service-feature-list">
                     <li>Consultar estoque e histórico de retiradas</li>
                     <li>Retirar itens com o usuário logado</li>
-                    <li>Cadastrar usuários e produtos{% if not currentUser.is_admin %} bloqueado para seu perfil{% endif %}</li>
+                    <li>Gestão administrativa disponível para administradores</li>
                 </ul>
                 <a href="{{ urlFor('almox_home') }}" class="service-card-link">
                     Abrir Almoxarifado
                 </a>
             </article>
 
-            {# SECAO: card do modulo Planner. #}
+            {# SECAO: card do modulo Gestor de Atas. #}
 
-            <article class="service-card service-card-planner">
+            <article class="service-card service-card-atas">
                 <div class="service-card-icon">
-                    <ion-icon name="calendar-outline"></ion-icon>
+                    <ion-icon name="document-text-outline"></ion-icon>
                 </div>
-                <h2>Planner</h2>
+                <h2>Gestor de Atas</h2>
                 <p>
-                    Organize prioridades da semana, blocos de foco e próximos passos em um painel de planejamento.
+                    Crie atas, baixe PDFs e acompanhe o histórico recente das reuniões por projeto.
                 </p>
                 <ul class="service-feature-list">
-                    <li>Visão semanal de tarefas</li>
-                    <li>Espaço para prioridades do time</li>
-                    <li>Base para planejamento pessoal e por projeto</li>
+                    <li>Criar novas atas e baixar PDFs</li>
+                    <li>Consultar membros e projetos vinculados</li>
+                    <li>Gerenciar cadastros em Membros e Projetos</li>
                 </ul>
-                <a href="{{ urlFor('planner') }}" class="service-card-link">
-                    Abrir Planner
+                <a href="{{ urlFor('home') }}" class="service-card-link">
+                    Abrir Gestor de Atas
                 </a>
             </article>
 
@@ -98,25 +98,6 @@
                 </a>
             </article>
 
-            {# SECAO: card do modulo Relatorios Semanais. #}
-
-            <article class="service-card service-card-reports">
-                <div class="service-card-icon">
-                    <ion-icon name="clipboard-outline"></ion-icon>
-                </div>
-                <h2>Relatórios Semanais</h2>
-                <p>
-                    Registre o que foi feito em cada projeto e acompanhe a evolução dos membros ao longo das semanas.
-                </p>
-                <ul class="service-feature-list">
-                    <li>Registro por semana e por projeto</li>
-                    <li>Visualização pública por membro</li>
-                    <li>Edição e exclusão liberadas para coordenadores</li>
-                </ul>
-                <a href="/relatorios" class="service-card-link">
-                    Abrir Relatórios
-                </a>
-            </article>
         </section>
     </div>
 {% endblock %}

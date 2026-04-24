@@ -5,6 +5,21 @@
 {% extends "base.html" %}
 
 {% block content %}
+    <nav class="module-tab-nav report-tabs-nav" aria-label="Navegação de Relatórios">
+        <a id="planner_back_members" href="/relatorios#report-member-selector" class="module-tab-link">
+            <ion-icon name="people-outline"></ion-icon>
+            Membros
+        </a>
+        <a id="planner_back_goals" href="/relatorios#report-goals-panel" class="module-tab-link">
+            <ion-icon name="checkbox-outline"></ion-icon>
+            Metas da Quinzena
+        </a>
+        <a href="{{ plannerCurrentLink }}" class="module-tab-link is-active">
+            <ion-icon name="calendar-outline"></ion-icon>
+            Planner
+        </a>
+    </nav>
+
     <div class="planner-ui-shell">
         <div class="planner-ui-toolbar content-panel">
             <div class="planner-ui-toolbar-left">
@@ -19,11 +34,11 @@
             </div>
             <div class="planner-ui-toolbar-right">
                 <a
-                    href="{{ urlFor('planner') }}?view=project{% if selectedProject %}&project_id={{ selectedProject.id }}{% endif %}&month={{ plannerMonth }}&day={{ selectedDay }}"
+                    href="{{ urlFor('planner') }}?view=project{% if selectedProject %}&project_id={{ selectedProject.id }}{% endif %}&month={{ plannerMonth }}&day={{ selectedDay }}&return_anchor={{ plannerReturnAnchor }}"
                     class="planner-ui-pill {{ 'is-active' if plannerViewMode == 'project' else '' }}"
                 >Projeto</a>
                 <a
-                    href="{{ urlFor('planner') }}?view=member{% if selectedMember %}&member_id={{ selectedMember.id }}{% endif %}&month={{ plannerMonth }}&day={{ selectedDay }}"
+                    href="{{ urlFor('planner') }}?view=member{% if selectedMember %}&member_id={{ selectedMember.id }}{% endif %}&month={{ plannerMonth }}&day={{ selectedDay }}&return_anchor={{ plannerReturnAnchor }}"
                     class="planner-ui-pill {{ 'is-active' if plannerViewMode == 'member' else '' }}"
                 >Individual</a>
             </div>
@@ -36,6 +51,7 @@
                         <input type="hidden" name="view" value="project">
                         <input type="hidden" name="month" value="{{ plannerMonth }}">
                         <input type="hidden" name="day" value="{{ selectedDay }}">
+                        <input type="hidden" name="return_anchor" value="{{ plannerReturnAnchor }}">
                         <label class="sr-only" for="planner_project_id">Projeto</label>
                         <select id="planner_project_id" name="project_id" class="form-control planner-mini-select" onchange="this.form.submit()">
                             {% for project in projectOptions %}
@@ -52,6 +68,7 @@
                         <input type="hidden" name="view" value="member">
                         <input type="hidden" name="month" value="{{ plannerMonth }}">
                         <input type="hidden" name="day" value="{{ selectedDay }}">
+                        <input type="hidden" name="return_anchor" value="{{ plannerReturnAnchor }}">
                         <label class="sr-only" for="planner_member_id">Membro</label>
                         <select id="planner_member_id" name="member_id" class="form-control planner-mini-select planner-mini-select-member" onchange="this.form.submit()">
                             {% for member in memberOptions %}
@@ -88,6 +105,7 @@
                                 <input type="hidden" name="return_member_id" value="{{ selectedMember.id if selectedMember else '' }}">
                                 <input type="hidden" name="return_month" value="{{ plannerMonth }}">
                                 <input type="hidden" name="return_day" value="{{ selectedDay }}">
+                                <input type="hidden" name="return_anchor" value="{{ plannerReturnAnchor }}">
 
                                 <section class="planner-create-section planner-create-section-essential">
                                     <h4>Essenciais</h4>
@@ -271,12 +289,13 @@
                             {% if selectedProject %}<input type="hidden" name="project_id" value="{{ selectedProject.id }}">{% endif %}
                             {% if selectedMember %}<input type="hidden" name="member_id" value="{{ selectedMember.id }}">{% endif %}
                             <input type="hidden" name="day" value="{{ selectedDay }}">
+                            <input type="hidden" name="return_anchor" value="{{ plannerReturnAnchor }}">
                             <label for="planner_month_input" class="sr-only">Mês</label>
                             <input id="planner_month_input" class="form-control planner-month-input" type="month" name="month" value="{{ plannerMonth }}" onchange="this.form.submit()">
                         </form>
-                        <a href="{{ urlFor('planner') }}?view={{ plannerViewMode }}{% if selectedProject %}&project_id={{ selectedProject.id }}{% endif %}{% if selectedMember %}&member_id={{ selectedMember.id }}{% endif %}&month={{ currentMonthKey }}&day={{ todayDateKey }}" class="planner-calendar-today-btn">Hoje</a>
-                        <a href="{{ urlFor('planner') }}?view={{ plannerViewMode }}{% if selectedProject %}&project_id={{ selectedProject.id }}{% endif %}{% if selectedMember %}&member_id={{ selectedMember.id }}{% endif %}&month={{ prevMonthKey }}&day={{ selectedDay }}" class="planner-calendar-nav-btn" aria-label="Mês anterior">‹</a>
-                        <a href="{{ urlFor('planner') }}?view={{ plannerViewMode }}{% if selectedProject %}&project_id={{ selectedProject.id }}{% endif %}{% if selectedMember %}&member_id={{ selectedMember.id }}{% endif %}&month={{ nextMonthKey }}&day={{ selectedDay }}" class="planner-calendar-nav-btn" aria-label="Próximo mês">›</a>
+                        <a href="{{ urlFor('planner') }}?view={{ plannerViewMode }}{% if selectedProject %}&project_id={{ selectedProject.id }}{% endif %}{% if selectedMember %}&member_id={{ selectedMember.id }}{% endif %}&month={{ currentMonthKey }}&day={{ todayDateKey }}&return_anchor={{ plannerReturnAnchor }}" class="planner-calendar-today-btn">Hoje</a>
+                        <a href="{{ urlFor('planner') }}?view={{ plannerViewMode }}{% if selectedProject %}&project_id={{ selectedProject.id }}{% endif %}{% if selectedMember %}&member_id={{ selectedMember.id }}{% endif %}&month={{ prevMonthKey }}&day={{ selectedDay }}&return_anchor={{ plannerReturnAnchor }}" class="planner-calendar-nav-btn" aria-label="Mês anterior">‹</a>
+                        <a href="{{ urlFor('planner') }}?view={{ plannerViewMode }}{% if selectedProject %}&project_id={{ selectedProject.id }}{% endif %}{% if selectedMember %}&member_id={{ selectedMember.id }}{% endif %}&month={{ nextMonthKey }}&day={{ selectedDay }}&return_anchor={{ plannerReturnAnchor }}" class="planner-calendar-nav-btn" aria-label="Próximo mês">›</a>
                     </div>
                 </header>
 
@@ -287,7 +306,7 @@
 
                     {% for cell in calendarCells %}
                         <a
-                            href="{{ urlFor('planner') }}?view={{ plannerViewMode }}{% if selectedProject %}&project_id={{ selectedProject.id }}{% endif %}{% if selectedMember %}&member_id={{ selectedMember.id }}{% endif %}&month={{ plannerMonth }}&day={{ cell.dateKey }}"
+                            href="{{ urlFor('planner') }}?view={{ plannerViewMode }}{% if selectedProject %}&project_id={{ selectedProject.id }}{% endif %}{% if selectedMember %}&member_id={{ selectedMember.id }}{% endif %}&month={{ plannerMonth }}&day={{ cell.dateKey }}&return_anchor={{ plannerReturnAnchor }}"
                             class="planner-calendar-cell {{ 'is-outside' if not cell.inCurrentMonth else '' }} {{ 'is-today' if cell.isToday else '' }} {{ 'is-selected' if selectedDay == cell.dateKey else '' }}"
                         >
                             <strong>{{ cell.dayNumber }}</strong>
@@ -347,6 +366,7 @@
                                         <input type="hidden" name="return_member_id" value="{{ selectedMember.id if selectedMember else '' }}">
                                         <input type="hidden" name="return_month" value="{{ plannerMonth }}">
                                         <input type="hidden" name="return_day" value="{{ selectedDay }}">
+                                        <input type="hidden" name="return_anchor" value="{{ plannerReturnAnchor }}">
                                         <label for="planner_task_status_{{ task.id }}" class="sr-only">Status</label>
                                         <select id="planner_task_status_{{ task.id }}" name="status" class="form-control planner-side-status-select" onchange="this.form.submit()">
                                             {% for option in plannerStatusOptions %}
@@ -363,6 +383,7 @@
                                         <input type="hidden" name="return_member_id" value="{{ selectedMember.id if selectedMember else '' }}">
                                         <input type="hidden" name="return_month" value="{{ plannerMonth }}">
                                         <input type="hidden" name="return_day" value="{{ selectedDay }}">
+                                        <input type="hidden" name="return_anchor" value="{{ plannerReturnAnchor }}">
                                         <button type="submit" class="planner-side-task-delete">Excluir</button>
                                     </form>
                                 {% endif %}
@@ -374,6 +395,7 @@
                                         <input type="hidden" name="return_member_id" value="{{ selectedMember.id if selectedMember else '' }}">
                                         <input type="hidden" name="return_month" value="{{ plannerMonth }}">
                                         <input type="hidden" name="return_day" value="{{ selectedDay }}">
+                                        <input type="hidden" name="return_anchor" value="{{ plannerReturnAnchor }}">
                                         <label class="planner-side-task-complete">
                                             <input type="checkbox" onchange="this.form.requestSubmit()">
                                             <span>Concluir</span>
@@ -407,6 +429,21 @@
             const createClose = document.getElementById('planner_create_close');
             const createCloseX = document.getElementById('planner_create_close_x');
             const createForm = createPopover ? createPopover.querySelector('.planner-create-form') : null;
+            const backMembersLink = document.getElementById('planner_back_members');
+            const backGoalsLink = document.getElementById('planner_back_goals');
+
+            function bindBackLink(link) {
+                if (!link) {
+                    return;
+                }
+                link.addEventListener('click', function(event) {
+                    event.preventDefault();
+                    window.location.assign(link.href);
+                });
+            }
+
+            bindBackLink(backMembersLink);
+            bindBackLink(backGoalsLink);
 
             function ensurePlannerPortal() {
                 if (!createPopover || !createBackdrop || !document.body) {

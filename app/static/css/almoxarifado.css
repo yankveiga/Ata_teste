@@ -13,11 +13,11 @@
   --almox-accent-strong: #e28700;
   --almox-accent-soft: #fff0cc;
   --almox-accent-border: rgba(255, 153, 0, 0.24);
-  --almox-surface: rgba(255, 250, 247, 0.84);
+  --almox-surface: rgba(255, 251, 247, 0.92);
   --almox-surface-alt: #fff6f1;
-  --almox-text: #3a2611;
-  --almox-muted: #7a6148;
-  --almox-line: rgba(138, 47, 22, 0.12);
+  --almox-text: #2f1f11;
+  --almox-muted: #604b38;
+  --almox-line: rgba(138, 47, 22, 0.18);
   display: grid;
   gap: 24px;
 }
@@ -222,7 +222,7 @@
   font-size: 0.83rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: #7a7065;
+  color: #5f5448;
 }
 
 .table-meta {
@@ -512,11 +512,11 @@ body.theme-dark.section-almox .almox-page {
   --almox-accent-strong: #ffb24d;
   --almox-accent-soft: rgba(255, 163, 46, 0.2);
   --almox-accent-border: rgba(255, 166, 60, 0.36);
-  --almox-surface: rgba(16, 24, 40, 0.94);
-  --almox-surface-alt: rgba(10, 16, 30, 0.96);
-  --almox-text: #e7edff;
-  --almox-muted: #b4c3e6;
-  --almox-line: rgba(115, 132, 177, 0.32);
+  --almox-surface: rgba(16, 25, 42, 0.96);
+  --almox-surface-alt: rgba(11, 18, 33, 0.98);
+  --almox-text: #edf3ff;
+  --almox-muted: #becdea;
+  --almox-line: rgba(121, 141, 185, 0.38);
 }
 
 body.theme-dark.section-almox .almox-header {

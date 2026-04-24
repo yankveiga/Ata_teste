@@ -12,6 +12,7 @@ function buildPlannerQuery({
   memberId = null,
   month = null,
   day = null,
+  returnAnchor = null,
 } = {}) {
   const params = new URLSearchParams();
   params.set("view", view === "project" ? "project" : "member");
@@ -27,6 +28,9 @@ function buildPlannerQuery({
   if (day) {
     params.set("day", String(day));
   }
+  if (returnAnchor === "report-member-selector" || returnAnchor === "report-goals-panel") {
+    params.set("return_anchor", returnAnchor);
+  }
   const text = params.toString();
   return text ? `?${text}` : "";
 }
@@ -40,6 +44,7 @@ function registerAuthRoutes(ctx) {
     urlFor,
     render,
     renderLogin,
+    renderUserMaintenance,
     requireAuth,
     requireAdminPage,
     canManageProject,
@@ -293,23 +298,7 @@ app.get("/services", requireAuth, (req, res) => {
   // DETALHE: Rota GET /manutencao-usuarios: hub administrativo para membros, projetos e usuarios de acesso.
 
   app.get("/manutencao-usuarios", requireAuth, requireAdminPage, (req, res) => {
-    const users = database.listUsers();
-    const activeMembers = database.listActiveMembers();
-    const projects = database.listProjectsWithMembers();
-    const adminUsers = users.filter((user) => user.is_admin);
-    const commonUsers = users.filter((user) => !user.is_admin);
-
-    return render(res, "users_maintenance/index.html", {
-      title: "Manutenção de Usuários",
-      activeSection: "user_maintenance",
-      summary: {
-        usersTotal: users.length,
-        adminsTotal: adminUsers.length,
-        commonTotal: commonUsers.length,
-        membersTotal: activeMembers.length,
-        projectsTotal: projects.length,
-      },
-    });
+    return renderUserMaintenance(res);
   });
 
   // DETALHE: Rota GET /home: consulta dados necessarios e monta resposta (HTML/JSON) para a tela solicitada.
@@ -345,6 +334,10 @@ app.get("/services", requireAuth, (req, res) => {
     const isAdmin = Boolean(req.currentUser?.is_admin);
     const requestedView = String(req.query.view || "").trim().toLowerCase();
     const viewMode = requestedView === "project" ? "project" : "member";
+    const requestedReturnAnchor = String(req.query.return_anchor || "").trim();
+    const plannerReturnAnchor = requestedReturnAnchor === "report-member-selector"
+      ? "report-member-selector"
+      : "report-goals-panel";
     const accessibleProjects = listAccessibleProjects(req);
     const accessibleProjectIds = new Set(accessibleProjects.map((project) => project.id));
     const requestedProjectId = parseId(req.query.project_id);
@@ -557,6 +550,23 @@ app.get("/services", requireAuth, (req, res) => {
       .filter((memberId) => createMemberIds.has(memberId));
     formData.recurrenceMemberIds = recurrenceMemberIds.map((memberId) => String(memberId));
 
+    const reportParams = new URLSearchParams();
+    if (selectedMemberId) {
+      reportParams.set("member_id", String(selectedMemberId));
+    }
+    if (selectedProjectId) {
+      reportParams.set("project_id", String(selectedProjectId));
+    }
+    const reportQuery = reportParams.toString() ? `?${reportParams.toString()}` : "";
+    const plannerCurrentLink = `${urlFor("planner")}${buildPlannerQuery({
+      view: effectiveViewMode,
+      projectId: selectedProjectId,
+      memberId: selectedMemberId,
+      month: plannerMonth,
+      day: selectedDay,
+      returnAnchor: plannerReturnAnchor,
+    })}`;
+
     return render(res, "planner/index.html", {
       title: "Planner",
       activeSection: "planner",
@@ -597,7 +607,13 @@ app.get("/services", requireAuth, (req, res) => {
         memberId: selectedMemberId,
         month: plannerMonth,
         day: selectedDay,
+        returnAnchor: plannerReturnAnchor,
       }),
+      reportMemberLink: `/relatorios${reportQuery}#report-member-selector`,
+      reportGoalsLink: `/relatorios${reportQuery}#report-goals-panel`,
+      reportCloseLink: `/relatorios${reportQuery}#${plannerReturnAnchor}`,
+      plannerReturnAnchor,
+      plannerCurrentLink,
     });
   });
 
@@ -615,6 +631,7 @@ app.get("/services", requireAuth, (req, res) => {
       memberId: parseId(req.body.return_member_id) || currentMember?.id || null,
       month: String(req.body.return_month || ""),
       day: String(req.body.return_day || ""),
+      returnAnchor: String(req.body.return_anchor || ""),
     });
     const formData = {
       projectId: String(req.body.project_id || ""),
@@ -742,6 +759,7 @@ app.get("/services", requireAuth, (req, res) => {
           memberId: assignedMemberId,
           month: String(req.body.return_month || ""),
           day: String(req.body.return_day || ""),
+          returnAnchor: String(req.body.return_anchor || ""),
         })}`,
       );
     } catch (error) {
@@ -765,6 +783,7 @@ app.get("/services", requireAuth, (req, res) => {
       memberId: parseId(req.body.return_member_id),
       month: String(req.body.return_month || ""),
       day: String(req.body.return_day || ""),
+      returnAnchor: String(req.body.return_anchor || ""),
     });
 
     if (!taskId) {
@@ -889,6 +908,7 @@ app.get("/services", requireAuth, (req, res) => {
       memberId: parseId(req.body.return_member_id),
       month: String(req.body.return_month || ""),
       day: String(req.body.return_day || ""),
+      returnAnchor: String(req.body.return_anchor || ""),
     });
     const nextStatus = normalizePlannerStatus(req.body.status);
 
@@ -969,6 +989,7 @@ app.get("/services", requireAuth, (req, res) => {
       memberId: parseId(req.body.return_member_id),
       month: String(req.body.return_month || ""),
       day: String(req.body.return_day || ""),
+      returnAnchor: String(req.body.return_anchor || ""),
     });
 
     if (!taskId) {
