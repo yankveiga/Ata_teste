@@ -40,16 +40,16 @@
 </head>
 {# SECAO: estrutura principal da pagina e escolha entre shell autenticado e modo visitante. #}
 
-<body class="{% if currentUser %}portal-shell section-{{ activeSection or 'services' }}{% else %}guest-shell{% endif %}">
+<body class="{% if currentUser %}portal-shell section-{{ activeSection or 'reports' }}{% if embeddedLayout %} embedded-shell{% endif %}{% else %}guest-shell{% endif %}">
     <a href="#main-content" class="skip-link">Pular para o conteúdo principal</a>
-    {% if currentUser %}
+    {% if currentUser and not embeddedLayout %}
     <div class="container">
         {# SECAO: navegacao lateral com atalhos por modulo e controle de perfil. #}
 
         <div class="navigation">
             <ul>
-                <li>
-                    <a href="{{ urlFor('services') }}">
+                <li class="nav-brand">
+                    <div class="nav-brand-inner" role="presentation">
                         <span class="icon">
                             <img
                                 src="{{ urlFor('static', { filename: 'uploads/arvorepetvetorizada.svg' }) }}"
@@ -58,13 +58,27 @@
                             >
                         </span>
                         <span class="title">Portal PET C3</span>
+                    </div>
+                </li>
+
+                <li class="{{ 'hovered' if activeSection == 'almox' else '' }}">
+                    <a href="{{ urlFor('almox_home') }}">
+                        <span class="icon"><ion-icon name="cube-outline"></ion-icon></span>
+                        <span class="title">Almoxarifado</span>
                     </a>
                 </li>
 
-                <li class="{{ 'hovered' if activeSection == 'services' else '' }}">
-                    <a href="{{ urlFor('services') }}">
-                        <span class="icon"><ion-icon name="home"></ion-icon></span>
-                        <span class="title">Início</span>
+                <li class="{{ 'hovered' if activeSection == 'atas' or activeSection == 'home' else '' }}">
+                    <a href="{{ urlFor('home') }}">
+                        <span class="icon"><ion-icon name="reader-outline"></ion-icon></span>
+                        <span class="title">Atas</span>
+                    </a>
+                </li>
+
+                <li class="{{ 'hovered' if activeSection == 'reports' else '' }}">
+                    <a href="{{ urlFor('relatorios') }}">
+                        <span class="icon"><ion-icon name="document-text-outline"></ion-icon></span>
+                        <span class="title">Relatórios</span>
                     </a>
                 </li>
 
@@ -77,8 +91,15 @@
 
                 <li class="{{ 'hovered' if activeSection == 'projects' else '' }}">
                     <a href="{{ urlFor('list_projects') }}">
-                        <span class="icon"><ion-icon name="layers-outline"></ion-icon></span>
+                        <span class="icon"><ion-icon name="folder-open-outline"></ion-icon></span>
                         <span class="title">Projetos</span>
+                    </a>
+                </li>
+
+                <li class="{{ 'hovered' if activeSection == 'presenca' else '' }}">
+                    <a href="{{ urlFor('presenca') }}">
+                        <span class="icon"><ion-icon name="barcode-outline"></ion-icon></span>
+                        <span class="title">Presença</span>
                     </a>
                 </li>
 
@@ -112,11 +133,10 @@
                     <ion-icon name="menu-outline"></ion-icon>
                 </div>
 
-                <div class="user-info-topbar">
-                    {{ currentUser.name }} · {{ 'Administrador' if currentUser.is_admin else 'Comum' }}
-                </div>
             </div>
             <main id="main-content" class="content-wrapper" tabindex="-1">
+    {% elif currentUser and embeddedLayout %}
+    <main id="main-content" class="content-wrapper embedded-content" tabindex="-1">
     {% else %}
     <main id="main-content" class="content-wrapper guest-content" tabindex="-1">
     {% endif %}
@@ -131,11 +151,14 @@
         {% block content %}{% endblock %}
     </main>
 
-    {% if currentUser %}
+    {% if currentUser and not embeddedLayout %}
         </div>
     </div>
 
     <script src="{{ urlFor('static', { filename: 'js/admin_dashboard_script.js' }) }}"></script>
+    {% endif %}
+
+    {% if currentUser %}
     <script>
         (function() {
             var STORAGE_KEY = 'portal_theme_mode';

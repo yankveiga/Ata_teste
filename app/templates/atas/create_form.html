@@ -9,10 +9,6 @@
 {% set activeAtaTab = 'create' %}
 
 {% block content %}
-    {% include "partials/atas_tabs.html" %}
-
-    {# SECAO: cabecalho da tela de criacao de ata com contexto do projeto selecionado. #}
-
     <div class="page-header page-header-split">
         <div>
         <h1>{{ title if title else "Criar Nova Ata" }}</h1>
@@ -22,6 +18,9 @@
         </div>
         <span class="page-badge">Registro Formal</span>
     </div>
+    {% include "partials/atas_tabs.html" %}
+
+    {# SECAO: cabecalho da tela de criacao de ata com contexto do projeto selecionado. #}
 
     <div class="content-panel portal-form-card">
         <div class="panel-body">

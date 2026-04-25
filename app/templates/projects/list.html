@@ -16,15 +16,13 @@
         <span class="page-badge">{{ projects.length }} cadastrados</span>
     </div>
 
-    {# SECAO: CTA de criacao de projeto restrita a administradores. #}
+    {# SECAO: CTA de criacao de projeto para usuarios autenticados. #}
 
-    {% if currentUser.is_admin %}
-        <div class="page-actions">
-            <a href="{{ urlFor('add_project') }}" class="btn-primary-action">
-                <ion-icon name="add-circle-outline"></ion-icon> Adicionar Projeto
-            </a>
-        </div>
-    {% endif %}
+    <div class="page-actions">
+        <a href="{{ urlFor('add_project') }}" class="btn-primary-action">
+            <ion-icon name="add-circle-outline"></ion-icon> Adicionar Projeto
+        </a>
+    </div>
 
     {# SECAO: tabela de projetos com logo, membros, coordenacao e acoes. #}
 
@@ -105,11 +103,7 @@
                 </table>
             {% else %}
                 <p class="ui-empty-state">
-                    {% if currentUser.is_admin %}
-                        Nenhum projeto cadastrado ainda. <a href="{{ urlFor('add_project') }}" class="inline-link-strong">Adicione o primeiro.</a>
-                    {% else %}
-                        Nenhum projeto cadastrado ainda.
-                    {% endif %}
+                    Nenhum projeto cadastrado ainda. <a href="{{ urlFor('add_project') }}" class="inline-link-strong">Adicione o primeiro.</a>
                 </p>
             {% endif %}
         </div>

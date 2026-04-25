@@ -5,6 +5,7 @@
 {% extends "base.html" %}
 
 {% block content %}
+    {% if not embeddedLayout %}
     <nav class="module-tab-nav report-tabs-nav" aria-label="Navegação de Relatórios">
         <a id="planner_back_members" href="/relatorios#report-member-selector" class="module-tab-link">
             <ion-icon name="people-outline"></ion-icon>
@@ -19,6 +20,7 @@
             Planner
         </a>
     </nav>
+    {% endif %}
 
     <div class="planner-ui-shell">
         <div class="planner-ui-toolbar content-panel">
@@ -34,11 +36,11 @@
             </div>
             <div class="planner-ui-toolbar-right">
                 <a
-                    href="{{ urlFor('planner') }}?view=project{% if selectedProject %}&project_id={{ selectedProject.id }}{% endif %}&month={{ plannerMonth }}&day={{ selectedDay }}&return_anchor={{ plannerReturnAnchor }}"
+                    href="{{ urlFor('planner') }}?view=project{% if selectedProject %}&project_id={{ selectedProject.id }}{% endif %}&month={{ plannerMonth }}&day={{ selectedDay }}&return_anchor={{ plannerReturnAnchor }}{% if hidePlannerCreate %}&hide_create=1{% endif %}{% if embeddedLayout %}&embedded=1{% endif %}"
                     class="planner-ui-pill {{ 'is-active' if plannerViewMode == 'project' else '' }}"
                 >Projeto</a>
                 <a
-                    href="{{ urlFor('planner') }}?view=member{% if selectedMember %}&member_id={{ selectedMember.id }}{% endif %}&month={{ plannerMonth }}&day={{ selectedDay }}&return_anchor={{ plannerReturnAnchor }}"
+                    href="{{ urlFor('planner') }}?view=member{% if selectedMember %}&member_id={{ selectedMember.id }}{% endif %}&month={{ plannerMonth }}&day={{ selectedDay }}&return_anchor={{ plannerReturnAnchor }}{% if hidePlannerCreate %}&hide_create=1{% endif %}{% if embeddedLayout %}&embedded=1{% endif %}"
                     class="planner-ui-pill {{ 'is-active' if plannerViewMode == 'member' else '' }}"
                 >Individual</a>
             </div>
@@ -52,6 +54,8 @@
                         <input type="hidden" name="month" value="{{ plannerMonth }}">
                         <input type="hidden" name="day" value="{{ selectedDay }}">
                         <input type="hidden" name="return_anchor" value="{{ plannerReturnAnchor }}">
+                        {% if hidePlannerCreate %}<input type="hidden" name="hide_create" value="1">{% endif %}
+                        {% if embeddedLayout %}<input type="hidden" name="embedded" value="1">{% endif %}
                         <label class="sr-only" for="planner_project_id">Projeto</label>
                         <select id="planner_project_id" name="project_id" class="form-control planner-mini-select" onchange="this.form.submit()">
                             {% for project in projectOptions %}
@@ -69,6 +73,8 @@
                         <input type="hidden" name="month" value="{{ plannerMonth }}">
                         <input type="hidden" name="day" value="{{ selectedDay }}">
                         <input type="hidden" name="return_anchor" value="{{ plannerReturnAnchor }}">
+                        {% if hidePlannerCreate %}<input type="hidden" name="hide_create" value="1">{% endif %}
+                        {% if embeddedLayout %}<input type="hidden" name="embedded" value="1">{% endif %}
                         <label class="sr-only" for="planner_member_id">Membro</label>
                         <select id="planner_member_id" name="member_id" class="form-control planner-mini-select planner-mini-select-member" onchange="this.form.submit()">
                             {% for member in memberOptions %}
@@ -80,7 +86,7 @@
                     </form>
                 {% endif %}
 
-                {% if canCreatePlannerTask %}
+                {% if canCreatePlannerTask and not hidePlannerCreate %}
                     <div class="planner-create-compact {% if plannerFormErrors.projectId or plannerFormErrors.memberId or plannerFormErrors.title or plannerFormErrors.dueAt %}is-open{% endif %}" id="planner_create_box">
                         <button type="button" class="planner-create-backdrop" id="planner_create_backdrop" {% if not (plannerFormErrors.projectId or plannerFormErrors.memberId or plannerFormErrors.title or plannerFormErrors.dueAt) %}hidden{% endif %} aria-label="Fechar criação de tarefa"></button>
                         <button
@@ -106,6 +112,8 @@
                                 <input type="hidden" name="return_month" value="{{ plannerMonth }}">
                                 <input type="hidden" name="return_day" value="{{ selectedDay }}">
                                 <input type="hidden" name="return_anchor" value="{{ plannerReturnAnchor }}">
+                                <input type="hidden" name="return_hide_create" value="{{ '1' if hidePlannerCreate else '0' }}">
+                                <input type="hidden" name="return_embedded" value="{{ '1' if embeddedLayout else '0' }}">
 
                                 <section class="planner-create-section planner-create-section-essential">
                                     <h4>Essenciais</h4>
@@ -118,6 +126,7 @@
                                                 class="form-control"
                                                 data-selected-member-id="{{ plannerFormData.memberId }}"
                                                 data-current-member-id="{{ currentMember.id if currentMember else '' }}"
+                                                data-current-member-name="{{ currentMember.name if currentMember else '' }}"
                                             >
                                                 <option value="">Selecione</option>
                                                 {% for project in createProjectOptions %}
@@ -137,7 +146,7 @@
                                             {% endif %}
                                         </div>
 
-                                        <div class="form-group">
+                                        <div class="form-group" id="planner_member_group_select">
                                             <label class="form-label" for="planner_form_member_id">Membro do Projeto</label>
                                             <select id="planner_form_member_id" name="member_id" class="form-control">
                                                 <option value="">Selecione</option>
@@ -152,6 +161,12 @@
                                                     {% for error in plannerFormErrors.memberId %}<li>{{ error }}</li>{% endfor %}
                                                 </ul>
                                             {% endif %}
+                                        </div>
+
+                                        <div class="form-group" id="planner_member_group_fixed" hidden>
+                                            <label class="form-label" for="planner_form_member_name_fixed">Membro do Projeto</label>
+                                            <input id="planner_form_member_name_fixed" type="text" class="form-control" readonly value="">
+                                            <input id="planner_form_member_id_fixed" type="hidden" name="member_id" value="" disabled>
                                         </div>
 
                                         <div class="form-group">
@@ -290,12 +305,14 @@
                             {% if selectedMember %}<input type="hidden" name="member_id" value="{{ selectedMember.id }}">{% endif %}
                             <input type="hidden" name="day" value="{{ selectedDay }}">
                             <input type="hidden" name="return_anchor" value="{{ plannerReturnAnchor }}">
+                            {% if hidePlannerCreate %}<input type="hidden" name="hide_create" value="1">{% endif %}
+                            {% if embeddedLayout %}<input type="hidden" name="embedded" value="1">{% endif %}
                             <label for="planner_month_input" class="sr-only">Mês</label>
                             <input id="planner_month_input" class="form-control planner-month-input" type="month" name="month" value="{{ plannerMonth }}" onchange="this.form.submit()">
                         </form>
-                        <a href="{{ urlFor('planner') }}?view={{ plannerViewMode }}{% if selectedProject %}&project_id={{ selectedProject.id }}{% endif %}{% if selectedMember %}&member_id={{ selectedMember.id }}{% endif %}&month={{ currentMonthKey }}&day={{ todayDateKey }}&return_anchor={{ plannerReturnAnchor }}" class="planner-calendar-today-btn">Hoje</a>
-                        <a href="{{ urlFor('planner') }}?view={{ plannerViewMode }}{% if selectedProject %}&project_id={{ selectedProject.id }}{% endif %}{% if selectedMember %}&member_id={{ selectedMember.id }}{% endif %}&month={{ prevMonthKey }}&day={{ selectedDay }}&return_anchor={{ plannerReturnAnchor }}" class="planner-calendar-nav-btn" aria-label="Mês anterior">‹</a>
-                        <a href="{{ urlFor('planner') }}?view={{ plannerViewMode }}{% if selectedProject %}&project_id={{ selectedProject.id }}{% endif %}{% if selectedMember %}&member_id={{ selectedMember.id }}{% endif %}&month={{ nextMonthKey }}&day={{ selectedDay }}&return_anchor={{ plannerReturnAnchor }}" class="planner-calendar-nav-btn" aria-label="Próximo mês">›</a>
+                        <a href="{{ urlFor('planner') }}?view={{ plannerViewMode }}{% if selectedProject %}&project_id={{ selectedProject.id }}{% endif %}{% if selectedMember %}&member_id={{ selectedMember.id }}{% endif %}&month={{ currentMonthKey }}&day={{ todayDateKey }}&return_anchor={{ plannerReturnAnchor }}{% if hidePlannerCreate %}&hide_create=1{% endif %}{% if embeddedLayout %}&embedded=1{% endif %}" class="planner-calendar-today-btn">Hoje</a>
+                        <a href="{{ urlFor('planner') }}?view={{ plannerViewMode }}{% if selectedProject %}&project_id={{ selectedProject.id }}{% endif %}{% if selectedMember %}&member_id={{ selectedMember.id }}{% endif %}&month={{ prevMonthKey }}&day={{ selectedDay }}&return_anchor={{ plannerReturnAnchor }}{% if hidePlannerCreate %}&hide_create=1{% endif %}{% if embeddedLayout %}&embedded=1{% endif %}" class="planner-calendar-nav-btn" aria-label="Mês anterior">‹</a>
+                        <a href="{{ urlFor('planner') }}?view={{ plannerViewMode }}{% if selectedProject %}&project_id={{ selectedProject.id }}{% endif %}{% if selectedMember %}&member_id={{ selectedMember.id }}{% endif %}&month={{ nextMonthKey }}&day={{ selectedDay }}&return_anchor={{ plannerReturnAnchor }}{% if hidePlannerCreate %}&hide_create=1{% endif %}{% if embeddedLayout %}&embedded=1{% endif %}" class="planner-calendar-nav-btn" aria-label="Próximo mês">›</a>
                     </div>
                 </header>
 
@@ -306,7 +323,7 @@
 
                     {% for cell in calendarCells %}
                         <a
-                            href="{{ urlFor('planner') }}?view={{ plannerViewMode }}{% if selectedProject %}&project_id={{ selectedProject.id }}{% endif %}{% if selectedMember %}&member_id={{ selectedMember.id }}{% endif %}&month={{ plannerMonth }}&day={{ cell.dateKey }}&return_anchor={{ plannerReturnAnchor }}"
+                            href="{{ urlFor('planner') }}?view={{ plannerViewMode }}{% if selectedProject %}&project_id={{ selectedProject.id }}{% endif %}{% if selectedMember %}&member_id={{ selectedMember.id }}{% endif %}&month={{ plannerMonth }}&day={{ cell.dateKey }}&return_anchor={{ plannerReturnAnchor }}{% if hidePlannerCreate %}&hide_create=1{% endif %}{% if embeddedLayout %}&embedded=1{% endif %}"
                             class="planner-calendar-cell {{ 'is-outside' if not cell.inCurrentMonth else '' }} {{ 'is-today' if cell.isToday else '' }} {{ 'is-selected' if selectedDay == cell.dateKey else '' }}"
                         >
                             <strong>{{ cell.dayNumber }}</strong>
@@ -367,6 +384,8 @@
                                         <input type="hidden" name="return_month" value="{{ plannerMonth }}">
                                         <input type="hidden" name="return_day" value="{{ selectedDay }}">
                                         <input type="hidden" name="return_anchor" value="{{ plannerReturnAnchor }}">
+                                        <input type="hidden" name="return_hide_create" value="{{ '1' if hidePlannerCreate else '0' }}">
+                                        <input type="hidden" name="return_embedded" value="{{ '1' if embeddedLayout else '0' }}">
                                         <label for="planner_task_status_{{ task.id }}" class="sr-only">Status</label>
                                         <select id="planner_task_status_{{ task.id }}" name="status" class="form-control planner-side-status-select" onchange="this.form.submit()">
                                             {% for option in plannerStatusOptions %}
@@ -384,6 +403,8 @@
                                         <input type="hidden" name="return_month" value="{{ plannerMonth }}">
                                         <input type="hidden" name="return_day" value="{{ selectedDay }}">
                                         <input type="hidden" name="return_anchor" value="{{ plannerReturnAnchor }}">
+                                        <input type="hidden" name="return_hide_create" value="{{ '1' if hidePlannerCreate else '0' }}">
+                                        <input type="hidden" name="return_embedded" value="{{ '1' if embeddedLayout else '0' }}">
                                         <button type="submit" class="planner-side-task-delete">Excluir</button>
                                     </form>
                                 {% endif %}
@@ -396,6 +417,8 @@
                                         <input type="hidden" name="return_month" value="{{ plannerMonth }}">
                                         <input type="hidden" name="return_day" value="{{ selectedDay }}">
                                         <input type="hidden" name="return_anchor" value="{{ plannerReturnAnchor }}">
+                                        <input type="hidden" name="return_hide_create" value="{{ '1' if hidePlannerCreate else '0' }}">
+                                        <input type="hidden" name="return_embedded" value="{{ '1' if embeddedLayout else '0' }}">
                                         <label class="planner-side-task-complete">
                                             <input type="checkbox" onchange="this.form.requestSubmit()">
                                             <span>Concluir</span>
@@ -418,6 +441,10 @@
         document.addEventListener('DOMContentLoaded', function() {
             const projectSelect = document.getElementById('planner_form_project_id');
             const memberSelect = document.getElementById('planner_form_member_id');
+            const memberGroupSelect = document.getElementById('planner_member_group_select');
+            const memberGroupFixed = document.getElementById('planner_member_group_fixed');
+            const memberFixedName = document.getElementById('planner_form_member_name_fixed');
+            const memberFixedInput = document.getElementById('planner_form_member_id_fixed');
             const recurrenceToggle = document.getElementById('planner_form_recurrence_enabled');
             const recurrenceFields = document.getElementById('planner_recurrence_fields');
             const recurrenceQueue = document.getElementById('planner_recurrence_member_queue');
@@ -649,27 +676,32 @@
                 });
             }
 
-            function initRecurrenceOrderFromDOM() {
-                if (!recurrenceQueue) {
-                    return;
-                }
-                const seed = String(recurrenceQueue.dataset.selectedOrder || '')
-                    .split(',')
-                    .map((item) => String(item || '').trim())
-                    .filter(Boolean);
-                recurrenceOrder = seed;
-                paintRecurrenceOrder();
-                bindRecurrenceRowEvents();
-            }
-
             function renderMembers(members) {
                 const selectedMemberId = String(projectSelect.dataset.selectedMemberId || '');
                 const selectedProjectOption = projectSelect.options[projectSelect.selectedIndex];
                 const canCreateForOthers = selectedProjectOption && selectedProjectOption.dataset.canCreateForOthers === '1';
                 const currentMemberId = String(projectSelect.dataset.currentMemberId || '');
+                const currentMemberName = String(projectSelect.dataset.currentMemberName || '');
                 const visibleMembers = canCreateForOthers || !currentMemberId
                     ? members
                     : members.filter((member) => String(member.id) === currentMemberId);
+                const ownMember = currentMemberId
+                    ? (visibleMembers.find((member) => String(member.id) === currentMemberId) || null)
+                    : null;
+
+                if (memberGroupSelect) {
+                    memberGroupSelect.hidden = !canCreateForOthers;
+                }
+                if (memberGroupFixed) {
+                    memberGroupFixed.hidden = canCreateForOthers;
+                }
+                if (memberSelect) {
+                    memberSelect.disabled = !canCreateForOthers;
+                }
+                if (memberFixedInput) {
+                    memberFixedInput.disabled = canCreateForOthers;
+                }
+
                 memberSelect.innerHTML = '';
                 const placeholder = document.createElement('option');
                 placeholder.value = '';
@@ -689,9 +721,44 @@
                     memberSelect.appendChild(option);
                 });
 
+                const selectedOption = memberSelect.options[memberSelect.selectedIndex];
+                const selectedOptionValue = selectedOption ? String(selectedOption.value || '').trim() : '';
+                const effectiveSelectedId = selectedOptionValue || (ownMember ? String(ownMember.id) : '');
+                projectSelect.dataset.selectedMemberId = effectiveSelectedId;
+
+                if (!canCreateForOthers) {
+                    const fixedMember = ownMember || visibleMembers[0] || null;
+                    if (memberFixedName) {
+                        memberFixedName.value = fixedMember ? fixedMember.name : currentMemberName;
+                    }
+                    if (memberFixedInput) {
+                        memberFixedInput.value = fixedMember
+                            ? String(fixedMember.id)
+                            : (currentMemberId || '');
+                    }
+                } else {
+                    if (memberFixedName) {
+                        memberFixedName.value = '';
+                    }
+                    if (memberFixedInput) {
+                        memberFixedInput.value = '';
+                    }
+                }
+
                 if (recurrenceQueue) {
                     recurrenceQueue.innerHTML = '';
-                    recurrenceOrder = [];
+                    const memberIdSet = new Set(visibleMembers.map((member) => String(member.id)));
+                    const seed = String(recurrenceQueue.dataset.selectedOrder || '')
+                        .split(',')
+                        .map((item) => String(item || '').trim())
+                        .filter(Boolean)
+                        .filter((id) => memberIdSet.has(id));
+                    recurrenceOrder = recurrenceOrder.length
+                        ? recurrenceOrder.filter((id) => memberIdSet.has(id))
+                        : seed;
+                    if (!canCreateForOthers && ownMember) {
+                        recurrenceOrder = [String(ownMember.id)];
+                    }
                     visibleMembers.forEach((member) => {
                         const row = document.createElement('button');
                         row.type = 'button';
@@ -736,7 +803,12 @@
                 recurrenceToggle.addEventListener('change', toggleRecurrenceFields);
                 toggleRecurrenceFields();
             }
-            initRecurrenceOrderFromDOM();
+            const initialProjectId = String(projectSelect.value || '').trim();
+            if (initialProjectId) {
+                loadMembers(initialProjectId);
+            } else {
+                renderMembers([]);
+            }
         });
     </script>
 {% endblock %}

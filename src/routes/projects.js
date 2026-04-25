@@ -9,7 +9,6 @@ function registerProjectRoutes(ctx) {
   const {
     app,
     requireAuth,
-    requireAdminPage,
     runLogoUpload,
     ensureValidCsrf,
     parseId,
@@ -20,8 +19,8 @@ function registerProjectRoutes(ctx) {
     renderProjectForm,
     normalizeProjectColor,
     DEFAULT_PROJECT_COLOR,
-    canManageProject,
     canCreateAtaForProject,
+    getCurrentMember,
     persistUploadedImage,
     deleteStoredImage,
     isUniqueConstraintError,
@@ -31,13 +30,40 @@ function registerProjectRoutes(ctx) {
   } = ctx;
 
   function canAssignMembersToProject(req, project) {
-    return canManageProject(req, project);
+    return Boolean(req.currentUser && project);
+  }
+
+  function isCoordinatorInAnyProject(req) {
+    const currentMember = getCurrentMember(req);
+    if (!currentMember?.is_active) {
+      return false;
+    }
+
+    const memberProjects = database.listProjectsForMember(currentMember.id);
+    return memberProjects.some((project) => database.isProjectCoordinator(project.id, currentMember.id));
+  }
+
+  function canManageCoordinatorAssignments(req, project = null) {
+    if (req.currentUser?.is_admin) {
+      return true;
+    }
+
+    const currentMember = getCurrentMember(req);
+    if (!currentMember?.is_active) {
+      return false;
+    }
+
+    if (project) {
+      return database.isProjectCoordinator(project.id, currentMember.id);
+    }
+
+    return isCoordinatorInAnyProject(req);
   }
 
 app.get("/projects", requireAuth, (req, res) => {
     const projects = database.listProjectsWithMembers().map((project) => ({
       ...project,
-      can_manage: canManageProject(req, project),
+      can_manage: true,
       can_assign_members: canAssignMembersToProject(req, project),
       can_create_ata_shortcut: canCreateAtaForProject(req, project),
     }));
@@ -53,7 +79,7 @@ app.get("/projects", requireAuth, (req, res) => {
 
   // DETALHE: Rota GET /projects/add: consulta dados necessarios e monta resposta (HTML/JSON) para a tela solicitada.
 
-  app.get("/projects/add", requireAuth, requireAdminPage, (req, res) => {
+  app.get("/projects/add", requireAuth, (req, res) => {
     return renderProjectForm(res, {
       title: "Adicionar Projeto",
       actionLabel: "Adicionar",
@@ -66,6 +92,7 @@ app.get("/projects", requireAuth, (req, res) => {
       },
       errors: {},
       canManageProject: true,
+      canManageCoordinators: canManageCoordinatorAssignments(req),
     });
   });
 
@@ -74,7 +101,6 @@ app.get("/projects", requireAuth, (req, res) => {
   app.post(
     "/projects/add",
     requireAuth,
-    requireAdminPage,
     runLogoUpload,
     async (req, res) => {
       // DETALHE: Interrompe o fluxo quando token CSRF esta invalido ou expirado.
@@ -86,8 +112,10 @@ app.get("/projects", requireAuth, (req, res) => {
         return;
       }
 
+      const canManageCoordinators = canManageCoordinatorAssignments(req);
       const memberIds = parseIdArray(req.body.members);
-      const coordinatorIds = parseIdArray(req.body.coordinators);
+      const requestedCoordinatorIds = parseIdArray(req.body.coordinators);
+      const coordinatorIds = canManageCoordinators ? requestedCoordinatorIds : [];
       const formData = {
         name: String(req.body.name || "").trim(),
         primaryColor: normalizeProjectColor(req.body.primary_color),
@@ -126,7 +154,7 @@ app.get("/projects", requireAuth, (req, res) => {
       );
       if (coordinatorOutsideProject.length > 0) {
         errors.coordinators = ["Todo coordenador também precisa estar marcado como membro."];
-      } else if (memberIds.length > 0 && coordinatorIds.length === 0) {
+      } else if (canManageCoordinators && memberIds.length > 0 && coordinatorIds.length === 0) {
         errors.coordinators = ["Selecione ao menos um coordenador para o projeto."];
       }
 
@@ -142,6 +170,7 @@ app.get("/projects", requireAuth, (req, res) => {
           formData,
           errors,
           canManageProject: true,
+          canManageCoordinators,
         });
       }
 
@@ -177,6 +206,7 @@ app.get("/projects", requireAuth, (req, res) => {
           formData,
           errors,
           canManageProject: true,
+          canManageCoordinators,
         });
       }
     },
@@ -190,15 +220,8 @@ app.get("/projects", requireAuth, (req, res) => {
       return notFound(res);
     }
 
-    const canManageMetadata = Boolean(req.currentUser?.is_admin);
-    const canAssignMembers = canAssignMembersToProject(req, project);
-    if (!canAssignMembers) {
-      req.flash(
-        "warning",
-        "Somente administradores ou coordenadores deste projeto podem editar membros.",
-      );
-      return res.redirect(urlFor("list_projects"));
-    }
+    const canManageMetadata = true;
+    const canManageCoordinators = canManageCoordinatorAssignments(req, project);
 
     return renderProjectForm(res, {
       title: "Editar Projeto",
@@ -213,6 +236,7 @@ app.get("/projects", requireAuth, (req, res) => {
       errors: {},
       project,
       canManageProject: canManageMetadata,
+      canManageCoordinators,
     });
   });
 
@@ -241,47 +265,32 @@ app.get("/projects", requireAuth, (req, res) => {
         return notFound(res);
       }
 
-      const canManageMetadata = Boolean(req.currentUser?.is_admin);
-      const canAssignMembers = canAssignMembersToProject(req, project);
-      if (!canAssignMembers) {
-        if (req.file) {
-          safeUnlink(req.file.path);
-        }
-        req.flash(
-          "warning",
-          "Somente administradores ou coordenadores deste projeto podem editar membros.",
-        );
-        return res.redirect(urlFor("list_projects"));
-      }
-
-      if (!canManageMetadata && req.file) {
-        safeUnlink(req.file.path);
-      }
+      const canManageMetadata = true;
+      const canManageCoordinators = canManageCoordinatorAssignments(req, project);
 
       const memberIds = parseIdArray(req.body.members);
-      const coordinatorIds = parseIdArray(req.body.coordinators);
+      const requestedCoordinatorIds = parseIdArray(req.body.coordinators);
+      const coordinatorIds = canManageCoordinators
+        ? requestedCoordinatorIds
+        : project.coordinator_member_ids.filter((memberId) => memberIds.includes(memberId));
       const formData = {
-        name: canManageMetadata ? String(req.body.name || "").trim() : project.name,
-        primaryColor: canManageMetadata
-          ? normalizeProjectColor(req.body.primary_color, project.primary_color)
-          : normalizeProjectColor(project.primary_color, DEFAULT_PROJECT_COLOR),
+        name: String(req.body.name || "").trim(),
+        primaryColor: normalizeProjectColor(req.body.primary_color, project.primary_color),
         memberIds,
         coordinatorIds,
-        logoClear: canManageMetadata && Boolean(req.body["logo-clear"]),
+        logoClear: Boolean(req.body["logo-clear"]),
       };
       // DETALHE: Objeto para acumular erros de validacao e devolver feedback completo ao usuario.
 
       const errors = {};
 
-      if (canManageMetadata) {
-        if (!formData.name) {
-          errors.name = ["Nome do projeto é obrigatório."];
-        } else if (formData.name.length < 3 || formData.name.length > 150) {
-          errors.name = ["Nome do projeto deve ter entre 3 e 150 caracteres."];
-        }
+      if (!formData.name) {
+        errors.name = ["Nome do projeto é obrigatório."];
+      } else if (formData.name.length < 3 || formData.name.length > 150) {
+        errors.name = ["Nome do projeto deve ter entre 3 e 150 caracteres."];
       }
 
-      if (canManageMetadata && req.uploadError) {
+      if (req.uploadError) {
         errors.logo = [req.uploadError];
       }
 
@@ -302,7 +311,7 @@ app.get("/projects", requireAuth, (req, res) => {
       );
       if (coordinatorOutsideProject.length > 0) {
         errors.coordinators = ["Todo coordenador também precisa estar marcado como membro."];
-      } else if (memberIds.length > 0 && coordinatorIds.length === 0) {
+      } else if (canManageCoordinators && memberIds.length > 0 && coordinatorIds.length === 0) {
         errors.coordinators = ["Selecione ao menos um coordenador para o projeto."];
       }
 
@@ -319,6 +328,7 @@ app.get("/projects", requireAuth, (req, res) => {
           errors,
           project,
           canManageProject: canManageMetadata,
+          canManageCoordinators,
         });
       }
 
@@ -327,11 +337,11 @@ app.get("/projects", requireAuth, (req, res) => {
       let uploadedLogo = null;
 
       try {
-        if (canManageMetadata && req.file) {
+        if (req.file) {
           uploadedLogo = await persistUploadedImage(req, { folder: "pet-c3/projects" });
           logo = uploadedLogo;
           uploadedIsNew = logo !== project.logo;
-        } else if (canManageMetadata && formData.logoClear) {
+        } else if (formData.logoClear) {
           logo = null;
         }
 
@@ -372,6 +382,7 @@ app.get("/projects", requireAuth, (req, res) => {
             primary_color: formData.primaryColor,
           },
           canManageProject: canManageMetadata,
+          canManageCoordinators,
         });
       }
     },

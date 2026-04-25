@@ -12,8 +12,8 @@
         <div>
             <h1>{{ title }}</h1>
             <p class="lead">Monte o contexto do projeto com nome, identidade visual e time vinculado.</p>
-            {% if not canManageProject %}
-                <p class="form-hint">Você pode ajustar membros e coordenadores deste projeto. Nome, cor e logo só podem ser alterados por administradores.</p>
+            {% if not canManageCoordinators %}
+                <p class="form-hint">Você pode editar o projeto e os membros. Apenas administradores e coordenadores podem definir coordenadores.</p>
             {% endif %}
         </div>
         <span class="page-badge">Projetos</span>
@@ -31,7 +31,6 @@
                 name="name"
                 class="form-control"
                 value="{{ formData.name or '' }}"
-                {% if not canManageProject %}readonly{% endif %}
             >
             {% if errors.name %}
                 <ul class="errors form-error-list">
@@ -48,7 +47,6 @@
                 type="color"
                 class="form-control form-control-color"
                 value="{{ formData.primaryColor or '#0b6bcb' }}"
-                {% if not canManageProject %}disabled{% endif %}
             >
             {% if errors.primaryColor %}
                 <ul class="errors form-error-list">
@@ -63,25 +61,19 @@
             {% if project and project.logo %}
                 <div class="project-logo-preview">
                     <img src="{{ mediaUrl(project.logo) }}" alt="Logo Atual">
-                    {% if canManageProject %}
-                        <label class="checkbox-inline">
-                            <input type="checkbox" name="logo-clear" id="logo-clear" {% if formData.logoClear %}checked{% endif %}>
-                            <span>Remover logo atual?</span>
-                        </label>
-                    {% endif %}
+                    <label class="checkbox-inline">
+                        <input type="checkbox" name="logo-clear" id="logo-clear" {% if formData.logoClear %}checked{% endif %}>
+                        <span>Remover logo atual?</span>
+                    </label>
                 </div>
             {% endif %}
-            {% if canManageProject %}
-                <input id="logo" name="logo" type="file" class="form-control-file" accept=".jpg,.jpeg,.png,.gif,.webp,.jfif,image/jpeg,image/png,image/gif,image/webp">
-                {% if errors.logo %}
-                    <ul class="errors form-error-list">
-                        {% for error in errors.logo %}<li>{{ error }}</li>{% endfor %}
-                    </ul>
-                {% endif %}
-                <small class="form-hint">Envie um novo arquivo para substituir o logo atual. Tipos permitidos: jpg, jpeg, png, gif, webp, jfif.</small>
-            {% else %}
-                <small class="form-hint">Somente administradores podem alterar logo do projeto.</small>
+            <input id="logo" name="logo" type="file" class="form-control-file" accept=".jpg,.jpeg,.png,.gif,.webp,.jfif,image/jpeg,image/png,image/gif,image/webp">
+            {% if errors.logo %}
+                <ul class="errors form-error-list">
+                    {% for error in errors.logo %}<li>{{ error }}</li>{% endfor %}
+                </ul>
             {% endif %}
+            <small class="form-hint">Envie um novo arquivo para substituir o logo atual. Tipos permitidos: jpg, jpeg, png, gif, webp, jfif.</small>
         </div>
 
         <div class="form-group">
@@ -111,6 +103,7 @@
                                         value="{{ member.id }}"
                                         data-coordinator-checkbox="{{ member.id }}"
                                         {% if member.id in (formData.coordinatorIds or []) %}checked{% endif %}
+                                        {% if not canManageCoordinators %}disabled data-coordinator-locked="1"{% endif %}
                                     >
                                     <span>Coordenador</span>
                                 </label>
@@ -131,6 +124,9 @@
                 <ul class="errors form-error-list">
                     {% for error in errors.coordinators %}<li>{{ error }}</li>{% endfor %}
                 </ul>
+            {% endif %}
+            {% if not canManageCoordinators %}
+                <small class="form-hint">Você não pode alterar a coordenação deste projeto.</small>
             {% endif %}
         </div>
 
@@ -158,6 +154,9 @@
                 var memberId = memberCheck.getAttribute('data-member-checkbox');
                 var coordinatorCheck = document.querySelector('[data-coordinator-checkbox="' + memberId + '"]');
                 if (!coordinatorCheck) {
+                    return;
+                }
+                if (coordinatorCheck.getAttribute('data-coordinator-locked') === '1') {
                     return;
                 }
 

@@ -430,7 +430,7 @@ const upload = multer({
       return urlFor("list_projects");
     }
 
-    return urlFor("services");
+    return urlFor("relatorios");
   }
 
     // SECAO: guardas de acesso (autenticacao, autorizacao e protecao CSRF).
@@ -443,7 +443,7 @@ function requireAuth(req, res, next) {
     }
 
     req.flash("info", "Por favor, faça login para acessar esta página.");
-    const nextPath = encodeURIComponent(req.originalUrl || urlFor("services"));
+    const nextPath = encodeURIComponent(req.originalUrl || urlFor("relatorios"));
     return res.redirect(`${urlFor("login")}?next=${nextPath}`);
   }
 
@@ -640,7 +640,7 @@ function requireAuth(req, res, next) {
     }
 
     req.flash("danger", "A sessão do formulário expirou. Tente novamente.");
-    res.redirect(req.get("referer") || urlFor("services"));
+    res.redirect(req.get("referer") || urlFor("relatorios"));
     return false;
   }
 
@@ -723,6 +723,7 @@ function render(res, template, data = {}) {
       activeMembers: database.listActiveMembers(),
       project: data.project || null,
       canManageProject: Boolean(data.canManageProject),
+      canManageCoordinators: Boolean(data.canManageCoordinators),
     });
   }
 
@@ -775,8 +776,24 @@ function render(res, template, data = {}) {
         ? database.getMemberById(selectedMemberId)
         : null;
     const requestedProjectId = parseId(data.selectedProjectId || req.query.project_id);
+    const currentMemberProjectList = currentMember?.is_active
+      ? database.listProjectsForMember(currentMember.id)
+      : [];
+    const coordinatorProjectIds = currentMember?.is_active
+      ? new Set(
+          currentMemberProjectList
+            .filter((project) => database.isProjectCoordinator(project.id, currentMember.id))
+            .map((project) => project.id),
+        )
+      : new Set();
     const reportProjectOptions = selectedMember
-      ? database.listProjectsForMember(selectedMember.id)
+      ? database.listProjectsForMember(selectedMember.id).map((project) => ({
+          ...project,
+          can_create_for_others: Boolean(
+            req.currentUser?.is_admin
+            || (currentMember?.is_active && coordinatorProjectIds.has(project.id)),
+          ),
+        }))
       : [];
     const validProjectIds = new Set(reportProjectOptions.map((project) => project.id));
     const selectedProjectId = requestedProjectId && validProjectIds.has(requestedProjectId)
@@ -817,23 +834,35 @@ function render(res, template, data = {}) {
       .sort((left, right) => (
         left.week_start.localeCompare(right.week_start) || left.id - right.id
       ));
-    const coordinatorProjectIds = currentMember?.is_active
-      ? new Set(
-          database
-            .listProjectsForMember(currentMember.id)
-            .filter((project) => database.isProjectCoordinator(project.id, currentMember.id))
-            .map((project) => project.id),
-        )
-      : new Set();
     const canCreateAsCoordinator = Boolean(
       selectedMember && currentMember?.is_active
       && reportProjectOptions.some((project) => coordinatorProjectIds.has(project.id)),
+    );
+    const createGoalProjectOptions = (() => {
+      if (!currentMember?.is_active && !req.currentUser?.is_admin) {
+        return [];
+      }
+      const baseProjects = req.currentUser?.is_admin
+        ? database.listProjectsBasic()
+        : currentMemberProjectList;
+      return baseProjects.map((project) => ({
+        ...project,
+        can_create_for_others: Boolean(
+          req.currentUser?.is_admin
+          || (currentMember?.is_active && database.isProjectCoordinator(project.id, currentMember.id)),
+        ),
+      }));
+    })();
+    const canUseAdvancedGoalCreateForm = Boolean(
+      req.currentUser?.is_admin
+      || (currentMember?.is_active && coordinatorProjectIds.size > 0),
     );
     const canCreateGoalsForSelectedMember = Boolean(
       selectedMember && (
         req.currentUser?.is_admin
         || (currentMember?.is_active && currentMember.id === selectedMember.id)
         || canCreateAsCoordinator
+        || (canUseAdvancedGoalCreateForm && createGoalProjectOptions.length > 0)
       ),
     );
     const deletionLogs = selectedMember
@@ -881,6 +910,7 @@ function render(res, template, data = {}) {
       selectedMember,
       membersSummary,
       reportProjectOptions,
+      createGoalProjectOptions,
       reportGoals,
       pendingGoals,
       completedGoals,
@@ -891,14 +921,20 @@ function render(res, template, data = {}) {
       inProgressGoals,
       futurePendingGoals,
       canCreateGoalsForSelectedMember,
+      canUseAdvancedGoalCreateForm,
       currentWeekStart,
       currentMember,
       goalFormData: {
         projectId: selectedProjectId || "",
+        memberId: String(selectedMember?.id || ""),
         activity: "",
         description: "",
         dueAt: "",
         isCompleted: false,
+        recurrenceEnabled: false,
+        recurrenceIntervalDays: "7",
+        recurrenceUnit: "days",
+        recurrenceMemberIds: [],
         ...(data.goalFormData || {}),
       },
       goalFormErrors: data.goalFormErrors || {},

@@ -135,6 +135,16 @@ a {
   margin-bottom: 18px;
 }
 
+.navigation ul li.nav-brand:hover,
+.navigation ul li.nav-brand.hovered {
+  background: transparent;
+}
+
+.navigation ul li.nav-brand:hover::before,
+.navigation ul li.nav-brand.hovered::before {
+  display: none;
+}
+
 .navigation ul li:hover,
 .navigation ul li.hovered {
   background: var(--sidebar-hover);
@@ -161,6 +171,16 @@ a {
   color: var(--sidebar-text);
 }
 
+.navigation .nav-brand-inner {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 60px;
+  padding: 0 14px;
+  color: var(--sidebar-text);
+}
+
 .nav-theme-item .nav-theme-button {
   width: 52px;
   height: 30px;
@@ -178,6 +198,16 @@ a {
 .nav-theme-item {
   margin-top: 2px;
   padding-left: 12px;
+}
+
+.navigation ul li.nav-theme-item:hover,
+.navigation ul li.nav-theme-item.hovered {
+  background: transparent;
+}
+
+.navigation ul li.nav-theme-item:hover::before,
+.navigation ul li.nav-theme-item.hovered::before {
+  display: none;
 }
 
 .nav-theme-item .nav-theme-button:hover {
@@ -237,6 +267,33 @@ a {
   background: rgba(255, 255, 255, 0.1);
 }
 
+.navigation ul li.nav-brand .icon {
+  min-width: 48px;
+  width: 48px;
+  height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.1);
+  text-align: center;
+}
+
+.navigation .nav-brand-inner .sidebar-brand-logo {
+  display: block;
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  filter: brightness(0) invert(1);
+}
+
+.navigation .nav-brand-inner .title {
+  display: block;
+  font-weight: 700;
+  white-space: nowrap;
+  transition: opacity 0.25s ease;
+}
+
 .navigation ul li a .icon ion-icon {
   font-size: 1.45rem;
 }
@@ -257,6 +314,11 @@ a {
 }
 
 .navigation.active ul li a .title {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.navigation.active .nav-brand-inner .title {
   opacity: 0;
   pointer-events: none;
 }

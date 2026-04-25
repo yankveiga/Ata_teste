@@ -13,6 +13,8 @@ function buildPlannerQuery({
   month = null,
   day = null,
   returnAnchor = null,
+  hideCreate = false,
+  embedded = false,
 } = {}) {
   const params = new URLSearchParams();
   params.set("view", view === "project" ? "project" : "member");
@@ -30,6 +32,12 @@ function buildPlannerQuery({
   }
   if (returnAnchor === "report-member-selector" || returnAnchor === "report-goals-panel") {
     params.set("return_anchor", returnAnchor);
+  }
+  if (hideCreate) {
+    params.set("hide_create", "1");
+  }
+  if (embedded) {
+    params.set("embedded", "1");
   }
   const text = params.toString();
   return text ? `?${text}` : "";
@@ -193,7 +201,7 @@ function registerAuthRoutes(ctx) {
 
 app.get("/login", (req, res) => {
     if (req.currentUser) {
-      return res.redirect(urlFor("services"));
+      return res.redirect(urlFor("relatorios"));
     }
 
     return renderLogin(res, {
@@ -215,7 +223,7 @@ app.get("/login", (req, res) => {
     }
 
     if (req.currentUser) {
-      return res.redirect(urlFor("services"));
+      return res.redirect(urlFor("relatorios"));
     }
 
     const formData = {
@@ -257,7 +265,7 @@ app.get("/login", (req, res) => {
 
     const nextPath = safeRedirectPath(
       req.body.next,
-      urlFor("services"),
+      urlFor("relatorios"),
     );
     return res.redirect(nextPath);
   });
@@ -281,7 +289,7 @@ app.get("/login", (req, res) => {
   // DETALHE: Rota GET /: consulta dados necessarios e monta resposta (HTML/JSON) para a tela solicitada.
 
   app.get("/", requireAuth, (req, res) => {
-    return res.redirect(urlFor("services"));
+    return res.redirect(urlFor("relatorios"));
   });
 
     // SECAO: rotas gerais de navegacao (services/home/presenca).
@@ -289,10 +297,7 @@ app.get("/login", (req, res) => {
 // DETALHE: Rota GET /services: consulta dados necessarios e monta resposta (HTML/JSON) para a tela solicitada.
 
 app.get("/services", requireAuth, (req, res) => {
-    return render(res, "services.html", {
-      title: "Serviços",
-      activeSection: "services",
-    });
+    return res.redirect(urlFor("relatorios"));
   });
 
   // DETALHE: Rota GET /manutencao-usuarios: hub administrativo para membros, projetos e usuarios de acesso.
@@ -312,7 +317,7 @@ app.get("/services", requireAuth, (req, res) => {
 
     return render(res, "home.html", {
       title: "Atas",
-      activeSection: "home",
+      activeSection: "atas",
       activeAtaTab: tab,
       recentAtas,
     });
@@ -338,6 +343,8 @@ app.get("/services", requireAuth, (req, res) => {
     const plannerReturnAnchor = requestedReturnAnchor === "report-member-selector"
       ? "report-member-selector"
       : "report-goals-panel";
+    const hidePlannerCreate = String(req.query.hide_create || "").trim() === "1";
+    const plannerEmbedded = String(req.query.embedded || "").trim() === "1";
     const accessibleProjects = listAccessibleProjects(req);
     const accessibleProjectIds = new Set(accessibleProjects.map((project) => project.id));
     const requestedProjectId = parseId(req.query.project_id);
@@ -565,11 +572,14 @@ app.get("/services", requireAuth, (req, res) => {
       month: plannerMonth,
       day: selectedDay,
       returnAnchor: plannerReturnAnchor,
+      hideCreate: hidePlannerCreate,
+      embedded: plannerEmbedded,
     })}`;
 
     return render(res, "planner/index.html", {
       title: "Planner",
       activeSection: "planner",
+      embeddedLayout: plannerEmbedded,
       plannerViewMode: effectiveViewMode,
       selectedProject,
       selectedMember,
@@ -594,6 +604,7 @@ app.get("/services", requireAuth, (req, res) => {
       canCreatePlannerTask: creatableProjects.length > 0,
       createProjectOptions: creatableProjects,
       createMemberOptions,
+      hidePlannerCreate,
       plannerFormData: formData,
       plannerFormErrors: plannerFormState?.errors || {},
       plannerPanelTheme: effectiveViewMode === "project"
@@ -608,6 +619,8 @@ app.get("/services", requireAuth, (req, res) => {
         month: plannerMonth,
         day: selectedDay,
         returnAnchor: plannerReturnAnchor,
+        hideCreate: hidePlannerCreate,
+        embedded: plannerEmbedded,
       }),
       reportMemberLink: `/relatorios${reportQuery}#report-member-selector`,
       reportGoalsLink: `/relatorios${reportQuery}#report-goals-panel`,
@@ -632,6 +645,8 @@ app.get("/services", requireAuth, (req, res) => {
       month: String(req.body.return_month || ""),
       day: String(req.body.return_day || ""),
       returnAnchor: String(req.body.return_anchor || ""),
+      hideCreate: String(req.body.return_hide_create || "").trim() === "1",
+      embedded: String(req.body.return_embedded || "").trim() === "1",
     });
     const formData = {
       projectId: String(req.body.project_id || ""),
@@ -760,6 +775,8 @@ app.get("/services", requireAuth, (req, res) => {
           month: String(req.body.return_month || ""),
           day: String(req.body.return_day || ""),
           returnAnchor: String(req.body.return_anchor || ""),
+          hideCreate: String(req.body.return_hide_create || "").trim() === "1",
+          embedded: String(req.body.return_embedded || "").trim() === "1",
         })}`,
       );
     } catch (error) {
@@ -784,6 +801,8 @@ app.get("/services", requireAuth, (req, res) => {
       month: String(req.body.return_month || ""),
       day: String(req.body.return_day || ""),
       returnAnchor: String(req.body.return_anchor || ""),
+      hideCreate: String(req.body.return_hide_create || "").trim() === "1",
+      embedded: String(req.body.return_embedded || "").trim() === "1",
     });
 
     if (!taskId) {
@@ -909,6 +928,8 @@ app.get("/services", requireAuth, (req, res) => {
       month: String(req.body.return_month || ""),
       day: String(req.body.return_day || ""),
       returnAnchor: String(req.body.return_anchor || ""),
+      hideCreate: String(req.body.return_hide_create || "").trim() === "1",
+      embedded: String(req.body.return_embedded || "").trim() === "1",
     });
     const nextStatus = normalizePlannerStatus(req.body.status);
 
@@ -990,6 +1011,8 @@ app.get("/services", requireAuth, (req, res) => {
       month: String(req.body.return_month || ""),
       day: String(req.body.return_day || ""),
       returnAnchor: String(req.body.return_anchor || ""),
+      hideCreate: String(req.body.return_hide_create || "").trim() === "1",
+      embedded: String(req.body.return_embedded || "").trim() === "1",
     });
 
     if (!taskId) {

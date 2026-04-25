@@ -9,39 +9,12 @@
 {% set activeAtaTab = activeAtaTab or 'home' %}
 
 {% block content %}
+    <div class="page-header page-header-split">
+        <div>
+            <h1>Criação de Atas</h1>
+        </div>
+    </div>
     {% include "partials/atas_tabs.html" %}
-
-    {# SECAO: destaque inicial da home com resumo rapido e CTA de criacao. #}
-
-<section class="ata-hero">
-        <div class="ata-hero-copy">
-            <p class="ata-kicker">Gestor de Atas</p>
-            <h1>Atas de {{ currentUser.name }}</h1>
-            <p class="lead">Crie, baixe e acompanhe o histórico das reuniões com uma interface mais rápida, limpa e organizada.</p>
-
-            <div class="home-actions">
-                <a href="{{ urlFor('create_ata') }}" class="btn-create-ata">
-                    <ion-icon name="add-circle-outline"></ion-icon>
-                    Criar Nova Ata
-                </a>
-            </div>
-        </div>
-
-        {# SECAO: metricas resumidas do usuario e do modulo de atas. #}
-
-        <div class="ata-summary-grid">
-            <article class="ata-summary-card">
-                <span class="ata-summary-label">Atas recentes</span>
-                <strong>{{ recentAtas.length }}</strong>
-                <small>Últimos registros disponíveis na área principal.</small>
-            </article>
-            <article class="ata-summary-card">
-                <span class="ata-summary-label">Perfil</span>
-                <strong>{{ 'Admin' if currentUser.is_admin else 'Comum' }}</strong>
-                <small>{{ 'Pode administrar membros e projetos.' if currentUser.is_admin else 'Pode criar atas e consultar cadastros.' }}</small>
-            </article>
-        </div>
-    </section>
 
     {# SECAO: listagem das atas recentes com acoes de download/exclusao. #}
 

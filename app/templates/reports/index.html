@@ -8,6 +8,12 @@
 {% extends "base.html" %}
 
 {% block content %}
+ <div class="page-header page-header-split">
+ <div>
+ <h1>Relatórios Quinzenais</h1>
+ </div>
+ </div>
+
  <nav class="module-tab-nav report-tabs-nav" aria-label="Navegação de Relatórios">
  <a href="#report-member-selector" class="module-tab-link is-active">
  <ion-icon name="people-outline"></ion-icon>
@@ -19,7 +25,7 @@
  </a>
  <a
  id="report_planner_tab_link"
- href="{{ urlFor('planner') }}?view={{ 'project' if selectedProjectId else 'member' }}{% if selectedProjectId %}&project_id={{ selectedProjectId }}{% elif selectedMemberId %}&member_id={{ selectedMemberId }}{% endif %}&return_anchor=report-goals-panel"
+ href="{{ urlFor('planner') }}?view={{ 'project' if selectedProjectId else 'member' }}{% if selectedProjectId %}&project_id={{ selectedProjectId }}{% elif selectedMemberId %}&member_id={{ selectedMemberId }}{% endif %}&return_anchor=report-goals-panel&hide_create=1&embedded=1"
  class="module-tab-link"
  >
  <ion-icon name="calendar-outline"></ion-icon>
@@ -27,9 +33,16 @@
  </a>
  </nav>
 
- <div class="page-header page-header-split">
- <div>
- <h1>Relatórios Quinzenais</h1>
+ <div id="report_planner_modal" class="report-planner-modal" hidden>
+ <button type="button" id="report_planner_backdrop" class="report-planner-backdrop" aria-label="Fechar Planner"></button>
+ <div class="report-planner-dialog" role="dialog" aria-modal="true" aria-labelledby="report_planner_title">
+ <header class="report-planner-head">
+ <h4 id="report_planner_title">Planner</h4>
+ <button type="button" id="report_planner_close" class="report-planner-close" aria-label="Fechar">×</button>
+ </header>
+ <div class="report-planner-body">
+ <iframe id="report_planner_iframe" class="report-planner-iframe" title="Planner"></iframe>
+ </div>
  </div>
  </div>
 
@@ -69,7 +82,7 @@
  <section id="report-goals-panel" class="content-panel report-goals-panel">
  <div class="panel-header">
  <div>
- <h2>Metas da Quinzena</h2>
+ <h2>Metas da Quinzena{% if selectedMember %} de {{ selectedMember.name }}{% endif %}</h2>
  </div>
  </div>
  <div class="panel-body">
@@ -105,54 +118,48 @@
  {% endif %}
 
  {% if selectedMember %}
- <form action="/relatorios/monthly/pdf" method="get" class="portal-form-grid report-monthly-export-form">
- <div class="form-group">
- <label class="form-label" for="monthly_report_member_id">Membro</label>
- {% if canGenerateMonthlyReportForAny %}
- <select id="monthly_report_member_id" name="member_id" class="form-control">
- {% for member in membersSummary %}
- <option value="{{ member.id }}" {% if monthlyReportForm.memberId == (member.id ~ '') or monthlyReportForm.memberId == member.id %}selected{% endif %}>
- {{ member.name }}
- </option>
- {% endfor %}
- </select>
- {% else %}
- <input type="hidden" name="member_id" value="{{ selectedMember.id }}">
- <input type="text" class="form-control" value="{{ selectedMember.name }}" readonly>
- {% endif %}
- </div>
- <div class="form-group">
- <label class="form-label" for="monthly_report_month">Mês</label>
- <input
- id="monthly_report_month"
- name="month"
- type="month"
- class="form-control"
- value="{{ monthlyReportForm.month }}"
- required
- >
- </div>
- <div class="form-group report-monthly-export-actions">
- <button type="submit" class="btn-submit">Gerar Relatório do Mês (PDF)</button>
- </div>
- </form>
- {% endif %}
-
- {% if selectedMember %}
  <div class="report-goal-section-header">
  <h3>Quadro da Quinzena</h3>
- {% if canCreateGoalsForSelectedMember %}
- <details class="report-goal-create-details report-goal-create-details-inline" {% if goalFormErrors.projectId or goalFormErrors.activity or goalFormErrors.description %}open{% endif %}>
- <summary>Adicionar Nova Meta da Quinzena</summary>
- <form action="/relatorios/goals/create#report-goals-panel" method="post" class="portal-form-grid report-goal-create-form" novalidate>
+{% if canCreateGoalsForSelectedMember %}
+<div class="planner-create-compact report-goal-create-launch {% if goalFormErrors.projectId or goalFormErrors.memberId or goalFormErrors.activity or goalFormErrors.description or goalFormErrors.dueAt or goalFormErrors.recurrenceIntervalDays %}is-open{% endif %}" id="report_goal_create_box" data-default-project-id="{{ selectedProjectId if selectedProjectId else '' }}">
+<button type="button" class="planner-create-backdrop" id="report_goal_create_backdrop" {% if not (goalFormErrors.projectId or goalFormErrors.memberId or goalFormErrors.activity or goalFormErrors.description or goalFormErrors.dueAt or goalFormErrors.recurrenceIntervalDays) %}hidden{% endif %} aria-label="Fechar criação de tarefa"></button>
+ <button
+ type="button"
+ class="planner-create-button"
+ id="report_goal_create_toggle"
+ aria-expanded="{{ 'true' if goalFormErrors.projectId or goalFormErrors.memberId or goalFormErrors.activity or goalFormErrors.description or goalFormErrors.dueAt or goalFormErrors.recurrenceIntervalDays else 'false' }}"
+ aria-controls="report_goal_create_popover"
+ >
+ + Nova Tarefa
+ </button>
+ <div class="planner-create-popover" id="report_goal_create_popover" {% if not (goalFormErrors.projectId or goalFormErrors.memberId or goalFormErrors.activity or goalFormErrors.description or goalFormErrors.dueAt or goalFormErrors.recurrenceIntervalDays) %}hidden{% endif %}>
+ <header class="planner-create-header">
+ <h3>Nova tarefa</h3>
+ <p>Preencha os dados essenciais para adicionar no quadro da quinzena.</p>
+ <button type="button" class="planner-create-close-x" id="report_goal_create_close_x" aria-label="Fechar">×</button>
+ </header>
+ <form action="/relatorios/goals/create#report-goals-panel" method="post" class="planner-create-form report-goal-create-form report-goal-create-modal-form" novalidate>
  <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
- <input type="hidden" name="member_id" value="{{ selectedMember.id }}">
- <div class="form-group form-group-full">
+ <section class="planner-create-section planner-create-section-essential">
+ <h4>Essenciais</h4>
+ <div class="planner-create-grid">
+ <div class="form-group">
  <label class="form-label" for="goal_project_id">Projeto</label>
- <select id="goal_project_id" name="project_id" class="form-control">
- <option value="">Selecione um projeto</option>
- {% for project in reportProjectOptions %}
- <option value="{{ project.id }}" {% if goalFormData.projectId == (project.id ~ '') or goalFormData.projectId == project.id %}selected{% endif %}>
+ <select
+ id="goal_project_id"
+ name="project_id"
+ class="form-control"
+ data-selected-member-id="{{ goalFormData.memberId if goalFormData.memberId else selectedMember.id }}"
+ data-current-member-id="{{ currentMember.id if currentMember else '' }}"
+ data-current-member-name="{{ currentMember.name if currentMember else '' }}"
+ >
+ <option value="">Selecione</option>
+ {% set effectiveGoalProjectId = goalFormData.projectId %}
+ {% if not effectiveGoalProjectId and selectedProjectId %}
+ {% set effectiveGoalProjectId = selectedProjectId ~ '' %}
+ {% endif %}
+ {% for project in createGoalProjectOptions %}
+ <option value="{{ project.id }}" data-can-create-for-others="{{ '1' if project.can_create_for_others else '0' }}" {% if effectiveGoalProjectId == (project.id ~ '') %}selected{% endif %}>
  {{ project.name }}
  </option>
  {% endfor %}
@@ -162,34 +169,38 @@
  {% for error in goalFormErrors.projectId %}<li>{{ error }}</li>{% endfor %}
  </ul>
  {% endif %}
+ <p class="report-create-inline-error" data-error-for="project_id" hidden></p>
  </div>
 
- <div class="report-goal-grid-header" role="presentation">
- <span>Atividades</span>
- <span>Descrição e Prazo</span>
+ {% if canUseAdvancedGoalCreateForm %}
+ <div class="form-group">
+ <label class="form-label" for="goal_member_id">Membro do projeto</label>
+ <select id="goal_member_id" name="member_id" class="form-control">
+ <option value="{{ goalFormData.memberId if goalFormData.memberId else selectedMember.id }}">{{ selectedMember.name }}</option>
+ </select>
+ {% if goalFormErrors.memberId %}
+ <ul class="errors form-error-list">
+ {% for error in goalFormErrors.memberId %}<li>{{ error }}</li>{% endfor %}
+ </ul>
+ {% endif %}
+ <p class="report-create-inline-error" data-error-for="member_id" hidden></p>
  </div>
+ {% else %}
+ <div class="form-group">
+ <label class="form-label" for="goal_member_name">Membro do projeto</label>
+ <input id="goal_member_name" type="text" class="form-control" value="{{ currentMember.name if currentMember else selectedMember.name }}" readonly>
+ <input id="goal_member_id_hidden" type="hidden" name="member_id" value="{{ currentMember.id if currentMember else selectedMember.id }}">
+ {% if goalFormErrors.memberId %}
+ <ul class="errors form-error-list">
+ {% for error in goalFormErrors.memberId %}<li>{{ error }}</li>{% endfor %}
+ </ul>
+ {% endif %}
+ <p class="report-create-inline-error" data-error-for="member_id" hidden></p>
+ </div>
+ {% endif %}
 
- <div class="report-goal-create-row">
- <div class="report-goal-create-activity">
- <label class="report-goal-checkline" for="goal_activity">
- <input id="goal_is_completed" type="checkbox" name="is_completed" value="1" aria-label="Meta concluída" {% if goalFormData.isCompleted %}checked{% endif %}>
- <input id="goal_activity" name="activity" class="form-control" value="{{ goalFormData.activity }}" placeholder="Título da tarefa" required>
- </label>
- {% if goalFormErrors.activity %}
- <ul class="errors form-error-list">
- {% for error in goalFormErrors.activity %}<li>{{ error }}</li>{% endfor %}
- </ul>
- {% endif %}
- </div>
- <div class="report-goal-create-description">
- <label class="form-label" for="goal_description">Descrição (opcional)</label>
- <textarea id="goal_description" name="description" rows="3" class="form-control" placeholder="Descrição objetiva da entrega.">{{ goalFormData.description }}</textarea>
- {% if goalFormErrors.description %}
- <ul class="errors form-error-list">
- {% for error in goalFormErrors.description %}<li>{{ error }}</li>{% endfor %}
- </ul>
- {% endif %}
- <label class="form-label" for="goal_due_at">Data de Entrega</label>
+ <div class="form-group">
+ <label class="form-label" for="goal_due_at">Data e Horário</label>
  <input
  id="goal_due_at"
  name="due_at"
@@ -203,13 +214,105 @@
  {% for error in goalFormErrors.dueAt %}<li>{{ error }}</li>{% endfor %}
  </ul>
  {% endif %}
+ <p class="report-create-inline-error" data-error-for="due_at" hidden></p>
+ </div>
+
+ <div class="form-group form-group-full">
+ <label class="form-label" for="goal_activity">Título</label>
+ <input id="goal_activity" name="activity" class="form-control" value="{{ goalFormData.activity }}" placeholder="Título da tarefa" required>
+ {% if goalFormErrors.activity %}
+ <ul class="errors form-error-list">
+ {% for error in goalFormErrors.activity %}<li>{{ error }}</li>{% endfor %}
+ </ul>
+ {% endif %}
+ <p class="report-create-inline-error" data-error-for="activity" hidden></p>
+ </div>
+
+ <div class="form-group form-group-full">
+ <label class="form-label" for="goal_description">Descrição</label>
+ <textarea id="goal_description" name="description" rows="3" class="form-control" placeholder="Descrição objetiva da entrega.">{{ goalFormData.description }}</textarea>
+ {% if goalFormErrors.description %}
+ <ul class="errors form-error-list">
+ {% for error in goalFormErrors.description %}<li>{{ error }}</li>{% endfor %}
+ </ul>
+ {% endif %}
+ </div>
+
+ {% if canUseAdvancedGoalCreateForm %}
+ <div class="form-group form-group-full report-goal-recurrence-wrap">
+ <label class="checkbox-inline" for="goal_recurrence_enabled">
+ <input
+ id="goal_recurrence_enabled"
+ type="checkbox"
+ name="recurrence_enabled"
+ value="1"
+ {% if goalFormData.recurrenceEnabled %}checked{% endif %}
+ >
+ <span>Tarefa recorrente (rotação de membros)</span>
+ </label>
+ <small class="form-hint">Quando marcada como concluída, cria automaticamente a próxima tarefa para o próximo membro da fila.</small>
+ </div>
+
+ <div class="planner-recurrence-fields" id="goal_recurrence_fields" {% if not goalFormData.recurrenceEnabled %}hidden{% endif %}>
+ <div class="form-group">
+ <label class="form-label" for="goal_recurrence_interval_days">Intervalo</label>
+ <input
+ id="goal_recurrence_interval_days"
+ type="number"
+ min="1"
+ max="60"
+ name="recurrence_interval_days"
+ class="form-control"
+ value="{{ goalFormData.recurrenceIntervalDays }}"
+ >
+ {% if goalFormErrors.recurrenceIntervalDays %}
+ <ul class="errors form-error-list">
+ {% for error in goalFormErrors.recurrenceIntervalDays %}<li>{{ error }}</li>{% endfor %}
+ </ul>
+ {% endif %}
+ <p class="report-create-inline-error" data-error-for="recurrence_interval_days" hidden></p>
+ </div>
+
+ <div class="form-group">
+ <label class="form-label" for="goal_recurrence_unit">Repetir em</label>
+ <select id="goal_recurrence_unit" name="recurrence_unit" class="form-control">
+ <option value="days" {% if goalFormData.recurrenceUnit == 'days' %}selected{% endif %}>Dias</option>
+ <option value="weeks" {% if goalFormData.recurrenceUnit == 'weeks' %}selected{% endif %}>Semanas</option>
+ <option value="months" {% if goalFormData.recurrenceUnit == 'months' %}selected{% endif %}>Meses</option>
+ </select>
+ </div>
+
+ <div class="form-group form-group-full">
+ <label class="form-label">Fila de membros (ordem da rotação)</label>
+ <div
+ id="goal_recurrence_member_queue"
+ class="planner-recurrence-member-queue"
+ data-selected-order="{{ goalFormData.recurrenceMemberIds | join(',') }}"
+ ></div>
+ <div id="goal_recurrence_member_inputs" hidden>
+ {% for memberId in goalFormData.recurrenceMemberIds %}
+ <input type="hidden" name="recurrence_member_ids" value="{{ memberId }}">
+ {% endfor %}
  </div>
  </div>
+ </div>
+ {% endif %}
+
+ <div class="form-group form-group-full">
+ <label class="checkbox-inline" for="goal_is_completed">
+ <input id="goal_is_completed" type="checkbox" name="is_completed" value="1" {% if goalFormData.isCompleted %}checked{% endif %}>
+ <span>Marcar como concluída ao salvar</span>
+ </label>
+ </div>
+ </div>
+ </section>
  <div class="form-actions">
- <button type="submit" class="btn-submit">Adicionar Meta</button>
+ <button type="submit" class="btn-submit" id="report_goal_create_submit">Salvar</button>
+ <button type="button" class="btn-cancel" id="report_goal_create_close">Fechar</button>
  </div>
  </form>
- </details>
+ </div>
+ </div>
  {% endif %}
  </div>
  <div class="report-scrum-strip">
@@ -224,7 +327,7 @@
  {% if overduePendingGoals.length %}
  <ul class="report-goal-list">
  {% for goal in overduePendingGoals %}
- <li class="report-goal-item is-overdue" style="--goal-project-color: {{ goal.project.primary_color }};">
+ <li class="report-goal-item is-overdue" data-goal-id="{{ goal.id }}" style="--goal-project-color: {{ goal.project.primary_color }};">
  {% if goal.can_manage %}
  <form action="/relatorios/goals/{{ goal.id }}/update#report-goals-panel" method="post" class="report-goal-row report-goal-row-kanban js-goal-auto-save-form" novalidate data-goal-id="{{ goal.id }}" data-can-delete-from-checkbox="{{ '1' if goal.can_delete_from_execution else '0' }}">
  <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
@@ -283,7 +386,7 @@
  {% if inProgressGoals.length %}
  <ul class="report-goal-list">
  {% for goal in inProgressGoals %}
- <li class="report-goal-item" style="--goal-project-color: {{ goal.project.primary_color }}; background-color: {{ goal.project.primary_color }}14; border-color: {{ goal.project.primary_color }}44;">
+ <li class="report-goal-item" data-goal-id="{{ goal.id }}" style="--goal-project-color: {{ goal.project.primary_color }}; background-color: {{ goal.project.primary_color }}14; border-color: {{ goal.project.primary_color }}44;">
  {% if goal.can_manage %}
  <form action="/relatorios/goals/{{ goal.id }}/update#report-goals-panel" method="post" class="report-goal-row report-goal-row-kanban js-goal-auto-save-form" novalidate data-goal-id="{{ goal.id }}" data-can-delete-from-checkbox="{{ '1' if goal.can_delete_from_execution else '0' }}">
  <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
@@ -340,7 +443,7 @@
  {% if futurePendingGoals.length %}
  <ul class="report-goal-list">
  {% for goal in futurePendingGoals %}
- <li class="report-goal-item" style="--goal-project-color: {{ goal.project.primary_color }}; background-color: {{ goal.project.primary_color }}12; border-color: {{ goal.project.primary_color }}44;">
+ <li class="report-goal-item" data-goal-id="{{ goal.id }}" style="--goal-project-color: {{ goal.project.primary_color }}; background-color: {{ goal.project.primary_color }}12; border-color: {{ goal.project.primary_color }}44;">
  {% if goal.can_manage %}
  <form action="/relatorios/goals/{{ goal.id }}/update#report-goals-panel" method="post" class="report-goal-row report-goal-row-kanban js-goal-auto-save-form" novalidate data-goal-id="{{ goal.id }}" data-can-delete-from-checkbox="{{ '1' if goal.can_delete_from_execution else '0' }}">
  <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
@@ -392,8 +495,46 @@
  </section>
  </div>
 
- <details class="report-goal-completed-details">
- <summary>Não feitas (48h) ({{ missedGoals.length }})</summary>
+ <div class="report-more-actions" id="report_more_actions">
+ <button type="button" class="report-more-actions-toggle" id="report_more_actions_toggle" aria-expanded="false" aria-controls="report_more_actions_modal">
+ <ion-icon name="ellipsis-horizontal-outline" aria-hidden="true"></ion-icon>
+ Mais ações
+ </button>
+ <div class="report-more-actions-modal" id="report_more_actions_modal" hidden>
+ <button type="button" class="report-more-actions-backdrop" id="report_more_actions_backdrop" aria-label="Fechar ações"></button>
+ <div class="report-more-actions-dialog" role="dialog" aria-modal="true" aria-labelledby="report_more_actions_title">
+ <header class="report-more-actions-head">
+ <h4 id="report_more_actions_title">Mais ações</h4>
+ <button type="button" class="report-more-actions-close" id="report_more_actions_close" aria-label="Fechar">×</button>
+ </header>
+ <div class="report-more-actions-menu" id="report_more_actions_menu">
+ <button type="button" class="report-more-action-item" data-report-panel-target="report_panel_completed">
+ <ion-icon name="checkmark-done-outline" aria-hidden="true"></ion-icon>
+ Executadas
+ </button>
+ <button type="button" class="report-more-action-item" data-report-panel-target="report_panel_missed">
+ <ion-icon name="alert-circle-outline" aria-hidden="true"></ion-icon>
+ Não feitas
+ </button>
+ <button type="button" class="report-more-action-item" data-report-panel-target="report_panel_deletions">
+ <ion-icon name="trash-outline" aria-hidden="true"></ion-icon>
+ Histórico de exclusões
+ </button>
+ <button type="button" class="report-more-action-item" data-report-panel-target="report_panel_tasks">
+ <ion-icon name="time-outline" aria-hidden="true"></ion-icon>
+ Histórico de tarefas
+ </button>
+ <button type="button" class="report-more-action-item" data-report-panel-target="report_panel_pdf">
+ <ion-icon name="document-outline" aria-hidden="true"></ion-icon>
+ Gerar PDF
+ </button>
+ </div>
+ <div class="report-more-actions-content" id="report_more_actions_content">
+
+ <section id="report_panel_missed" class="report-extra-panel" hidden>
+ <header class="report-extra-panel-head">
+ <h4>Não feitas (48h) ({{ missedGoals.length }})</h4>
+ </header>
  {% if missedGoals.length %}
  <ul class="report-goal-list report-goal-list-completed">
  {% for goal in missedGoals %}
@@ -430,10 +571,12 @@
  {% else %}
  <p class="ui-empty-state">Nenhuma tarefa em não feitas.</p>
  {% endif %}
- </details>
+ </section>
 
- <details class="report-goal-completed-details">
- <summary>Tarefas executadas ({{ completedGoals.length }})</summary>
+ <section id="report_panel_completed" class="report-extra-panel" hidden>
+ <header class="report-extra-panel-head">
+ <h4>Tarefas executadas ({{ completedGoals.length }})</h4>
+ </header>
  {% if completedGoals.length %}
  <div class="report-completed-filters">
  <input id="completed_goal_search" type="search" class="form-control" placeholder="Buscar por tarefa, descrição ou projeto">
@@ -449,6 +592,7 @@
  {% for goal in completedGoals %}
  <li
  class="report-goal-item report-goal-item-completed js-completed-goal-item"
+ data-goal-id="{{ goal.id }}"
  style="--goal-project-color: {{ goal.project.primary_color }}; background-color: {{ goal.project.primary_color }}12; border-color: {{ goal.project.primary_color }}3f;"
  data-goal-project-id="{{ goal.project_id }}"
  data-goal-completed-at="{{ goal.completed_at if goal.completed_at else '' }}"
@@ -487,10 +631,12 @@
  {% else %}
  <p class="ui-empty-state">Nenhuma tarefa executada ainda.</p>
  {% endif %}
- </details>
+ </section>
 
- <details class="report-goal-completed-details">
- <summary>Histórico de exclusões de atividades</summary>
+ <section id="report_panel_deletions" class="report-extra-panel" hidden>
+ <header class="report-extra-panel-head">
+ <h4>Histórico de exclusões de atividades</h4>
+ </header>
  {% if deletionLogs.length %}
  <ul class="report-deletion-log-list">
  {% for log in deletionLogs %}
@@ -507,10 +653,12 @@
  {% else %}
  <p class="ui-empty-state">Nenhuma atividade foi apagada até agora.</p>
  {% endif %}
- </details>
+ </section>
 
- <details class="report-goal-completed-details">
- <summary>Histórico de tarefas ({{ taskAuditLogs.length }})</summary>
+ <section id="report_panel_tasks" class="report-extra-panel" hidden>
+ <header class="report-extra-panel-head">
+ <h4>Histórico de tarefas ({{ taskAuditLogs.length }})</h4>
+ </header>
  {% if taskAuditLogs.length %}
  <ul class="report-deletion-log-list">
  {% for log in taskAuditLogs %}
@@ -538,7 +686,34 @@
  {% else %}
  <p class="ui-empty-state">Nenhum evento de tarefa registrado até agora.</p>
  {% endif %}
- </details>
+ </section>
+
+ <section id="report_panel_pdf" class="report-extra-panel" hidden>
+ <header class="report-extra-panel-head">
+ <h4>Gerar relatório do mês (PDF)</h4>
+ </header>
+ <form action="/relatorios/monthly/pdf" method="get" class="portal-form-grid report-monthly-export-form report-monthly-export-form-bottom">
+ <input type="hidden" name="member_id" value="{{ selectedMember.id }}">
+ <div class="form-group">
+ <label class="form-label" for="monthly_report_month">Mês</label>
+ <input
+ id="monthly_report_month"
+ name="month"
+ type="month"
+ class="form-control"
+ value="{{ monthlyReportForm.month }}"
+ required
+ >
+ </div>
+ <div class="form-group report-monthly-export-actions">
+ <button type="submit" class="btn-submit">Gerar Relatório do Mês (PDF)</button>
+ </div>
+ </form>
+ </section>
+ </div>
+ </div>
+ </div>
+ </div>
 
  {% else %}
  <p class="ui-empty-state">Selecione um membro para exibir as metas da quinzena.</p>
@@ -589,6 +764,43 @@ document.addEventListener('DOMContentLoaded', function() {
   const completedFilterEmpty = document.getElementById('completed_goal_filter_empty');
   const missedModal = document.getElementById('report_missed_modal');
   const plannerTabLink = document.getElementById('report_planner_tab_link');
+  const plannerModal = document.getElementById('report_planner_modal');
+  const plannerModalBackdrop = document.getElementById('report_planner_backdrop');
+  const plannerModalClose = document.getElementById('report_planner_close');
+  const plannerModalFrame = document.getElementById('report_planner_iframe');
+  const goalCreateBox = document.getElementById('report_goal_create_box');
+  const goalCreateToggle = document.getElementById('report_goal_create_toggle');
+  const goalCreateBackdrop = document.getElementById('report_goal_create_backdrop');
+  const goalCreatePopover = document.getElementById('report_goal_create_popover');
+  const goalCreateClose = document.getElementById('report_goal_create_close');
+  const goalCreateCloseX = document.getElementById('report_goal_create_close_x');
+  const goalCreateForm = goalCreatePopover ? goalCreatePopover.querySelector('.planner-create-form') : null;
+  const moreActionsToggle = document.getElementById('report_more_actions_toggle');
+  const moreActionsRoot = document.getElementById('report_more_actions');
+  const moreActionsModal = document.getElementById('report_more_actions_modal');
+  const moreActionsMenu = document.getElementById('report_more_actions_menu');
+  const moreActionsContent = document.getElementById('report_more_actions_content');
+  const moreActionsBackdrop = document.getElementById('report_more_actions_backdrop');
+  const moreActionsClose = document.getElementById('report_more_actions_close');
+  const moreActionItems = Array.from(document.querySelectorAll('[data-report-panel-target]'));
+  const reportActionPanels = {
+    report_panel_completed: document.getElementById('report_panel_completed'),
+    report_panel_missed: document.getElementById('report_panel_missed'),
+    report_panel_deletions: document.getElementById('report_panel_deletions'),
+    report_panel_tasks: document.getElementById('report_panel_tasks'),
+    report_panel_pdf: document.getElementById('report_panel_pdf'),
+  };
+  const goalProjectInput = document.getElementById('goal_project_id');
+  const goalMemberInput = document.getElementById('goal_member_id');
+  const goalMemberHiddenInput = document.getElementById('goal_member_id_hidden');
+  const goalRecurrenceToggle = document.getElementById('goal_recurrence_enabled');
+  const goalRecurrenceFields = document.getElementById('goal_recurrence_fields');
+  const goalRecurrenceIntervalInput = document.getElementById('goal_recurrence_interval_days');
+  const goalRecurrenceQueue = document.getElementById('goal_recurrence_member_queue');
+  const goalRecurrenceInputs = document.getElementById('goal_recurrence_member_inputs');
+  const goalTitleInput = document.getElementById('goal_activity');
+  const goalDueInput = document.getElementById('goal_due_at');
+  const goalCreateSubmit = document.getElementById('report_goal_create_submit');
   let confirmBox = null;
   let activeCleanup = null;
   let missedModalHideTimeout = null;
@@ -620,17 +832,772 @@ document.addEventListener('DOMContentLoaded', function() {
     try {
       const absolute = new URL(plannerTabLink.getAttribute('href') || plannerTabLink.href, window.location.origin);
       absolute.searchParams.set('return_anchor', getCurrentReportAnchor());
+      absolute.searchParams.set('hide_create', '1');
+      absolute.searchParams.set('embedded', '1');
       plannerTabLink.setAttribute('href', absolute.pathname + absolute.search);
     } catch (_error) {
       // Ignora falha de parsing e mantém href atual.
     }
   }
 
+  function setPlannerModalOpen(open) {
+    if (!plannerModal || !plannerTabLink || !plannerModalFrame) {
+      return;
+    }
+    if (open) {
+      updatePlannerTabHref();
+      const plannerHref = plannerTabLink.getAttribute('href') || plannerTabLink.href;
+      if (plannerModalFrame.getAttribute('src') !== plannerHref) {
+        plannerModalFrame.setAttribute('src', plannerHref);
+      }
+      plannerModal.removeAttribute('hidden');
+      document.body.classList.add('report-planner-open');
+    } else {
+      plannerModal.setAttribute('hidden', 'hidden');
+      document.body.classList.remove('report-planner-open');
+    }
+  }
+
   if (plannerTabLink) {
     updatePlannerTabHref();
     window.addEventListener('hashchange', updatePlannerTabHref);
-    plannerTabLink.addEventListener('click', updatePlannerTabHref);
+    plannerTabLink.addEventListener('click', function(event) {
+      event.preventDefault();
+      setPlannerModalOpen(true);
+    });
+    if (plannerModalBackdrop) {
+      plannerModalBackdrop.addEventListener('click', function() {
+        setPlannerModalOpen(false);
+      });
+    }
+    if (plannerModalClose) {
+      plannerModalClose.addEventListener('click', function() {
+        setPlannerModalOpen(false);
+      });
+    }
+    document.addEventListener('keydown', function(event) {
+      if (event.key === 'Escape' && plannerModal && !plannerModal.hasAttribute('hidden')) {
+        setPlannerModalOpen(false);
+      }
+    });
   }
+
+  function setMoreActionsMenuOpen(open) {
+    if (!moreActionsToggle || !moreActionsModal) {
+      return;
+    }
+    if (moreActionsRoot) {
+      moreActionsRoot.classList.toggle('is-open', open);
+    }
+    moreActionsToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (open) {
+      moreActionsModal.removeAttribute('hidden');
+      document.body.classList.add('report-more-actions-open');
+      if (moreActionsContent) {
+        moreActionsContent.scrollTop = 0;
+      }
+    } else {
+      moreActionsModal.setAttribute('hidden', 'hidden');
+      document.body.classList.remove('report-more-actions-open');
+    }
+  }
+
+  function isMoreActionsMenuOpen() {
+    if (!moreActionsModal) {
+      return false;
+    }
+    return !moreActionsModal.hasAttribute('hidden');
+  }
+
+  function closeMoreActionsMenu(event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    setMoreActionsMenuOpen(false);
+  }
+
+  function closeAllActionPanels() {
+    Object.values(reportActionPanels).forEach(function(panel) {
+      if (panel) {
+        panel.setAttribute('hidden', 'hidden');
+      }
+    });
+    moreActionItems.forEach(function(button) {
+      button.classList.remove('is-active');
+    });
+  }
+
+  function hasVisibleActionPanel() {
+    return Object.values(reportActionPanels).some(function(panel) {
+      return panel && !panel.hasAttribute('hidden');
+    });
+  }
+
+  function toggleActionPanel(panelId) {
+    const targetPanel = reportActionPanels[panelId];
+    if (!targetPanel) {
+      return;
+    }
+    const willOpen = targetPanel.hasAttribute('hidden');
+    closeAllActionPanels();
+    if (willOpen) {
+      targetPanel.removeAttribute('hidden');
+      const activeButton = moreActionItems.find(function(button) {
+        return String(button.dataset.reportPanelTarget || '').trim() === panelId;
+      });
+      if (activeButton) {
+        activeButton.classList.add('is-active');
+      }
+      if (moreActionsContent) {
+        moreActionsContent.scrollTop = 0;
+      }
+    }
+  }
+
+  if (moreActionsToggle && moreActionsModal) {
+    moreActionsToggle.addEventListener('click', function() {
+      const isOpen = isMoreActionsMenuOpen();
+      setMoreActionsMenuOpen(!isOpen);
+      if (!isOpen && !hasVisibleActionPanel()) {
+        toggleActionPanel('report_panel_completed');
+      }
+    });
+    moreActionItems.forEach(function(button) {
+      button.addEventListener('click', function() {
+        const targetId = String(button.dataset.reportPanelTarget || '').trim();
+        if (!targetId) {
+          return;
+        }
+        toggleActionPanel(targetId);
+      });
+    });
+    if (moreActionsBackdrop) {
+      moreActionsBackdrop.addEventListener('click', closeMoreActionsMenu);
+      moreActionsBackdrop.addEventListener('pointerup', closeMoreActionsMenu);
+    }
+    if (moreActionsClose) {
+      moreActionsClose.addEventListener('click', closeMoreActionsMenu);
+    }
+    document.addEventListener('click', function(event) {
+      if (!isMoreActionsMenuOpen()) {
+        return;
+      }
+      if (
+        (moreActionsRoot && moreActionsRoot.contains(event.target))
+        || (moreActionsModal && moreActionsModal.contains(event.target))
+      ) {
+        return;
+      }
+      if (!moreActionsRoot.contains(event.target)) {
+        setMoreActionsMenuOpen(false);
+      }
+    });
+    document.addEventListener('keydown', function(event) {
+      if (event.key === 'Escape' && isMoreActionsMenuOpen()) {
+        closeMoreActionsMenu(event);
+      }
+    });
+    setMoreActionsMenuOpen(false);
+  }
+
+  function toDateTimeLocalValue(date) {
+    const pad = function(value) { return String(value).padStart(2, '0'); };
+    return [
+      date.getFullYear(),
+      '-',
+      pad(date.getMonth() + 1),
+      '-',
+      pad(date.getDate()),
+      'T',
+      pad(date.getHours()),
+      ':',
+      pad(date.getMinutes()),
+    ].join('');
+  }
+
+  function refreshGoalDueMin() {
+    if (!goalDueInput) {
+      return '';
+    }
+    const minValue = toDateTimeLocalValue(new Date());
+    goalDueInput.min = minValue;
+    return minValue;
+  }
+
+  function setGoalSubmitState(isSaving) {
+    if (!goalCreateSubmit) {
+      return;
+    }
+    if (isSaving) {
+      goalCreateSubmit.dataset.originalLabel = goalCreateSubmit.dataset.originalLabel || goalCreateSubmit.textContent;
+      goalCreateSubmit.textContent = 'Salvando...';
+      goalCreateSubmit.disabled = true;
+    } else {
+      goalCreateSubmit.textContent = goalCreateSubmit.dataset.originalLabel || 'Salvar';
+      goalCreateSubmit.disabled = false;
+    }
+  }
+
+  function fieldErrorElement(name) {
+    return goalCreateForm
+      ? goalCreateForm.querySelector('[data-error-for="' + name + '"]')
+      : null;
+  }
+
+  function clearGoalCreateFieldErrors() {
+    ['project_id', 'member_id', 'activity', 'due_at', 'recurrence_interval_days'].forEach(function(fieldName) {
+      const element = fieldErrorElement(fieldName);
+      if (!element) {
+        return;
+      }
+      element.textContent = '';
+      element.hidden = true;
+    });
+  }
+
+  function setGoalCreateFieldError(name, message) {
+    const element = fieldErrorElement(name);
+    if (!element) {
+      return;
+    }
+    element.textContent = String(message || '').trim();
+    element.hidden = !element.textContent;
+  }
+
+  function validateGoalCreateForm() {
+    if (!goalCreateForm) {
+      return true;
+    }
+    clearGoalCreateFieldErrors();
+    let valid = true;
+
+    const projectValue = String(goalProjectInput?.value || '').trim();
+    const memberValue = String(
+      goalMemberInput
+        ? goalMemberInput.value
+        : (goalMemberHiddenInput ? goalMemberHiddenInput.value : ''),
+    ).trim();
+    const titleValue = String(goalTitleInput?.value || '').trim();
+    const dueValue = String(goalDueInput?.value || '').trim();
+    const minDue = refreshGoalDueMin();
+
+    if (!projectValue) {
+      setGoalCreateFieldError('project_id', 'Selecione um projeto.');
+      valid = false;
+    }
+    if (!memberValue) {
+      setGoalCreateFieldError('member_id', 'Selecione o membro do projeto.');
+      valid = false;
+    }
+    if (!titleValue) {
+      setGoalCreateFieldError('activity', 'Informe um título.');
+      valid = false;
+    } else if (titleValue.length < 3) {
+      setGoalCreateFieldError('activity', 'Título muito curto.');
+      valid = false;
+    }
+    if (!dueValue) {
+      setGoalCreateFieldError('due_at', 'Informe a data e horário.');
+      valid = false;
+    } else if (minDue && dueValue < minDue) {
+      setGoalCreateFieldError('due_at', 'Use uma data atual ou futura.');
+      valid = false;
+    }
+    if (goalRecurrenceToggle && goalRecurrenceToggle.checked && goalRecurrenceIntervalInput) {
+      const recurrenceEvery = Number(goalRecurrenceIntervalInput.value || '');
+      if (!Number.isInteger(recurrenceEvery) || recurrenceEvery < 1 || recurrenceEvery > 60) {
+        setGoalCreateFieldError('recurrence_interval_days', 'Intervalo entre 1 e 60 dias.');
+        valid = false;
+      }
+    }
+
+    return valid;
+  }
+
+  let goalRecurrenceOrder = [];
+
+  function toggleGoalRecurrenceFields() {
+    if (!goalRecurrenceToggle || !goalRecurrenceFields) {
+      return;
+    }
+    goalRecurrenceFields.hidden = !goalRecurrenceToggle.checked;
+  }
+
+  function syncGoalRecurrenceHiddenInputs() {
+    if (!goalRecurrenceInputs) {
+      return;
+    }
+    goalRecurrenceInputs.innerHTML = '';
+    goalRecurrenceOrder.forEach(function(memberId) {
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = 'recurrence_member_ids';
+      input.value = String(memberId);
+      goalRecurrenceInputs.appendChild(input);
+    });
+  }
+
+  function paintGoalRecurrenceOrder() {
+    if (!goalRecurrenceQueue) {
+      return;
+    }
+    const rows = goalRecurrenceQueue.querySelectorAll('.planner-recurrence-member-item[data-member-id]');
+    rows.forEach(function(row) {
+      const memberId = String(row.dataset.memberId || '');
+      const index = goalRecurrenceOrder.indexOf(memberId);
+      const badge = row.querySelector('.planner-recurrence-order-badge');
+      if (index >= 0) {
+        row.classList.add('is-selected');
+        row.setAttribute('aria-pressed', 'true');
+        if (badge) {
+          badge.hidden = false;
+          badge.textContent = String(index + 1);
+        }
+      } else {
+        row.classList.remove('is-selected');
+        row.setAttribute('aria-pressed', 'false');
+        if (badge) {
+          badge.hidden = true;
+          badge.textContent = '';
+        }
+      }
+    });
+    syncGoalRecurrenceHiddenInputs();
+  }
+
+  function bindGoalRecurrenceRowEvents() {
+    if (!goalRecurrenceQueue) {
+      return;
+    }
+    const rows = goalRecurrenceQueue.querySelectorAll('.planner-recurrence-member-item[data-member-id]');
+    rows.forEach(function(row) {
+      row.addEventListener('click', function() {
+        const memberId = String(this.dataset.memberId || '');
+        if (!memberId) {
+          return;
+        }
+        const idx = goalRecurrenceOrder.indexOf(memberId);
+        if (idx >= 0) {
+          goalRecurrenceOrder.splice(idx, 1);
+        } else {
+          goalRecurrenceOrder.push(memberId);
+        }
+        paintGoalRecurrenceOrder();
+      });
+    });
+  }
+
+  function renderGoalCreateMembers(members) {
+    if (!goalMemberInput || !goalProjectInput) {
+      return;
+    }
+
+    const selectedProjectOption = goalProjectInput.options[goalProjectInput.selectedIndex];
+    const canCreateForOthers = selectedProjectOption
+      && selectedProjectOption.dataset.canCreateForOthers === '1';
+    const currentMemberId = String(goalProjectInput.dataset.currentMemberId || '').trim();
+    const selectedMemberId = String(goalProjectInput.dataset.selectedMemberId || '').trim();
+    const visibleMembers = canCreateForOthers || !currentMemberId
+      ? members
+      : members.filter(function(member) {
+        return String(member.id) === currentMemberId;
+      });
+
+    goalMemberInput.innerHTML = '';
+    const placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = 'Selecione';
+    goalMemberInput.appendChild(placeholder);
+
+    visibleMembers.forEach(function(member) {
+      const option = document.createElement('option');
+      option.value = String(member.id);
+      option.textContent = member.name;
+      if (
+        (selectedMemberId && selectedMemberId === String(member.id))
+        || (!selectedMemberId && visibleMembers.length === 1)
+      ) {
+        option.selected = true;
+      }
+      goalMemberInput.appendChild(option);
+    });
+
+    const selectedOption = goalMemberInput.options[goalMemberInput.selectedIndex];
+    const selectedValue = selectedOption ? String(selectedOption.value || '').trim() : '';
+    goalProjectInput.dataset.selectedMemberId = selectedValue;
+    if (goalMemberHiddenInput) {
+      goalMemberHiddenInput.value = selectedValue || currentMemberId || '';
+    }
+
+    if (goalRecurrenceQueue) {
+      goalRecurrenceQueue.innerHTML = '';
+      const memberIdSet = new Set(visibleMembers.map(function(member) {
+        return String(member.id);
+      }));
+      const seed = String(goalRecurrenceQueue.dataset.selectedOrder || '')
+        .split(',')
+        .map(function(item) { return String(item || '').trim(); })
+        .filter(Boolean)
+        .filter(function(id) { return memberIdSet.has(id); });
+      goalRecurrenceOrder = goalRecurrenceOrder.length
+        ? goalRecurrenceOrder.filter(function(id) { return memberIdSet.has(id); })
+        : seed;
+      if (!canCreateForOthers && currentMemberId) {
+        goalRecurrenceOrder = [String(currentMemberId)];
+      }
+      visibleMembers.forEach(function(member) {
+        const row = document.createElement('button');
+        row.type = 'button';
+        row.className = 'planner-recurrence-member-item';
+        row.setAttribute('data-member-id', String(member.id));
+        row.setAttribute('aria-pressed', 'false');
+        row.innerHTML = '<span class="planner-recurrence-order-badge" hidden></span><span>' + member.name + '</span>';
+        goalRecurrenceQueue.appendChild(row);
+      });
+      paintGoalRecurrenceOrder();
+      bindGoalRecurrenceRowEvents();
+    }
+  }
+
+  function loadGoalCreateMembers(projectId) {
+    if (!goalMemberInput) {
+      return;
+    }
+    if (!projectId) {
+      renderGoalCreateMembers([]);
+      return;
+    }
+    fetch('/api/project/' + encodeURIComponent(projectId) + '/members', {
+      credentials: 'same-origin',
+      headers: {
+        Accept: 'application/json',
+      },
+    })
+      .then(function(response) {
+        if (!response.ok) {
+          throw new Error('Falha ao carregar membros do projeto.');
+        }
+        return response.json();
+      })
+      .then(function(payload) {
+        renderGoalCreateMembers(payload.members || []);
+      })
+      .catch(function() {
+        renderGoalCreateMembers([]);
+      });
+  }
+
+  function showGoalCreateToast(message) {
+    const toast = document.createElement('div');
+    toast.className = 'report-create-toast';
+    toast.textContent = message || 'Tarefa criada.';
+    document.body.appendChild(toast);
+    window.requestAnimationFrame(function() {
+      toast.classList.add('is-visible');
+    });
+    window.setTimeout(function() {
+      toast.classList.remove('is-visible');
+      window.setTimeout(function() {
+        toast.remove();
+      }, 220);
+    }, 1500);
+  }
+
+  function buildGoalCreateRedirectUrl(baseUrl, goalId) {
+    try {
+      const absolute = new URL(baseUrl || window.location.href, window.location.origin);
+      if (goalId) {
+        absolute.searchParams.set('highlight_goal_id', String(goalId));
+      }
+      return absolute.pathname + absolute.search + absolute.hash;
+    } catch (_error) {
+      return String(baseUrl || window.location.href);
+    }
+  }
+
+  function highlightGoalCardFromQuery() {
+    let goalId = '';
+    try {
+      goalId = String(new URLSearchParams(window.location.search).get('highlight_goal_id') || '').trim();
+    } catch (_error) {
+      goalId = '';
+    }
+    if (!goalId) {
+      return;
+    }
+    const card = document.querySelector('.report-goal-item[data-goal-id="' + goalId + '"]');
+    if (card) {
+      card.classList.add('report-goal-item-new');
+      card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      window.setTimeout(function() {
+        card.classList.remove('report-goal-item-new');
+      }, 2600);
+    }
+    try {
+      const cleaned = new URL(window.location.href);
+      cleaned.searchParams.delete('highlight_goal_id');
+      window.history.replaceState({}, '', cleaned.pathname + cleaned.search + cleaned.hash);
+    } catch (_error) {}
+  }
+
+  function ensureGoalCreatePortal() {
+    if (!goalCreatePopover || !goalCreateBackdrop || !document.body) {
+      return;
+    }
+    if (goalCreatePopover.dataset.portalMounted === '1') {
+      return;
+    }
+    document.body.appendChild(goalCreateBackdrop);
+    document.body.appendChild(goalCreatePopover);
+    goalCreatePopover.dataset.portalMounted = '1';
+  }
+
+  function forceGoalCreateModalLayout() {
+    const topbar = document.querySelector('.topbar');
+    const topbarBottom = topbar
+      ? Math.ceil(topbar.getBoundingClientRect().bottom)
+      : 0;
+    const headerBottom = Math.max(0, topbarBottom);
+    const modalTop = Math.max(12, headerBottom + 8);
+    const viewportHeight = Math.max(window.innerHeight || 0, 320);
+    const modalMaxHeight = Math.max(280, viewportHeight - modalTop - 12);
+    const formMaxHeight = Math.max(200, modalMaxHeight - 108);
+
+    if (goalCreatePopover) {
+      goalCreatePopover.style.position = 'fixed';
+      goalCreatePopover.style.top = String(modalTop) + 'px';
+      goalCreatePopover.style.left = '50%';
+      goalCreatePopover.style.transform = 'translateX(-50%)';
+      goalCreatePopover.style.zIndex = '5000';
+      goalCreatePopover.style.maxHeight = String(modalMaxHeight) + 'px';
+    }
+    if (goalCreateBackdrop) {
+      goalCreateBackdrop.style.position = 'fixed';
+      goalCreateBackdrop.style.left = '0';
+      goalCreateBackdrop.style.right = '0';
+      goalCreateBackdrop.style.bottom = '0';
+      goalCreateBackdrop.style.top = String(headerBottom) + 'px';
+      goalCreateBackdrop.style.zIndex = '4999';
+    }
+    if (goalCreateForm) {
+      goalCreateForm.style.maxHeight = String(formMaxHeight) + 'px';
+    }
+  }
+
+  function setGoalCreateOpen(open) {
+    if (!goalCreateBox || !goalCreateToggle || !goalCreatePopover) {
+      return;
+    }
+    goalCreateBox.classList.toggle('is-open', open);
+    goalCreateToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    document.body.classList.toggle('planner-modal-open', open);
+    if (open) {
+      ensureGoalCreatePortal();
+      forceGoalCreateModalLayout();
+      if (goalProjectInput && !String(goalProjectInput.value || '').trim()) {
+        const defaultProjectId = String(goalCreateBox?.dataset.defaultProjectId || '').trim();
+        if (defaultProjectId && goalProjectInput.querySelector('option[value="' + defaultProjectId + '"]')) {
+          goalProjectInput.value = defaultProjectId;
+        }
+      }
+      if (goalProjectInput && goalMemberInput) {
+        loadGoalCreateMembers(String(goalProjectInput.value || '').trim());
+      }
+      refreshGoalDueMin();
+      goalCreatePopover.removeAttribute('hidden');
+      goalCreatePopover.scrollTop = 0;
+      if (goalCreateForm) {
+        goalCreateForm.scrollTop = 0;
+      }
+      if (goalCreateBackdrop) {
+        goalCreateBackdrop.removeAttribute('hidden');
+      }
+      window.requestAnimationFrame(function() {
+        if (goalTitleInput) {
+          goalTitleInput.focus();
+          goalTitleInput.select();
+        }
+      });
+    } else {
+      goalCreatePopover.setAttribute('hidden', 'hidden');
+      if (goalCreateBackdrop) {
+        goalCreateBackdrop.setAttribute('hidden', 'hidden');
+      }
+    }
+  }
+
+  if (goalCreateToggle && goalCreatePopover) {
+    ensureGoalCreatePortal();
+    forceGoalCreateModalLayout();
+    goalCreateToggle.addEventListener('click', function() {
+      const isOpen = goalCreateBox && goalCreateBox.classList.contains('is-open');
+      setGoalCreateOpen(!isOpen);
+    });
+    if (goalCreateClose) {
+      goalCreateClose.addEventListener('click', function() {
+        setGoalCreateOpen(false);
+      });
+    }
+    if (goalCreateCloseX) {
+      goalCreateCloseX.addEventListener('click', function() {
+        setGoalCreateOpen(false);
+      });
+    }
+    if (goalCreateBackdrop) {
+      goalCreateBackdrop.addEventListener('click', function() {
+        setGoalCreateOpen(false);
+      });
+    }
+    document.addEventListener('click', function(event) {
+      if (!goalCreateBox || !goalCreateBox.classList.contains('is-open')) {
+        return;
+      }
+      if (
+        (goalCreateBox && goalCreateBox.contains(event.target))
+        || (goalCreatePopover && goalCreatePopover.contains(event.target))
+      ) {
+        return;
+      }
+      if (!goalCreateBox.contains(event.target)) {
+        setGoalCreateOpen(false);
+      }
+    });
+    document.addEventListener('keydown', function(event) {
+      if (event.key === 'Escape' && goalCreateBox && goalCreateBox.classList.contains('is-open')) {
+        setGoalCreateOpen(false);
+        return;
+      }
+      if (
+        (event.ctrlKey || event.metaKey)
+        && event.key === 'Enter'
+        && goalCreateBox
+        && goalCreateBox.classList.contains('is-open')
+        && goalCreateForm
+      ) {
+        event.preventDefault();
+        goalCreateForm.requestSubmit();
+      }
+    });
+    window.addEventListener('resize', function() {
+      if (goalCreateBox && goalCreateBox.classList.contains('is-open')) {
+        forceGoalCreateModalLayout();
+      }
+    });
+    if (goalCreateBox && goalCreateBox.classList.contains('is-open')) {
+      ensureGoalCreatePortal();
+      document.body.classList.add('planner-modal-open');
+      if (goalCreateBackdrop) {
+        goalCreateBackdrop.removeAttribute('hidden');
+      }
+      if (goalCreatePopover) {
+        goalCreatePopover.removeAttribute('hidden');
+      }
+      forceGoalCreateModalLayout();
+    }
+  }
+
+  if (goalCreateForm) {
+    const realtimeFields = [goalProjectInput, goalTitleInput, goalDueInput].filter(Boolean);
+    if (goalMemberInput) {
+      realtimeFields.push(goalMemberInput);
+    }
+    if (goalRecurrenceIntervalInput) {
+      realtimeFields.push(goalRecurrenceIntervalInput);
+    }
+    realtimeFields.forEach(function(field) {
+      field.addEventListener('input', validateGoalCreateForm);
+      field.addEventListener('change', validateGoalCreateForm);
+    });
+    if (goalProjectInput) {
+      goalProjectInput.addEventListener('change', function() {
+        if (goalMemberInput) {
+          goalProjectInput.dataset.selectedMemberId = '';
+          loadGoalCreateMembers(String(goalProjectInput.value || '').trim());
+        }
+        validateGoalCreateForm();
+      });
+    }
+    if (goalMemberInput) {
+      goalMemberInput.addEventListener('change', function() {
+        goalProjectInput.dataset.selectedMemberId = String(goalMemberInput.value || '').trim();
+      });
+      const initialProjectId = String(goalProjectInput?.value || '').trim();
+      if (initialProjectId) {
+        loadGoalCreateMembers(initialProjectId);
+      } else {
+        renderGoalCreateMembers([]);
+      }
+    }
+    if (goalRecurrenceToggle) {
+      goalRecurrenceToggle.addEventListener('change', function() {
+        toggleGoalRecurrenceFields();
+        validateGoalCreateForm();
+      });
+      toggleGoalRecurrenceFields();
+    }
+    refreshGoalDueMin();
+    goalCreateForm.addEventListener('submit', async function(event) {
+      event.preventDefault();
+      if (!validateGoalCreateForm()) {
+        return;
+      }
+      setGoalSubmitState(true);
+      clearGoalCreateFieldErrors();
+      try {
+        const payloadBody = new URLSearchParams(new FormData(goalCreateForm));
+        const response = await fetch(goalCreateForm.action, {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+          body: payloadBody.toString(),
+        });
+        let payload = null;
+        try {
+          payload = await response.json();
+        } catch (_error) {
+          payload = null;
+        }
+        if (!response.ok || !payload || !payload.ok) {
+          const errorMap = payload && payload.errors ? payload.errors : {};
+          if (errorMap.projectId && errorMap.projectId[0]) {
+            setGoalCreateFieldError('project_id', errorMap.projectId[0]);
+          }
+          if (errorMap.memberId && errorMap.memberId[0]) {
+            setGoalCreateFieldError('member_id', errorMap.memberId[0]);
+          }
+          if (errorMap.activity && errorMap.activity[0]) {
+            setGoalCreateFieldError('activity', errorMap.activity[0]);
+          }
+          if (errorMap.dueAt && errorMap.dueAt[0]) {
+            setGoalCreateFieldError('due_at', errorMap.dueAt[0]);
+          }
+          if (errorMap.recurrenceIntervalDays && errorMap.recurrenceIntervalDays[0]) {
+            setGoalCreateFieldError('recurrence_interval_days', errorMap.recurrenceIntervalDays[0]);
+          }
+          throw new Error((payload && payload.message) || 'Não foi possível criar a tarefa.');
+        }
+        setGoalCreateOpen(false);
+        showGoalCreateToast(payload.message || 'Tarefa criada.');
+        const targetUrl = buildGoalCreateRedirectUrl(payload.redirectUrl || payload.redirect_url, payload.goalId || payload.goal_id);
+        window.setTimeout(function() {
+          window.location.assign(targetUrl);
+        }, 640);
+      } catch (error) {
+        if (!fieldErrorElement('activity')?.textContent && !fieldErrorElement('project_id')?.textContent && !fieldErrorElement('member_id')?.textContent && !fieldErrorElement('due_at')?.textContent) {
+          setGoalCreateFieldError('activity', (error && error.message) ? error.message : 'Falha ao salvar.');
+        }
+      } finally {
+        setGoalSubmitState(false);
+      }
+    });
+  }
+
+  highlightGoalCardFromQuery();
 
   function ensureConfirmBox() {
     if (confirmBox) {
