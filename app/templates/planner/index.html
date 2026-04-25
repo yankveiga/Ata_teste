@@ -163,12 +163,6 @@
                                             {% endif %}
                                         </div>
 
-                                        <div class="form-group" id="planner_member_group_fixed" hidden>
-                                            <label class="form-label" for="planner_form_member_name_fixed">Membro do Projeto</label>
-                                            <input id="planner_form_member_name_fixed" type="text" class="form-control" readonly value="">
-                                            <input id="planner_form_member_id_fixed" type="hidden" name="member_id" value="" disabled>
-                                        </div>
-
                                         <div class="form-group">
                                             <label class="form-label" for="planner_form_due_at">Data e Horário</label>
                                             <input
@@ -442,9 +436,6 @@
             const projectSelect = document.getElementById('planner_form_project_id');
             const memberSelect = document.getElementById('planner_form_member_id');
             const memberGroupSelect = document.getElementById('planner_member_group_select');
-            const memberGroupFixed = document.getElementById('planner_member_group_fixed');
-            const memberFixedName = document.getElementById('planner_form_member_name_fixed');
-            const memberFixedInput = document.getElementById('planner_form_member_id_fixed');
             const recurrenceToggle = document.getElementById('planner_form_recurrence_enabled');
             const recurrenceFields = document.getElementById('planner_recurrence_fields');
             const recurrenceQueue = document.getElementById('planner_recurrence_member_queue');
@@ -681,7 +672,6 @@
                 const selectedProjectOption = projectSelect.options[projectSelect.selectedIndex];
                 const canCreateForOthers = selectedProjectOption && selectedProjectOption.dataset.canCreateForOthers === '1';
                 const currentMemberId = String(projectSelect.dataset.currentMemberId || '');
-                const currentMemberName = String(projectSelect.dataset.currentMemberName || '');
                 const visibleMembers = canCreateForOthers || !currentMemberId
                     ? members
                     : members.filter((member) => String(member.id) === currentMemberId);
@@ -690,16 +680,7 @@
                     : null;
 
                 if (memberGroupSelect) {
-                    memberGroupSelect.hidden = !canCreateForOthers;
-                }
-                if (memberGroupFixed) {
-                    memberGroupFixed.hidden = canCreateForOthers;
-                }
-                if (memberSelect) {
-                    memberSelect.disabled = !canCreateForOthers;
-                }
-                if (memberFixedInput) {
-                    memberFixedInput.disabled = canCreateForOthers;
+                    memberGroupSelect.hidden = false;
                 }
 
                 memberSelect.innerHTML = '';
@@ -725,25 +706,6 @@
                 const selectedOptionValue = selectedOption ? String(selectedOption.value || '').trim() : '';
                 const effectiveSelectedId = selectedOptionValue || (ownMember ? String(ownMember.id) : '');
                 projectSelect.dataset.selectedMemberId = effectiveSelectedId;
-
-                if (!canCreateForOthers) {
-                    const fixedMember = ownMember || visibleMembers[0] || null;
-                    if (memberFixedName) {
-                        memberFixedName.value = fixedMember ? fixedMember.name : currentMemberName;
-                    }
-                    if (memberFixedInput) {
-                        memberFixedInput.value = fixedMember
-                            ? String(fixedMember.id)
-                            : (currentMemberId || '');
-                    }
-                } else {
-                    if (memberFixedName) {
-                        memberFixedName.value = '';
-                    }
-                    if (memberFixedInput) {
-                        memberFixedInput.value = '';
-                    }
-                }
 
                 if (recurrenceQueue) {
                     recurrenceQueue.innerHTML = '';
