@@ -25,7 +25,7 @@
  </a>
  <a
  id="report_planner_tab_link"
- href="{{ urlFor('planner') }}?view={{ 'project' if selectedProjectId else 'member' }}{% if selectedProjectId %}&project_id={{ selectedProjectId }}{% elif selectedMemberId %}&member_id={{ selectedMemberId }}{% endif %}&return_anchor=report-goals-panel&hide_create=1&embedded=1"
+ href="{{ urlFor('planner') }}?view={{ 'project' if selectedProjectId else 'member' }}{% if selectedProjectId %}&project_id={{ selectedProjectId }}{% elif selectedMemberId %}&member_id={{ selectedMemberId }}{% endif %}&return_anchor=report-goals-panel&embedded=1"
  class="module-tab-link"
  >
  <ion-icon name="calendar-outline"></ion-icon>
@@ -832,7 +832,7 @@ document.addEventListener('DOMContentLoaded', function() {
     try {
       const absolute = new URL(plannerTabLink.getAttribute('href') || plannerTabLink.href, window.location.origin);
       absolute.searchParams.set('return_anchor', getCurrentReportAnchor());
-      absolute.searchParams.set('hide_create', '1');
+      absolute.searchParams.delete('hide_create');
       absolute.searchParams.set('embedded', '1');
       plannerTabLink.setAttribute('href', absolute.pathname + absolute.search);
     } catch (_error) {

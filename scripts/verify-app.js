@@ -74,7 +74,6 @@ async function main() {
       "/atas/create",
       "/atas/download/:id",
       "/almoxarifado",
-      "/almoxarifado/users/create",
       "/almoxarifado/inventory/create",
       "/almoxarifado/inventory/delete/:id",
       "/almoxarifado/inventory/withdraw",
@@ -91,6 +90,11 @@ async function main() {
       "/almoxarifado/api/categorias/:id",
       "/almoxarifado/api/locais",
       "/almoxarifado/api/locais/:id",
+      "/manutencao-usuarios",
+      "/manutencao-usuarios/users/create",
+      "/manutencao-usuarios/users/delete/:id",
+      "/manutencao-usuarios/users/link/:id",
+      "/manutencao-usuarios/users/reset-password/:id",
       "/api/project/:project_id/members",
     ].forEach((routePath) => {
       assert.ok(routeEntries.includes(routePath), `Rota ausente: ${routePath}`);
