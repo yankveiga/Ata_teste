@@ -14,8 +14,53 @@ const { config } = require("./src/config");
 
 // SECAO: bootstrap do servidor HTTP com garantia de schema antes do listen.
 
+// FUNCAO: sleep.
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// FUNCAO: isRetryableDatabaseStartupError.
+function isRetryableDatabaseStartupError(error) {
+  if (!error) {
+    return false;
+  }
+  const code = String(error.code || "").toUpperCase();
+  const message = String(error.message || "").toLowerCase();
+  return (
+    code === "XX000"
+    || code === "57P01"
+    || code === "53300"
+    || code === "08006"
+    || message.includes("control plane request failed")
+    || message.includes("terminating connection due to administrator command")
+    || message.includes("connection terminated unexpectedly")
+    || message.includes("timeout")
+    || message.includes("econnreset")
+  );
+}
+
+// FUNCAO: ensureSchemaWithRetry.
+async function ensureSchemaWithRetry(maxAttempts = 5) {
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      database.ensureSchema();
+      return;
+    } catch (error) {
+      const canRetry = isRetryableDatabaseStartupError(error) && attempt < maxAttempts;
+      if (!canRetry) {
+        throw error;
+      }
+      const waitMs = Math.min(1000 * (2 ** (attempt - 1)), 8000);
+      console.warn(
+        `Banco indisponível na inicialização (tentativa ${attempt}/${maxAttempts}). Nova tentativa em ${waitMs}ms...`,
+      );
+      await sleep(waitMs);
+    }
+  }
+}
+
 async function startServer() {
-  database.ensureSchema();
+  await ensureSchemaWithRetry();
 
   const defaultWorkbookPath = path.join(config.baseDir, "planilha_presenca.xlsx");
   if (

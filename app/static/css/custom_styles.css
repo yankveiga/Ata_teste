@@ -2897,10 +2897,13 @@ body.theme-dark.section-projects .project-logo-preview img {
 .report-more-actions-modal {
   position: fixed;
   inset: 0;
-  z-index: 1200;
-  display: grid;
-  place-items: center;
-  padding: 20px;
+  z-index: 5200;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: clamp(10px, 2.4vh, 22px) clamp(10px, 2.4vw, 22px);
+  overflow: auto;
+  overscroll-behavior: contain;
 }
 
 .report-more-actions-open {
@@ -2919,8 +2922,10 @@ body.theme-dark.section-projects .project-logo-preview img {
 .report-more-actions-dialog {
   position: relative;
   z-index: 2;
-  width: min(960px, calc(100vw - 28px));
-  max-height: calc(100dvh - 28px);
+  width: min(960px, 100%);
+  max-width: calc(100vw - 24px);
+  max-height: calc(100dvh - 24px);
+  margin: 0 auto;
   border-radius: 16px;
   border: 1px solid rgba(49, 112, 57, 0.26);
   background: rgba(255, 255, 255, 0.99);
@@ -3150,6 +3155,34 @@ body.theme-dark.section-projects .project-logo-preview img {
 
 .report-completed-filters .form-control {
   min-height: 40px;
+}
+
+@media (max-width: 900px) {
+  .report-more-actions-modal {
+    padding: 10px;
+  }
+
+  .report-more-actions-dialog {
+    max-width: calc(100vw - 16px);
+    max-height: calc(100dvh - 16px);
+    border-radius: 14px;
+  }
+
+  .report-more-actions-menu {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 620px) {
+  .report-more-actions-dialog {
+    width: 100%;
+    max-width: 100%;
+    max-height: calc(100dvh - 12px);
+  }
+
+  .report-more-actions-menu {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .report-missed-modal[hidden] {

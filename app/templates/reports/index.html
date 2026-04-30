@@ -754,6 +754,173 @@
 
 {% block scripts %}
 <script>
+(function() {
+  function initReportMoreActionsModal() {
+    const root = document.getElementById('report_more_actions');
+    const toggle = document.getElementById('report_more_actions_toggle');
+    const modal = document.getElementById('report_more_actions_modal');
+    const dialog = modal ? modal.querySelector('.report-more-actions-dialog') : null;
+    const menu = document.getElementById('report_more_actions_menu');
+    const closeButton = document.getElementById('report_more_actions_close');
+    const backdrop = document.getElementById('report_more_actions_backdrop');
+    const content = document.getElementById('report_more_actions_content');
+    if (!root || !toggle || !modal || !menu) {
+      return;
+    }
+    if (modal.dataset.bound === '1') {
+      return;
+    }
+
+    const buttons = Array.from(menu.querySelectorAll('[data-report-panel-target]'));
+    const panels = {};
+    buttons.forEach(function(button) {
+      const panelId = String(button.dataset.reportPanelTarget || '').trim();
+      if (!panelId) {
+        return;
+      }
+      const panel = document.getElementById(panelId);
+      if (panel) {
+        panels[panelId] = panel;
+      }
+      button.setAttribute('aria-controls', panelId);
+    });
+    const defaultPanelId = buttons.length
+      ? String(buttons[0].dataset.reportPanelTarget || '').trim()
+      : '';
+    let activePanelId = defaultPanelId;
+
+    function ensureModalPortal() {
+      if (!modal || !document.body) {
+        return;
+      }
+      if (modal.dataset.portalMounted === '1') {
+        return;
+      }
+      document.body.appendChild(modal);
+      modal.dataset.portalMounted = '1';
+    }
+
+    function forceMoreActionsModalLayout() {
+      if (!modal) {
+        return;
+      }
+      const topbar = document.querySelector('.topbar');
+      const topbarBottom = topbar
+        ? Math.ceil(topbar.getBoundingClientRect().bottom)
+        : 0;
+      const headerBottom = Math.max(0, topbarBottom);
+      const modalTop = Math.max(12, headerBottom + 8);
+      const viewportHeight = Math.max(window.innerHeight || 0, 320);
+      const modalMaxHeight = Math.max(260, viewportHeight - modalTop - 12);
+
+      modal.style.paddingTop = String(modalTop) + 'px';
+      if (backdrop) {
+        backdrop.style.top = String(headerBottom) + 'px';
+      }
+      if (dialog) {
+        dialog.style.maxHeight = String(modalMaxHeight) + 'px';
+      }
+    }
+
+    function setOpen(open) {
+      root.classList.toggle('is-open', open);
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      if (open) {
+        ensureModalPortal();
+        forceMoreActionsModalLayout();
+        modal.removeAttribute('hidden');
+        document.body.classList.add('report-more-actions-open');
+      } else {
+        modal.setAttribute('hidden', 'hidden');
+        document.body.classList.remove('report-more-actions-open');
+      }
+    }
+
+    function openPanel(panelId) {
+      const resolvedPanelId = String(panelId || '').trim();
+      if (!resolvedPanelId || !panels[resolvedPanelId]) {
+        return;
+      }
+      Object.keys(panels).forEach(function(key) {
+        if (key === resolvedPanelId) {
+          panels[key].removeAttribute('hidden');
+        } else {
+          panels[key].setAttribute('hidden', 'hidden');
+        }
+      });
+      buttons.forEach(function(button) {
+        const isActive = String(button.dataset.reportPanelTarget || '').trim() === resolvedPanelId;
+        button.classList.toggle('is-active', isActive);
+        button.setAttribute('aria-selected', isActive ? 'true' : 'false');
+      });
+      activePanelId = resolvedPanelId;
+      if (content) {
+        content.scrollTop = 0;
+      }
+    }
+
+    toggle.addEventListener('click', function(event) {
+      event.preventDefault();
+      const shouldOpen = modal.hasAttribute('hidden');
+      setOpen(shouldOpen);
+      if (shouldOpen) {
+        openPanel(activePanelId || defaultPanelId);
+      }
+    });
+
+    menu.addEventListener('click', function(event) {
+      const targetButton = event.target.closest('[data-report-panel-target]');
+      if (!targetButton || !menu.contains(targetButton)) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      openPanel(String(targetButton.dataset.reportPanelTarget || '').trim());
+    });
+
+    function closeFromEvent(event) {
+      if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+      setOpen(false);
+    }
+
+    if (closeButton) {
+      closeButton.addEventListener('click', closeFromEvent);
+    }
+    if (backdrop) {
+      backdrop.addEventListener('click', closeFromEvent);
+      backdrop.addEventListener('pointerup', closeFromEvent);
+    }
+    document.addEventListener('keydown', function(event) {
+      if (event.key === 'Escape' && !modal.hasAttribute('hidden')) {
+        closeFromEvent(event);
+      }
+    });
+    window.addEventListener('resize', function() {
+      if (!modal.hasAttribute('hidden')) {
+        forceMoreActionsModalLayout();
+      }
+    });
+
+    ensureModalPortal();
+    forceMoreActionsModalLayout();
+    openPanel(activePanelId || defaultPanelId);
+    setOpen(false);
+    modal.dataset.bound = '1';
+    window.__reportMoreActionsDelegated = true;
+    window.__reportMoreActionsOpenPanel = openPanel;
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initReportMoreActionsModal);
+  } else {
+    initReportMoreActionsModal();
+  }
+})();
+</script>
+<script>
 document.addEventListener('DOMContentLoaded', function() {
   const forms = Array.from(document.querySelectorAll('.js-goal-auto-save-form'));
   const deleteForms = Array.from(document.querySelectorAll('.js-report-delete-form'));
@@ -782,7 +949,9 @@ document.addEventListener('DOMContentLoaded', function() {
   const moreActionsContent = document.getElementById('report_more_actions_content');
   const moreActionsBackdrop = document.getElementById('report_more_actions_backdrop');
   const moreActionsClose = document.getElementById('report_more_actions_close');
-  const moreActionItems = Array.from(document.querySelectorAll('[data-report-panel-target]'));
+  const moreActionItems = moreActionsMenu
+    ? Array.from(moreActionsMenu.querySelectorAll('[data-report-panel-target]'))
+    : [];
   const reportActionPanels = {
     report_panel_completed: document.getElementById('report_panel_completed'),
     report_panel_missed: document.getElementById('report_panel_missed'),
@@ -804,6 +973,7 @@ document.addEventListener('DOMContentLoaded', function() {
   let confirmBox = null;
   let activeCleanup = null;
   let missedModalHideTimeout = null;
+  let activeMoreActionsPanelId = '';
 
   function getCurrentReportAnchor() {
     const hash = String(window.location.hash || '').replace(/^#/, '').trim();
@@ -939,45 +1109,70 @@ document.addEventListener('DOMContentLoaded', function() {
     if (!targetPanel) {
       return;
     }
-    const willOpen = targetPanel.hasAttribute('hidden');
     closeAllActionPanels();
-    if (willOpen) {
-      targetPanel.removeAttribute('hidden');
-      const activeButton = moreActionItems.find(function(button) {
-        return String(button.dataset.reportPanelTarget || '').trim() === panelId;
-      });
-      if (activeButton) {
-        activeButton.classList.add('is-active');
-      }
-      if (moreActionsContent) {
-        moreActionsContent.scrollTop = 0;
-      }
+    targetPanel.removeAttribute('hidden');
+    activeMoreActionsPanelId = panelId;
+    const activeButton = moreActionItems.find(function(button) {
+      return String(button.dataset.reportPanelTarget || '').trim() === panelId;
+    });
+    if (activeButton) {
+      activeButton.classList.add('is-active');
+    }
+    if (moreActionsContent) {
+      moreActionsContent.scrollTop = 0;
     }
   }
 
-  if (moreActionsToggle && moreActionsModal) {
+  function handleMoreActionItemClick(event) {
+    if (!event) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    const trigger = (
+      event.currentTarget
+      && event.currentTarget.dataset
+      && event.currentTarget.dataset.reportPanelTarget
+    )
+      ? event.currentTarget
+      : event.target.closest('[data-report-panel-target]');
+    if (!trigger) {
+      return;
+    }
+    const targetId = String(trigger.dataset.reportPanelTarget || '').trim();
+    if (!targetId) {
+      return;
+    }
+    toggleActionPanel(targetId);
+  }
+
+  if (moreActionsToggle && moreActionsModal && !window.__reportMoreActionsDelegated) {
     moreActionsToggle.addEventListener('click', function() {
       const isOpen = isMoreActionsMenuOpen();
       setMoreActionsMenuOpen(!isOpen);
-      if (!isOpen && !hasVisibleActionPanel()) {
-        toggleActionPanel('report_panel_completed');
+      if (!isOpen) {
+        toggleActionPanel(activeMoreActionsPanelId || 'report_panel_completed');
       }
     });
     moreActionItems.forEach(function(button) {
-      button.addEventListener('click', function() {
-        const targetId = String(button.dataset.reportPanelTarget || '').trim();
-        if (!targetId) {
+      button.addEventListener('click', handleMoreActionItemClick);
+    });
+    if (moreActionsMenu) {
+      moreActionsMenu.addEventListener('click', function(event) {
+        const trigger = event.target.closest('[data-report-panel-target]');
+        if (!trigger || !moreActionsMenu.contains(trigger)) {
           return;
         }
-        toggleActionPanel(targetId);
+        handleMoreActionItemClick(event);
       });
-    });
+    }
     if (moreActionsBackdrop) {
       moreActionsBackdrop.addEventListener('click', closeMoreActionsMenu);
       moreActionsBackdrop.addEventListener('pointerup', closeMoreActionsMenu);
     }
     if (moreActionsClose) {
       moreActionsClose.addEventListener('click', closeMoreActionsMenu);
+      moreActionsClose.addEventListener('pointerup', closeMoreActionsMenu);
     }
     document.addEventListener('click', function(event) {
       if (!isMoreActionsMenuOpen()) {
