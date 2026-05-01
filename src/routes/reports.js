@@ -195,8 +195,14 @@ function registerReportRoutes(ctx) {
     Object.assign(goalFormErrors, validateWeekGoalForm(goalFormData).errors);
     const dueAt = normalizeDueAtInput(goalFormData.dueAt);
     const nowSql = toSqlDateTime(new Date());
+    const currentWeekStart = getCurrentWeekStartDate();
     if (!dueAt) {
       goalFormErrors.dueAt = ["Informe uma data de entrega válida."];
+    } else {
+      const dueDateKey = String(dueAt).slice(0, 10);
+      if (dueDateKey < currentWeekStart) {
+        goalFormErrors.dueAt = ["Use uma data dentro da quinzena atual."];
+      }
     }
 
     const currentMember = getCurrentMember(req);
@@ -282,7 +288,18 @@ function registerReportRoutes(ctx) {
         recurrenceMemberQueue: recurrenceEnabled ? recurrenceQueue : null,
         recurrenceNextIndex: recurrenceEnabled ? recurrenceNextIndex : null,
       });
-      database.syncReportWeekGoalFromPlannerTask(createdTask, {
+      let syncedTask = createdTask;
+      if (goalFormData.isCompleted && createdTask?.id) {
+        const completedAt = toSqlDateTime(new Date());
+        syncedTask = database.updatePlannerTaskCompletion({
+          id: createdTask.id,
+          isCompleted: true,
+          completedAt,
+          updatedAt: completedAt,
+          actorUserId: req.currentUser.id,
+        }) || createdTask;
+      }
+      database.syncReportWeekGoalFromPlannerTask(syncedTask, {
         createdByUserId: req.currentUser.id,
       });
       if (!wantsJson) {

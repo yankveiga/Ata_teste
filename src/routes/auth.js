@@ -63,6 +63,7 @@ function registerAuthRoutes(ctx) {
     verifyCsrf,
     safeRedirectPath,
     parseId,
+    getCurrentWeekStartDate,
     toSqlDateTime,
     trimToNull,
     registerPresenceInWorkbook,
@@ -611,7 +612,7 @@ app.get("/services", requireAuth, (req, res) => {
         ? "project"
         : "member",
       plannerPanelColor: selectedProject?.primary_color || "#0f766e",
-      plannerMinDateTime: nowIso ? `${nowIso.slice(0, 16).replace(" ", "T")}` : "",
+      plannerMinDateTime: `${getCurrentWeekStartDate()}T00:00`,
       plannerQuery: buildPlannerQuery({
         view: effectiveViewMode,
         projectId: selectedProjectId,
@@ -719,10 +720,16 @@ app.get("/services", requireAuth, (req, res) => {
     }
 
     const dueAt = toSqlDateTime(formData.dueAt);
+    const currentWeekStart = getCurrentWeekStartDate();
     const nowSql = toSqlDateTime(new Date());
     const nowMinuteSql = nowSql ? `${String(nowSql).slice(0, 16)}:00` : null;
     if (!dueAt) {
       errors.dueAt = ["Informe data e horário válidos para a tarefa."];
+    } else {
+      const dueDateKey = String(dueAt).slice(0, 10);
+      if (dueDateKey < currentWeekStart) {
+        errors.dueAt = ["Use uma data dentro da quinzena atual."];
+      }
     }
 
     const description = trimToNull(formData.description) || "";

@@ -207,6 +207,7 @@
  type="datetime-local"
  class="form-control"
  value="{{ goalFormData.dueAt }}"
+ data-fortnight-start="{{ currentWeekStart }}T00:00"
  required
  >
  {% if goalFormErrors.dueAt %}
@@ -250,8 +251,9 @@
  >
  <span>Tarefa recorrente (rotação de membros)</span>
  </label>
- <small class="form-hint">Quando marcada como concluída, cria automaticamente a próxima tarefa para o próximo membro da fila.</small>
  </div>
+ <div id="goal_recurrence_details" {% if not goalFormData.recurrenceEnabled %}hidden{% endif %}>
+ <small class="form-hint">Quando marcada como concluída, cria automaticamente a próxima tarefa para o próximo membro da fila.</small>
 
  <div class="planner-recurrence-fields" id="goal_recurrence_fields" {% if not goalFormData.recurrenceEnabled %}hidden{% endif %}>
  <div class="form-group">
@@ -293,6 +295,7 @@
  {% for memberId in goalFormData.recurrenceMemberIds %}
  <input type="hidden" name="recurrence_member_ids" value="{{ memberId }}">
  {% endfor %}
+ </div>
  </div>
  </div>
  </div>
@@ -963,6 +966,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const goalMemberInput = document.getElementById('goal_member_id');
   const goalMemberHiddenInput = document.getElementById('goal_member_id_hidden');
   const goalRecurrenceToggle = document.getElementById('goal_recurrence_enabled');
+  const goalRecurrenceDetails = document.getElementById('goal_recurrence_details');
   const goalRecurrenceFields = document.getElementById('goal_recurrence_fields');
   const goalRecurrenceIntervalInput = document.getElementById('goal_recurrence_interval_days');
   const goalRecurrenceQueue = document.getElementById('goal_recurrence_member_queue');
@@ -1215,7 +1219,14 @@ document.addEventListener('DOMContentLoaded', function() {
     if (!goalDueInput) {
       return '';
     }
-    const minValue = toDateTimeLocalValue(new Date());
+    const defaultMin = toDateTimeLocalValue(new Date());
+    const fortnightStartRaw = String(goalDueInput.dataset.fortnightStart || '').trim();
+    const parsedFortnightStart = fortnightStartRaw ? new Date(fortnightStartRaw) : null;
+    const minValue = (
+      parsedFortnightStart
+      && !Number.isNaN(parsedFortnightStart.getTime())
+      && toDateTimeLocalValue(parsedFortnightStart)
+    ) || defaultMin;
     goalDueInput.min = minValue;
     return minValue;
   }
@@ -1296,7 +1307,7 @@ document.addEventListener('DOMContentLoaded', function() {
       setGoalCreateFieldError('due_at', 'Informe a data e horário.');
       valid = false;
     } else if (minDue && dueValue < minDue) {
-      setGoalCreateFieldError('due_at', 'Use uma data atual ou futura.');
+      setGoalCreateFieldError('due_at', 'Use uma data dentro da quinzena atual.');
       valid = false;
     }
     if (goalRecurrenceToggle && goalRecurrenceToggle.checked && goalRecurrenceIntervalInput) {
@@ -1313,10 +1324,16 @@ document.addEventListener('DOMContentLoaded', function() {
   let goalRecurrenceOrder = [];
 
   function toggleGoalRecurrenceFields() {
-    if (!goalRecurrenceToggle || !goalRecurrenceFields) {
+    if (!goalRecurrenceToggle) {
       return;
     }
-    goalRecurrenceFields.hidden = !goalRecurrenceToggle.checked;
+    const isEnabled = goalRecurrenceToggle.checked;
+    if (goalRecurrenceDetails) {
+      goalRecurrenceDetails.hidden = !isEnabled;
+    }
+    if (goalRecurrenceFields) {
+      goalRecurrenceFields.hidden = !isEnabled;
+    }
   }
 
   function syncGoalRecurrenceHiddenInputs() {
