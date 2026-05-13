@@ -1,6 +1,6 @@
 /*
  * ARQUIVO: scripts/create-user.js
- * FUNCAO: utilitario de linha de comando para criar usuarios no banco local (admin/comum).
+ * FUNCAO: utilitario de linha de comando para criar usuarios no banco local (admin/tutor/comum).
  * IMPACTO DE MUDANCAS:
  * - Alterar validacoes de entrada impacta a seguranca e qualidade dos dados cadastrados.
  * - Alterar argumentos CLI exige atualizar documentacao e processo operacional da equipe.
@@ -31,6 +31,7 @@ async function main() {
   let password = parseArgument("--password");
   let name = parseArgument("--name");
   let role = parseArgument("--role");
+  let email = parseArgument("--email");
 
   if (!username || !password || !name) {
     const rl = readline.createInterface({ input, output });
@@ -49,7 +50,11 @@ async function main() {
       }
 
       if (!role) {
-        role = (await rl.question("Perfil (admin/comum): ")).trim();
+        role = (await rl.question("Perfil (admin/tutor/comum): ")).trim();
+      }
+
+      if (!email) {
+        email = (await rl.question("E-mail (opcional): ")).trim();
       }
     } finally {
       rl.close();
@@ -62,7 +67,14 @@ async function main() {
     return;
   }
 
-  role = role === "common" || role === "comum" ? "common" : "admin";
+  const normalizedRole = String(role || "").trim().toLowerCase();
+  if (normalizedRole === "common" || normalizedRole === "comum") {
+    role = "common";
+  } else if (normalizedRole === "tutor") {
+    role = "tutor";
+  } else {
+    role = "admin";
+  }
 
   if (database.getUserByUsername(username)) {
     console.error(`Erro: Usuário "${username}" já existe.`);
@@ -71,7 +83,7 @@ async function main() {
   }
 
   const passwordHash = bcrypt.hashSync(password, 12);
-  database.createUser(username, passwordHash, { name, role });
+  database.createUser(username, passwordHash, { name, role, email });
   console.log(`Usuário "${username}" criado com sucesso como ${role}.`);
 }
 

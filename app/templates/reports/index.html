@@ -219,8 +219,8 @@
  </div>
 
  <div class="form-group form-group-full">
- <label class="form-label" for="goal_activity">Título</label>
- <input id="goal_activity" name="activity" class="form-control" value="{{ goalFormData.activity }}" placeholder="Título da tarefa" required>
+ <label class="form-label" for="goal_activity">Titulo</label>
+ <input id="goal_activity" name="activity" class="form-control" value="{{ goalFormData.activity }}" placeholder="Titulo da tarefa" required>
  {% if goalFormErrors.activity %}
  <ul class="errors form-error-list">
  {% for error in goalFormErrors.activity %}<li>{{ error }}</li>{% endfor %}
@@ -231,7 +231,7 @@
 
  <div class="form-group form-group-full">
  <label class="form-label" for="goal_description">Descrição</label>
- <textarea id="goal_description" name="description" rows="3" class="form-control" placeholder="Descrição objetiva da entrega.">{{ goalFormData.description }}</textarea>
+ <textarea id="goal_description" name="description" rows="3" class="form-control" placeholder="Descrição objetiva da entrega." required minlength="10" maxlength="2000">{{ goalFormData.description }}</textarea>
  {% if goalFormErrors.description %}
  <ul class="errors form-error-list">
  {% for error in goalFormErrors.description %}<li>{{ error }}</li>{% endfor %}
@@ -724,7 +724,84 @@
  </div>
  </section>
 
- <div id="report_missed_modal" class="report-missed-modal" hidden>
+{% if currentUser.role == 'tutor' and selectedMember %}
+<section id="report-writing-panel" class="content-panel report-goals-panel">
+<div class="panel-header">
+<div>
+<h2>Escrita Complementar da Quinzena</h2>
+<p>Avaliação privada do tutor para {{ selectedMember.name }}. Não é incluída no PDF.</p>
+</div>
+</div>
+<div class="panel-body">
+<form action="/relatorios/writing/fortnight/save" method="post" class="portal-form-grid report-monthly-export-form report-monthly-export-form-bottom">
+<input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+<input type="hidden" name="member_id" value="{{ selectedMember.id }}">
+<input type="hidden" name="week_start" value="{{ selectedNoteWeekStart }}">
+<div class="form-group">
+<label class="form-label" for="fortnight_tutor_note_content">Avaliação da quinzena ({{ selectedNoteWeekStart | formatDate }})</label>
+<textarea id="fortnight_tutor_note_content" name="content" rows="6" class="form-control" required minlength="10" {% if isSelectedFortnightClosed %}readonly{% endif %}>{{ tutorFortnightNote.content if tutorFortnightNote else '' }}</textarea>
+{% if isSelectedFortnightClosed %}
+<small class="field-error">Quinzena encerrada: edição bloqueada.</small>
+{% endif %}
+</div>
+<div class="form-group report-monthly-export-actions">
+<button type="submit" class="btn-submit" {% if isSelectedFortnightClosed %}disabled{% endif %}>Salvar avaliação</button>
+</div>
+</form>
+
+<form action="/relatorios/writing/fortnight/send-chat" method="post" class="portal-form-grid report-monthly-export-form report-monthly-export-form-bottom">
+<input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+<input type="hidden" name="member_id" value="{{ selectedMember.id }}">
+<input type="hidden" name="week_start" value="{{ selectedNoteWeekStart }}">
+<div class="form-group report-monthly-export-actions">
+<button type="submit" class="btn-submit">Enviar avaliação para o chat</button>
+</div>
+{% if tutorFortnightNote and tutorFortnightNote.sent_to_chat_at %}
+<small>Último envio ao chat: {{ tutorFortnightNote.sent_to_chat_at | formatDateTime }}</small>
+{% endif %}
+</form>
+</div>
+</section>
+{% endif %}
+
+{% if canWriteOwnFortnightComplement and selectedMember %}
+<section id="report-writing-panel" class="content-panel report-goals-panel">
+<div class="panel-header">
+<div>
+<h2>Complemento do Relatório da Quinzena</h2>
+<p>Espaço para complemento do membro. Ao salvar, envia direto para o chat com o tutor.</p>
+</div>
+</div>
+<div class="panel-body">
+<form action="/relatorios/writing/member/save" method="post" class="portal-form-grid report-monthly-export-form report-monthly-export-form-bottom">
+<input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+<input type="hidden" name="member_id" value="{{ selectedMember.id }}">
+<input type="hidden" name="week_start" value="{{ selectedNoteWeekStart }}">
+<div class="form-group">
+<label class="form-label">Tutor</label>
+<input type="text" class="form-control" value="{{ (defaultTutorUser.name ~ ' (@' ~ defaultTutorUser.username ~ ')') if defaultTutorUser else '' }}" readonly {% if not defaultTutorUser %}placeholder="Nenhum tutor cadastrado"{% endif %}>
+</div>
+<div class="form-group">
+<label class="form-label" for="member_fortnight_note_content">Complemento da quinzena ({{ selectedNoteWeekStart | formatDate }})</label>
+<textarea id="member_fortnight_note_content" name="content" rows="6" class="form-control" required minlength="10" {% if isSelectedFortnightClosed %}readonly{% endif %}>{{ memberFortnightNote.content if memberFortnightNote else '' }}</textarea>
+{% if isSelectedFortnightClosed %}
+<small class="field-error">Quinzena encerrada: edição bloqueada.</small>
+{% endif %}
+</div>
+<div class="form-group report-monthly-export-actions">
+<button type="submit" class="btn-submit" {% if isSelectedFortnightClosed or not defaultTutorUser %}disabled{% endif %}>Salvar e enviar ao chat</button>
+</div>
+{% if memberFortnightNote and memberFortnightNote.sent_to_chat_at %}
+<small>Último envio ao chat: {{ memberFortnightNote.sent_to_chat_at | formatDateTime }}</small>
+{% endif %}
+{% if not defaultTutorUser %}
+<small class="field-error">Nenhum tutor cadastrado para receber o complemento.</small>
+{% endif %}
+</form>
+</div>
+</section>
+{% endif %}
+<div id="report_missed_modal" class="report-missed-modal" hidden>
  <button type="button" class="report-missed-modal-backdrop js-missed-close" aria-label="Fechar"></button>
  <div class="report-missed-modal-card" role="dialog" aria-modal="true" aria-labelledby="report_missed_modal_title">
  <header class="report-missed-modal-head">
@@ -1297,10 +1374,10 @@ document.addEventListener('DOMContentLoaded', function() {
       valid = false;
     }
     if (!titleValue) {
-      setGoalCreateFieldError('activity', 'Informe um título.');
+      setGoalCreateFieldError('activity', 'Informe um Titulo.');
       valid = false;
     } else if (titleValue.length < 3) {
-      setGoalCreateFieldError('activity', 'Título muito curto.');
+      setGoalCreateFieldError('activity', 'Titulo muito curto.');
       valid = false;
     }
     if (!dueValue) {
@@ -1898,6 +1975,31 @@ document.addEventListener('DOMContentLoaded', function() {
     stateEl.hidden = false;
   }
 
+  function removeGoalRowFromCurrentColumn(form) {
+    const goalItem = form.closest('.report-goal-item');
+    if (!goalItem) {
+      return;
+    }
+
+    const column = goalItem.closest('.report-kanban-column');
+    const list = goalItem.closest('.report-goal-list');
+    const countEl = column ? column.querySelector('.report-kanban-column-header span') : null;
+    const emptyEl = column ? column.querySelector('.report-kanban-empty') : null;
+
+    goalItem.remove();
+
+    if (countEl) {
+      const currentCount = Number.parseInt(String(countEl.textContent || '0').trim(), 10);
+      if (Number.isFinite(currentCount) && currentCount > 0) {
+        countEl.textContent = String(currentCount - 1);
+      }
+    }
+
+    if (list && list.querySelectorAll('.report-goal-item').length === 0 && emptyEl) {
+      emptyEl.hidden = false;
+    }
+  }
+
   function syncInitialSnapshots(form) {
     const checkbox = form.querySelector('input[type="checkbox"][name="is_completed"]');
     if (checkbox) {
@@ -2019,10 +2121,13 @@ document.addEventListener('DOMContentLoaded', function() {
           function() {
             submitGoalForm(form, {
               onSuccess: function() {
+                if (checkbox.checked) {
+                  removeGoalRowFromCurrentColumn(form);
+                  return;
+                }
                 if (window.location.hash !== '#report-goals-panel') {
                   window.location.hash = 'report-goals-panel';
                 }
-                window.location.reload();
               },
               onError: function() {
                 checkbox.checked = checkbox.dataset.initialChecked === '1';
@@ -2188,3 +2293,6 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 {% endblock %}
+
+
+

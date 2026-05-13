@@ -11,6 +11,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const database = require("./src/database");
 const { config } = require("./src/config");
+const { createNotificationService } = require("./src/services/notificationService");
 
 // SECAO: bootstrap do servidor HTTP com garantia de schema antes do listen.
 
@@ -52,7 +53,7 @@ async function ensureSchemaWithRetry(maxAttempts = 5) {
       }
       const waitMs = Math.min(1000 * (2 ** (attempt - 1)), 8000);
       console.warn(
-        `Banco indisponível na inicialização (tentativa ${attempt}/${maxAttempts}). Nova tentativa em ${waitMs}ms...`,
+        `Banco indisponÃ­vel na inicializaÃ§Ã£o (tentativa ${attempt}/${maxAttempts}). Nova tentativa em ${waitMs}ms...`,
       );
       await sleep(waitMs);
     }
@@ -82,16 +83,26 @@ async function startServer() {
   }
 
   console.log("Banco: PostgreSQL/Neon");
-  console.log(`Planilha presença: ${config.presenceWorkbookPath}`);
+  console.log(`Planilha presenÃ§a: ${config.presenceWorkbookPath}`);
 
   const app = createApp();
+  const notificationService = createNotificationService({ database, config });
+  const notificationSweepIntervalMs = Math.max(
+    30_000,
+    Number(process.env.NOTIFICATION_SWEEP_INTERVAL_MS || 300000),
+  );
+  notificationService.startDeadlineScheduler({
+    intervalMs: notificationSweepIntervalMs,
+    runOnStart: true,
+  });
 
   app.listen(config.port, () => {
-    console.log(`Gestor de Atas disponível em http://0.0.0.0:${config.port}`);
+    console.log(`Gestor de Atas disponÃ­vel em http://0.0.0.0:${config.port}`);
   });
 }
 
 startServer().catch((error) => {
-  console.error("Falha ao iniciar aplicação:", error);
+  console.error("Falha ao iniciar aplicaÃ§Ã£o:", error);
   process.exit(1);
 });
+

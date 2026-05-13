@@ -261,6 +261,7 @@ a {
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.04);
   text-align: center;
+  position: relative;
 }
 
 .navigation ul li:nth-child(1) a .icon {
@@ -296,6 +297,32 @@ a {
 
 .navigation ul li a .icon ion-icon {
   font-size: 1.45rem;
+}
+
+.nav-unread-badge {
+  position: absolute;
+  top: -6px;
+  right: -4px;
+  min-width: 19px;
+  height: 19px;
+  padding: 0 5px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: #fff;
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  box-shadow: 0 6px 12px rgba(153, 27, 27, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.75);
+}
+
+html.theme-dark .nav-unread-badge,
+body.theme-dark .nav-unread-badge {
+  background: linear-gradient(135deg, #fb7185, #f43f5e);
+  border-color: rgba(15, 23, 42, 0.7);
+  box-shadow: 0 6px 12px rgba(136, 19, 55, 0.52);
 }
 
 .navigation ul li a .icon .sidebar-brand-logo {

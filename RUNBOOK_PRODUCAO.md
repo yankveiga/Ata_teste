@@ -17,6 +17,13 @@ Validar variáveis no Render:
 - `CLOUDINARY_API_KEY`
 - `CLOUDINARY_API_SECRET`
 - `CLOUDINARY_FOLDER`
+- `APP_BASE_URL` (ex.: `https://seu-app.onrender.com`)
+- `EMAIL_PROVIDER=brevo`
+- `BREVO_API_KEY`
+- `EMAIL_FROM`
+- `EMAIL_FROM_NAME` (opcional)
+- `EMAIL_REPLY_TO` (opcional)
+- `NOTIFICATION_SWEEP_INTERVAL_MS` (opcional; padrão 300000ms)
 
 Bootstrap inicial de admin (apenas primeiro boot, opcional):
 - `BOOTSTRAP_ADMIN=true`
@@ -35,6 +42,7 @@ Smoke test mínimo pós-deploy:
 5. Projetos (criar/editar)
 6. Almoxarifado (abrir e listar itens)
 7. Upload de foto/logo
+8. Notificação por e-mail de nova mensagem no chat (usuário com e-mail cadastrado)
 
 ## 3) Verificação técnica
 

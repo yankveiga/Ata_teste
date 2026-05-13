@@ -1,0 +1,249 @@
+﻿{% extends "base.html" %}
+
+{% block styles %}
+<link rel="stylesheet" href="{{ urlFor('static', { filename: 'css/chat.css' }) }}">
+{% endblock %}
+
+{% block content %}
+<section class="chat-app" data-open-conversation-id="{{ selectedConversation.id if selectedConversation else '' }}">
+  <aside class="chat-sidebar">
+    <header class="chat-sidebar-head">
+      <h2>Conversas</h2>
+      <p>Seu histórico fica aqui.</p>
+    </header>
+
+    <form action="{{ urlFor('messages_home') }}/conversas/create" method="post" class="chat-new-form">
+      <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+      <label>
+        <span>Nova conversa com</span>
+        <select name="participant_id" required>
+          <option value="">Selecione</option>
+          {% for user in users %}
+            {% if user.id != currentUser.id %}
+              <option value="{{ user.id }}" {% if conversationFormData.participantId == (user.id ~ '') %}selected{% endif %}>{{ user.name }} (@{{ user.username }})</option>
+            {% endif %}
+          {% endfor %}
+        </select>
+      </label>
+      {% if conversationErrors.participantId %}<small class="field-error">{{ conversationErrors.participantId[0] }}</small>{% endif %}
+      {% if conversationErrors.form %}<small class="field-error">{{ conversationErrors.form[0] }}</small>{% endif %}
+      <button type="submit" class="chat-btn-primary">Iniciar conversa</button>
+    </form>
+
+    {% if conversations.length %}
+      <ul class="chat-conversation-list">
+        {% for convo in conversations %}
+          <li>
+            <a href="{{ urlFor('message_conversation', { id: convo.id }) }}" class="chat-conversation-link {{ 'is-active' if selectedConversation and selectedConversation.id == convo.id else '' }}" data-conversation-id="{{ convo.id }}">
+              <span class="chat-avatar" aria-hidden="true">
+                {% if convo.other_user_photo %}
+                  <img src="{{ mediaUrl(convo.other_user_photo) }}" alt="Foto">
+                {% else %}
+                  {{ (convo.other_user_name or convo.participants_label or 'C')[0] | upper }}
+                {% endif %}
+              </span>
+              <span class="chat-conversation-meta">
+                <strong>{{ convo.other_user_name if convo.other_user_name else (convo.title if convo.title else convo.participants_label) }}</strong>
+                <small>{{ convo.last_message_text if convo.last_message_text else 'Sem mensagens ainda.' }}</small>
+              </span>
+              {% if convo.unread_count and convo.unread_count > 0 %}
+                <span class="chat-unread-pill" data-unread-pill="{{ convo.id }}" aria-label="{{ convo.unread_count }} não lidas">{{ convo.unread_count }}</span>
+              {% endif %}
+            </a>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="empty-state">Nenhuma conversa iniciada.</p>
+    {% endif %}
+  </aside>
+
+  <section class="chat-main">
+    {% if selectedConversation %}
+      <header class="chat-main-head">
+        <span class="chat-avatar" aria-hidden="true">
+          {% if selectedConversation.other_user_photo %}
+            <img src="{{ mediaUrl(selectedConversation.other_user_photo) }}" alt="Foto">
+          {% else %}
+            {{ (selectedConversation.other_user_name or selectedParticipantsLabel or 'C')[0] | upper }}
+          {% endif %}
+        </span>
+        <div>
+          <h3>{{ selectedConversation.other_user_name if selectedConversation.other_user_name else (selectedConversation.title if selectedConversation.title else selectedParticipantsLabel) }}</h3>
+          <p>{{ selectedParticipantsLabel }}</p>
+        </div>
+        <span class="chat-head-unread" id="chat_head_unread" {% if not (selectedConversation.unread_count and selectedConversation.unread_count > 0) %}hidden{% endif %}>Não lidas: {{ selectedConversation.unread_count if selectedConversation.unread_count else 0 }}</span>
+      </header>
+
+      <div class="chat-main-messages">
+        {% if selectedMessages.length %}
+          {% for message in selectedMessages %}
+            <article class="chat-message {{ 'is-mine' if message.author_user_id == currentUser.id else '' }}">
+              {% if message.author_user_id != currentUser.id %}
+                <span class="chat-avatar" aria-hidden="true">
+                  {% if message.author_photo %}
+                    <img src="{{ mediaUrl(message.author_photo) }}" alt="Foto">
+                  {% else %}
+                    {{ (message.author_name or 'U')[0] | upper }}
+                  {% endif %}
+                </span>
+              {% endif %}
+              <div class="chat-bubble">
+                <small>{{ message.author_name }}</small>
+                <p>{{ message.text }}</p>
+                <time>{{ message.sent_at | formatDateTime }}</time>
+              </div>
+            </article>
+          {% endfor %}
+        {% else %}
+          <p class="empty-state">Sem mensagens nesta conversa.</p>
+        {% endif %}
+      </div>
+
+      <form action="{{ urlFor('messages_home') }}/conversas/{{ selectedConversation.id }}/mensagens/create" method="post" class="chat-main-compose">
+        <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+        <textarea name="text" rows="2" placeholder="Digite sua mensagem...">{{ messageFormData.text }}</textarea>
+        <button type="submit" class="chat-btn-primary">Enviar</button>
+        {% if messageErrors.text %}<small class="field-error">{{ messageErrors.text[0] }}</small>{% endif %}
+        {% if messageErrors.form %}<small class="field-error">{{ messageErrors.form[0] }}</small>{% endif %}
+      </form>
+    {% else %}
+      <div class="chat-empty">
+        <h3>Selecione uma conversa</h3>
+        <p>As mensagens antigas aparecerão automaticamente aqui.</p>
+      </div>
+    {% endif %}
+  </section>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+  const root = document.querySelector('.chat-app');
+  if (!root) {
+    return;
+  }
+  const openConversationId = String(root.dataset.openConversationId || '').trim();
+  const headUnread = document.getElementById('chat_head_unread');
+  const navIcon = document.getElementById('nav_messages_icon');
+
+  function renderConversationUnread(conversationId, unreadCount) {
+    const selector = '.chat-conversation-link[data-conversation-id=\"' + conversationId + '\"]';
+    const link = document.querySelector(selector);
+    if (!link) {
+      return;
+    }
+    let pill = link.querySelector('.chat-unread-pill');
+    if (!unreadCount || unreadCount <= 0) {
+      if (pill) {
+        pill.remove();
+      }
+      return;
+    }
+    if (!pill) {
+      pill = document.createElement('span');
+      pill.className = 'chat-unread-pill';
+      pill.setAttribute('data-unread-pill', conversationId);
+      link.appendChild(pill);
+    }
+    pill.textContent = String(unreadCount);
+    pill.setAttribute('aria-label', unreadCount + ' não lidas');
+  }
+
+  function updateHeadUnread(unreadCount) {
+    if (!headUnread) {
+      return;
+    }
+    if (!unreadCount || unreadCount <= 0) {
+      headUnread.setAttribute('hidden', 'hidden');
+      return;
+    }
+    headUnread.removeAttribute('hidden');
+    headUnread.textContent = 'Não lidas: ' + String(unreadCount);
+  }
+
+  function updateNavUnread(total) {
+    if (!navIcon) {
+      return;
+    }
+    let badge = navIcon.querySelector('.nav-unread-badge');
+    if (!total || total <= 0) {
+      if (badge) {
+        badge.remove();
+      }
+      return;
+    }
+    if (!badge) {
+      badge = document.createElement('span');
+      badge.className = 'nav-unread-badge';
+      navIcon.appendChild(badge);
+    }
+    badge.textContent = String(total);
+    badge.setAttribute('aria-label', total + ' conversas não lidas');
+  }
+
+  async function refreshUnreadForChatPage() {
+    try {
+      const query = openConversationId
+        ? ('?open_conversation_id=' + encodeURIComponent(openConversationId))
+        : '';
+      const response = await fetch('/mensagens/unread-summary' + query, {
+        credentials: 'same-origin',
+        headers: {
+          'Accept': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+      });
+      if (!response.ok) {
+        return;
+      }
+      const payload = await response.json();
+      if (!payload || !payload.ok) {
+        return;
+      }
+      updateNavUnread(Number(payload.total || 0));
+      const byConversation = payload.byConversation || {};
+      document.querySelectorAll('.chat-conversation-link[data-conversation-id]').forEach((link) => {
+        const conversationId = String(link.dataset.conversationId || '').trim();
+        const unreadCount = Number(byConversation[conversationId] || 0);
+        renderConversationUnread(conversationId, unreadCount);
+      });
+      if (openConversationId) {
+        updateHeadUnread(Number(byConversation[openConversationId] || 0));
+      }
+    } catch (_error) {}
+  }
+
+  let timer = null;
+  let disposed = false;
+
+  function scheduleNext() {
+    if (disposed) {
+      return;
+    }
+    const delay = document.hidden ? 15000 : 2000;
+    timer = window.setTimeout(async function() {
+      await refreshUnreadForChatPage();
+      scheduleNext();
+    }, delay);
+  }
+
+  function handleVisibilityChange() {
+    if (disposed) {
+      return;
+    }
+    if (timer) {
+      window.clearTimeout(timer);
+      timer = null;
+    }
+    refreshUnreadForChatPage();
+    scheduleNext();
+  }
+
+  document.addEventListener('visibilitychange', handleVisibilityChange);
+  refreshUnreadForChatPage();
+  scheduleNext();
+})();
+</script>
+{% endblock %}

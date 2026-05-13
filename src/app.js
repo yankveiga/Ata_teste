@@ -25,6 +25,8 @@ const { registerMemberRoutes } = require("./routes/members");
 const { registerProjectRoutes } = require("./routes/projects");
 const { registerAtaRoutes } = require("./routes/atas");
 const { registerAlmoxRoutes } = require("./routes/almox");
+const { registerWritingRoutes } = require("./routes/writing");
+const { registerChatRoutes } = require("./routes/chat");
 const { requestContextMiddleware, logError, sendApiError } = require("./http");
 const {
   validateInventoryPayload: validateInventoryPayloadShared,
@@ -35,6 +37,7 @@ const {
   canGenerateMonthlyReport,
   buildMonthlyPdfFilename,
 } = require("./services/reportService");
+const { createNotificationService } = require("./services/notificationService");
 const { mapInventoryApiItem } = require("./services/inventoryService");
 const {
   isCloudinaryEnabled,
@@ -265,6 +268,7 @@ function registerPresenceInWorkbook(cracha, evento) {
 function createApp() {
   database.ensureSchema();
   fs.mkdirSync(config.uploadDir, { recursive: true });
+  const notificationService = createNotificationService({ database, config });
 
   const app = express();
   app.set("trust proxy", 1);
@@ -325,6 +329,9 @@ app.use(
 
     res.locals.currentUser = req.currentUser;
     res.locals.isAdmin = Boolean(req.currentUser?.is_admin);
+    res.locals.unreadMessageConversations = req.currentUser
+      ? database.countUnreadChatConversationsForUser(req.currentUser.id)
+      : 0;
     res.locals.currentMember = null;
     res.locals.flashMessages = consumeFlashes(req);
     res.locals.csrfToken = req.session.csrfToken;
@@ -760,6 +767,7 @@ function render(res, template, data = {}) {
   function renderReportPage(req, res, data = {}) {
     const currentMember = getCurrentMember(req);
     const currentWeekStart = getCurrentWeekStartDate();
+    const selectedNoteWeekStart = normalizeWeekStartDate(req.query.note_week_start) || currentWeekStart;
     const nowSql = toSqlDateTime(new Date());
     database.refreshPlannerTaskLifecycle({ graceHours: 48 });
     const membersSummary = database.listReportMembersSummary();
@@ -775,6 +783,31 @@ function render(res, template, data = {}) {
       selectedMemberId && membersSummary.some((member) => member.id === selectedMemberId)
         ? database.getMemberById(selectedMemberId)
         : null;
+    const tutorFortnightNote = (req.currentUser?.role === "tutor" && selectedMember)
+      ? database.getReportFortnightTutorNote({
+        tutorUserId: req.currentUser.id,
+        memberId: selectedMember.id,
+        weekStart: selectedNoteWeekStart,
+      })
+      : null;
+    const canWriteOwnFortnightComplement = Boolean(
+      selectedMember
+      && currentMember?.is_active
+      && Number(selectedMember.id) === Number(currentMember.id)
+      && req.currentUser?.role !== "tutor",
+    );
+    const memberFortnightNote = canWriteOwnFortnightComplement
+      ? database.getReportFortnightMemberNote({
+        memberId: selectedMember.id,
+        weekStart: selectedNoteWeekStart,
+      })
+      : null;
+    const defaultTutorUser = canWriteOwnFortnightComplement
+      ? (database.listUsers().find((user) => user.role === "tutor") || null)
+      : null;
+    const isSelectedFortnightClosed = Boolean(selectedMember && selectedNoteWeekStart && (
+      String(selectedNoteWeekStart) < String(currentWeekStart)
+    ));
     const requestedProjectId = parseId(data.selectedProjectId || req.query.project_id);
     const currentMemberProjectList = currentMember?.is_active
       ? database.listProjectsForMember(currentMember.id)
@@ -917,12 +950,25 @@ function render(res, template, data = {}) {
       missedGoals,
       deletionLogs,
       taskAuditLogs,
+      canUseWritingSpace: Boolean(req.currentUser?.is_admin || req.currentUser?.role === "tutor"),
+      writingGeneralEntries: req.currentUser?.is_admin
+        ? database.listWritingGeneralEntries()
+        : [],
+      writingTutorPrivateEntries: req.currentUser?.role === "tutor"
+        ? database.listWritingTutorPrivateEntries(req.currentUser.id)
+        : [],
+      tutorFortnightNote,
+      memberFortnightNote,
+      canWriteOwnFortnightComplement,
+      defaultTutorUser,
+      isSelectedFortnightClosed,
       overduePendingGoals,
       inProgressGoals,
       futurePendingGoals,
       canCreateGoalsForSelectedMember,
       canUseAdvancedGoalCreateForm,
       currentWeekStart,
+      selectedNoteWeekStart,
       currentMember,
       goalFormData: {
         projectId: selectedProjectId || "",
@@ -1049,6 +1095,7 @@ function render(res, template, data = {}) {
       userFormData: {
         name: "",
         username: "",
+        email: "",
         password: "",
         role: "common",
         memberId: "",
@@ -1130,6 +1177,7 @@ function render(res, template, data = {}) {
     canGenerateMonthlyReport,
     buildMonthlyPdfFilename,
     syncReportWeekGoalFromPlannerTask: database.syncReportWeekGoalFromPlannerTask,
+    notificationService,
     canManageProject,
     canCreateAtaForProject,
     canManageReportGoal,
@@ -1164,6 +1212,8 @@ function render(res, template, data = {}) {
   registerMemberRoutes(sharedRouteContext);
   registerProjectRoutes(sharedRouteContext);
   registerAtaRoutes(sharedRouteContext);
+  registerWritingRoutes(sharedRouteContext);
+  registerChatRoutes(sharedRouteContext);
 
   // SECAO: rotas do almoxarifado modularizadas.
 

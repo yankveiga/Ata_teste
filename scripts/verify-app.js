@@ -8,6 +8,8 @@
 const assert = require("node:assert/strict");
 const { promisify } = require("node:util");
 
+require("../src/config");
+
 const bcrypt = require("bcryptjs");
 
 const { urlFor } = require("../src/utils");
@@ -48,6 +50,18 @@ async function main() {
         {
           name: "Codex Verify Common",
           role: "common",
+        },
+      );
+    }
+    const tutorUsername = "codex_verify_tutor";
+    let tutorUser = database.getUserByUsername(tutorUsername);
+    if (!tutorUser) {
+      tutorUser = database.createUser(
+        tutorUsername,
+        bcrypt.hashSync("codex789", 12),
+        {
+          name: "Codex Verify Tutor",
+          role: "tutor",
         },
       );
     }
@@ -96,6 +110,17 @@ async function main() {
       "/manutencao-usuarios/users/link/:id",
       "/manutencao-usuarios/users/reset-password/:id",
       "/api/project/:project_id/members",
+      "/espacos-escrita",
+      "/espacos-escrita/geral/create",
+      "/espacos-escrita/geral/edit/:id",
+      "/espacos-escrita/geral/delete/:id",
+      "/espacos-escrita/tutor/create",
+      "/espacos-escrita/tutor/edit/:id",
+      "/espacos-escrita/tutor/delete/:id",
+      "/mensagens",
+      "/mensagens/conversas/:id",
+      "/mensagens/conversas/create",
+      "/mensagens/conversas/:id/mensagens/create",
     ].forEach((routePath) => {
       assert.ok(routeEntries.includes(routePath), `Rota ausente: ${routePath}`);
     });
@@ -104,6 +129,8 @@ async function main() {
     assert.equal(adminUser.is_admin, true);
     assert.equal(commonUser.role, "common");
     assert.equal(commonUser.is_admin, false);
+    assert.equal(tutorUser.role, "tutor");
+    assert.equal(tutorUser.is_admin, true);
 
     const csrfToken = "csrf-token-teste";
     const projects = database.listProjectsBasic();

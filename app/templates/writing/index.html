@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="almox-two-column">
+  <article class="almox-panel">
+    <div class="almox-panel-header">
+      <div>
+        <h2>Espaço de escrita livre geral</h2>
+        <p>Registros compartilhados para admin e tutor.</p>
+      </div>
+    </div>
+
+    <form
+      action="{{ '/espacos-escrita/geral/edit/' ~ generalEditingId if generalEditingId else '/espacos-escrita/geral/create' }}"
+      method="post"
+      class="stacked-form"
+    >
+      <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+
+      <label>
+        <span>Título</span>
+        <input type="text" name="title" value="{{ generalFormData.title }}">
+        {% if generalErrors.title %}<small class="field-error">{{ generalErrors.title[0] }}</small>{% endif %}
+      </label>
+
+      <label>
+        <span>Conteúdo</span>
+        <textarea name="content" rows="7">{{ generalFormData.content }}</textarea>
+        {% if generalErrors.content %}<small class="field-error">{{ generalErrors.content[0] }}</small>{% endif %}
+      </label>
+
+      <button type="submit" class="primary-button">
+        {{ 'Atualizar registro geral' if generalEditingId else 'Criar registro geral' }}
+      </button>
+    </form>
+
+    {% if generalEntries.length %}
+      <div class="table-wrap" style="margin-top: 20px;">
+        <table class="almox-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Título</th>
+              <th>Autor</th>
+              <th>Criado em</th>
+              <th>Atualizado em</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for entry in generalEntries %}
+              <tr>
+                <td>#{{ entry.id }}</td>
+                <td>
+                  <strong>{{ entry.title }}</strong><br>
+                  <small>{{ entry.content }}</small>
+                </td>
+                <td>{{ entry.author_name }}</td>
+                <td>{{ entry.created_at | formatDateTime }}</td>
+                <td>{{ entry.updated_at | formatDateTime if entry.updated_at else '-' }}</td>
+                <td>
+                  <form action="/espacos-escrita/geral/edit/{{ entry.id }}" method="post" class="stacked-form" style="margin-bottom: 8px;">
+                    <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+                    <input type="text" name="title" value="{{ entry.title }}" style="margin-bottom: 6px;">
+                    <textarea name="content" rows="3" style="margin-bottom: 6px;">{{ entry.content }}</textarea>
+                    <button type="submit" class="secondary-button">Atualizar</button>
+                  </form>
+                  <form action="/espacos-escrita/geral/delete/{{ entry.id }}" method="post" onsubmit="return confirm('Excluir este registro geral?');">
+                    <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+                    <button type="submit" class="danger-button">Excluir</button>
+                  </form>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="empty-state">Nenhum registro geral criado até agora.</p>
+    {% endif %}
+  </article>
+
+  {% if isTutor %}
+    <article class="almox-panel">
+    <div class="almox-panel-header">
+      <div>
+        <h2>Espaço privado do tutor</h2>
+        <p>Somente você pode ver e editar estas anotações.</p>
+        <p><a href="{{ urlFor('messages_home') }}">Abrir caixa de mensagens</a></p>
+      </div>
+    </div>
+
+      <form
+        action="{{ '/espacos-escrita/tutor/edit/' ~ tutorEditingId if tutorEditingId else '/espacos-escrita/tutor/create' }}"
+        method="post"
+        class="stacked-form"
+      >
+        <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+
+        <label>
+          <span>Título</span>
+          <input type="text" name="title" value="{{ tutorFormData.title }}">
+          {% if tutorErrors.title %}<small class="field-error">{{ tutorErrors.title[0] }}</small>{% endif %}
+        </label>
+
+        <label>
+          <span>Conteúdo</span>
+          <textarea name="content" rows="7">{{ tutorFormData.content }}</textarea>
+          {% if tutorErrors.content %}<small class="field-error">{{ tutorErrors.content[0] }}</small>{% endif %}
+        </label>
+
+        <button type="submit" class="primary-button">
+          {{ 'Atualizar anotação privada' if tutorEditingId else 'Criar anotação privada' }}
+        </button>
+      </form>
+
+      {% if tutorEntries.length %}
+        <div class="table-wrap" style="margin-top: 20px;">
+          <table class="almox-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Título</th>
+                <th>Criado em</th>
+                <th>Atualizado em</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for entry in tutorEntries %}
+                <tr>
+                  <td>#{{ entry.id }}</td>
+                  <td>
+                    <strong>{{ entry.title }}</strong><br>
+                    <small>{{ entry.content }}</small>
+                  </td>
+                  <td>{{ entry.created_at | formatDateTime }}</td>
+                  <td>{{ entry.updated_at | formatDateTime if entry.updated_at else '-' }}</td>
+                  <td>
+                    <form action="/espacos-escrita/tutor/edit/{{ entry.id }}" method="post" class="stacked-form" style="margin-bottom: 8px;">
+                      <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+                      <input type="text" name="title" value="{{ entry.title }}" style="margin-bottom: 6px;">
+                      <textarea name="content" rows="3" style="margin-bottom: 6px;">{{ entry.content }}</textarea>
+                      <button type="submit" class="secondary-button">Atualizar</button>
+                    </form>
+                    <form action="/espacos-escrita/tutor/delete/{{ entry.id }}" method="post" onsubmit="return confirm('Excluir esta anotação privada?');">
+                      <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+                      <button type="submit" class="danger-button">Excluir</button>
+                    </form>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p class="empty-state">Nenhuma anotação privada criada até agora.</p>
+      {% endif %}
+    </article>
+  {% endif %}
+</section>
+{% endblock %}

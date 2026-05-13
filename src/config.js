@@ -70,6 +70,9 @@ const config = {
   baseDir,
   nodeEnv: process.env.NODE_ENV || "development",
   port: Number(process.env.PORT || 3000),
+  appBaseUrl: String(process.env.APP_BASE_URL || "http://localhost:3000").trim(),
+  appTimeZone: String(process.env.APP_TIMEZONE || "America/Sao_Paulo").trim(),
+  reportsTimeZone: String(process.env.REPORTS_TIMEZONE || process.env.APP_TIMEZONE || "America/Sao_Paulo").trim(),
   sessionSecret:
     process.env.SECRET_KEY ||
     "uma-chave-secreta-muito-dificil-de-adivinhar",
@@ -93,6 +96,13 @@ const config = {
     apiKey: String(process.env.CLOUDINARY_API_KEY || "").trim(),
     apiSecret: String(process.env.CLOUDINARY_API_SECRET || "").trim(),
     folder: String(process.env.CLOUDINARY_FOLDER || "pet-c3").trim(),
+  },
+  email: {
+    provider: String(process.env.EMAIL_PROVIDER || "brevo").trim().toLowerCase(),
+    brevoApiKey: String(process.env.BREVO_API_KEY || "").trim(),
+    from: String(process.env.EMAIL_FROM || "").trim(),
+    fromName: String(process.env.EMAIL_FROM_NAME || "Portal PET C3").trim(),
+    replyTo: String(process.env.EMAIL_REPLY_TO || "").trim(),
   },
   staticDir: path.join(baseDir, "app", "static"),
   viewsDir: path.join(baseDir, "app", "templates"),

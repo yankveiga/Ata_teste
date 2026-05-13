@@ -6,139 +6,795 @@
 
 {% block styles %}
     <link rel="stylesheet" href="{{ urlFor('static', { filename: 'css/almoxarifado.css' }) }}">
+    <style>
+        .um-layout {
+            max-width: 1120px;
+            margin: 0 auto;
+        }
+
+        .um-header-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .um-toolbar {
+            display: grid;
+            grid-template-columns: minmax(260px, 1.8fr) minmax(150px, 0.8fr) minmax(160px, 0.8fr);
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        .um-toolbar input,
+        .um-toolbar select {
+            width: 100%;
+            padding: 0.78rem 0.9rem;
+            border-radius: 12px;
+            border: 1px solid rgba(138, 47, 22, 0.18);
+            background: rgba(255, 255, 255, 0.95);
+        }
+
+        .um-counter {
+            margin: 0 0 12px;
+            color: #6b4f39;
+            font-weight: 600;
+        }
+
+        .um-list {
+            display: grid;
+            gap: 10px;
+        }
+
+        .um-item {
+            border: 1px solid rgba(138, 47, 22, 0.16);
+            border-radius: 14px;
+            background: rgba(255, 251, 247, 0.92);
+            overflow: hidden;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+        }
+
+        .um-item:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 12px 24px rgba(42, 18, 6, 0.08);
+            border-color: rgba(138, 47, 22, 0.26);
+        }
+
+        .um-item > summary {
+            list-style: none;
+            cursor: pointer;
+            padding: 12px 14px;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 10px;
+            align-items: center;
+            transition: background 0.18s ease;
+        }
+
+        .um-item[open] > summary {
+            background: rgba(255, 243, 231, 0.86);
+        }
+
+        .um-item > summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .um-main {
+            min-width: 0;
+        }
+
+        .um-name {
+            margin: 0;
+            color: #2f1f11;
+            font-size: 1rem;
+            font-weight: 700;
+        }
+
+        .um-meta {
+            margin: 3px 0 0;
+            color: #755b44;
+            font-size: 0.9rem;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .um-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        .um-link-flag {
+            display: inline-flex;
+            align-items: center;
+            border-radius: 999px;
+            padding: 0.24rem 0.58rem;
+            font-size: 0.74rem;
+            font-weight: 700;
+            background: #ffeccf;
+            color: #8a5a12;
+        }
+
+        .um-link-flag.is-unlinked {
+            background: #f8e3e1;
+            color: #8b2d2d;
+        }
+
+        .um-body {
+            border-top: 1px solid rgba(138, 47, 22, 0.14);
+            padding: 12px;
+            display: grid;
+            gap: 10px;
+        }
+
+        .um-row {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 10px;
+            align-items: end;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(255, 249, 241, 0.88));
+            border: 1px solid rgba(138, 47, 22, 0.16);
+            border-radius: 16px;
+            padding: 10px;
+            transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, transform 0.18s ease;
+        }
+
+        .um-row:focus-within {
+            border-color: rgba(204, 113, 0, 0.45);
+            box-shadow: 0 0 0 4px rgba(204, 113, 0, 0.13), 0 14px 26px rgba(138, 47, 22, 0.08);
+            background: #ffffff;
+            transform: translateY(-1px);
+        }
+
+        .um-row-field {
+            display: grid;
+            gap: 6px;
+            min-width: 0;
+        }
+
+        .um-row-label {
+            font-size: 0.75rem;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            color: #744e2b;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .um-row-label::before {
+            content: "";
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #ffc05b, #d47e0c);
+            box-shadow: 0 0 0 3px rgba(255, 192, 91, 0.2);
+        }
+
+        .um-row input,
+        .um-row select {
+            width: 100%;
+            border: 1px solid rgba(138, 47, 22, 0.18);
+            background: rgba(255, 255, 255, 0.96);
+            padding: 0.72rem 0.82rem;
+            border-radius: 11px;
+            color: #2f1f11;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+            transition: border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+        }
+
+        .um-row input:focus,
+        .um-row select:focus {
+            outline: none;
+            border-color: rgba(204, 113, 0, 0.58);
+            box-shadow: 0 0 0 4px rgba(204, 113, 0, 0.14);
+            background: #ffffff;
+        }
+
+        .um-row .secondary-button {
+            min-height: 42px;
+            border-radius: 12px;
+            padding: 0.72rem 1rem;
+            background: linear-gradient(135deg, #ffce77, #ffb443);
+            color: #5f3300;
+            border: 1px solid rgba(189, 106, 0, 0.26);
+            box-shadow: 0 10px 18px rgba(164, 93, 8, 0.18);
+            transition: transform 0.16s ease, box-shadow 0.16s ease, filter 0.16s ease;
+            font-weight: 800;
+        }
+
+        .um-row .secondary-button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 14px 22px rgba(164, 93, 8, 0.22);
+            filter: saturate(1.08);
+        }
+
+        .um-row.um-row-password .secondary-button {
+            background: linear-gradient(135deg, #ddebff, #c8dbff);
+            color: #1b3a6c;
+            border-color: rgba(58, 96, 164, 0.22);
+            box-shadow: 0 6px 12px rgba(38, 65, 112, 0.14);
+        }
+
+        .um-row-delete {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 2px;
+        }
+
+        .um-row-delete .danger-button {
+            min-height: 42px;
+            border-radius: 11px;
+            padding: 0.7rem 1rem;
+            box-shadow: 0 8px 16px rgba(138, 27, 27, 0.22);
+            transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+        }
+
+        .um-row-delete .danger-button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 12px 22px rgba(138, 27, 27, 0.28);
+            filter: brightness(1.03);
+        }
+
+        .um-empty {
+            margin: 8px 0 0;
+            color: #8a5a2a;
+            font-weight: 600;
+        }
+
+        .um-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 1200;
+            display: grid;
+            place-items: center;
+            padding: 18px;
+            opacity: 0;
+            transition: opacity 0.22s ease;
+        }
+
+        .um-modal[hidden] {
+            display: none;
+        }
+
+        .um-modal.is-open {
+            opacity: 1;
+        }
+
+        .um-modal-backdrop {
+            position: absolute;
+            inset: 0;
+            background: rgba(16, 22, 40, 0.55);
+            backdrop-filter: blur(3px);
+            opacity: 0;
+            transition: opacity 0.22s ease;
+        }
+
+        .um-modal-card {
+            position: relative;
+            width: min(560px, calc(100vw - 36px));
+            max-height: calc(100vh - 40px);
+            overflow: auto;
+            border-radius: 18px;
+            border: 1px solid rgba(138, 47, 22, 0.2);
+            background: #fffaf6;
+            box-shadow: 0 30px 60px rgba(8, 14, 31, 0.35);
+            padding: 18px;
+            display: grid;
+            gap: 12px;
+            opacity: 0;
+            transform: translateY(12px) scale(0.985);
+            transition: opacity 0.22s ease, transform 0.22s ease;
+        }
+
+        .um-modal.is-open .um-modal-backdrop {
+            opacity: 1;
+        }
+
+        .um-modal.is-open .um-modal-card {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+
+        .um-modal-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .um-modal-top h3 {
+            margin: 0;
+            color: #2f1f11;
+            font-size: 1.25rem;
+            letter-spacing: 0.01em;
+        }
+
+        .um-modal-top p {
+            margin: 6px 0 0;
+            color: #735640;
+            line-height: 1.45;
+        }
+
+        .um-modal-close {
+            border: 0;
+            border-radius: 999px;
+            padding: 0.4rem 0.68rem;
+            background: #f1e2d4;
+            color: #5b3b22;
+            cursor: pointer;
+            font-weight: 700;
+            transition: transform 0.15s ease, background 0.15s ease;
+        }
+
+        .um-modal-close:hover {
+            transform: translateY(-1px);
+            background: #ead5c3;
+        }
+
+        .um-modal-form {
+            display: grid;
+            gap: 10px;
+        }
+
+        .um-modal-form label {
+            display: grid;
+            gap: 6px;
+        }
+
+        .um-modal-form label > span {
+            color: #2f1f11;
+            font-weight: 700;
+            font-size: 0.92rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+        }
+
+        .um-modal-form label > span::before {
+            content: "";
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #ffad3f, #d37600);
+            box-shadow: 0 0 0 3px rgba(255, 173, 63, 0.18);
+        }
+
+        .um-modal-form input,
+        .um-modal-form select {
+            width: 100%;
+            padding: 0.82rem 0.9rem;
+            border-radius: 12px;
+            border: 1px solid rgba(138, 47, 22, 0.18);
+            background: #ffffff;
+            font: inherit;
+            transition: border-color 0.16s ease, box-shadow 0.16s ease;
+        }
+
+        .um-modal-form input:focus,
+        .um-modal-form select:focus {
+            outline: none;
+            border-color: #d17805;
+            box-shadow: 0 0 0 4px rgba(209, 120, 5, 0.18);
+        }
+
+        .um-modal-form .primary-button {
+            width: 100%;
+            justify-content: center;
+            margin-top: 4px;
+            padding-top: 0.9rem;
+            padding-bottom: 0.9rem;
+        }
+
+        body.um-modal-open {
+            overflow: hidden;
+        }
+
+        body.theme-dark.section-user_maintenance .um-toolbar input,
+        body.theme-dark.section-user_maintenance .um-toolbar select,
+        body.theme-dark.section-user_maintenance .um-item,
+        body.theme-dark.section-user_maintenance .um-modal-card,
+        body.theme-dark.section-user_maintenance .um-modal-form input,
+        body.theme-dark.section-user_maintenance .um-modal-form select,
+        body.theme-dark.section-user_maintenance .um-modal-close {
+            background: rgba(15, 24, 40, 0.96);
+            border-color: rgba(121, 141, 185, 0.4);
+            color: #e8f0ff;
+        }
+
+        body.theme-dark.section-user_maintenance .um-name,
+        body.theme-dark.section-user_maintenance .um-meta,
+        body.theme-dark.section-user_maintenance .um-counter,
+        body.theme-dark.section-user_maintenance .um-empty,
+        body.theme-dark.section-user_maintenance .um-modal-top p,
+        body.theme-dark.section-user_maintenance .um-modal-form label > span,
+        body.theme-dark.section-user_maintenance .um-modal-top h3 {
+            color: #d0def8;
+        }
+
+        body.theme-dark.section-user_maintenance .um-body {
+            border-top-color: rgba(121, 141, 185, 0.28);
+        }
+
+        body.theme-dark.section-user_maintenance .um-row {
+            background: linear-gradient(180deg, rgba(26, 37, 62, 0.9), rgba(20, 31, 54, 0.88));
+            border-color: rgba(112, 130, 176, 0.36);
+        }
+
+        body.theme-dark.section-user_maintenance .um-row:focus-within {
+            border-color: rgba(255, 188, 103, 0.62);
+            box-shadow: 0 0 0 4px rgba(255, 188, 103, 0.18);
+            background: rgba(28, 40, 68, 0.94);
+        }
+
+        body.theme-dark.section-user_maintenance .um-row-label {
+            color: #cddcf8;
+        }
+
+        body.theme-dark.section-user_maintenance .um-row-label::before {
+            background: linear-gradient(135deg, #ffcf7b, #ff9800);
+            box-shadow: 0 0 0 3px rgba(255, 186, 95, 0.22);
+        }
+
+        body.theme-dark.section-user_maintenance .um-row input,
+        body.theme-dark.section-user_maintenance .um-row select {
+            background: rgba(16, 28, 50, 0.95);
+            border-color: rgba(118, 139, 191, 0.4);
+            color: #e8f0ff;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+        }
+
+        body.theme-dark.section-user_maintenance .um-row input:focus,
+        body.theme-dark.section-user_maintenance .um-row select:focus {
+            border-color: rgba(255, 186, 96, 0.72);
+            box-shadow: 0 0 0 4px rgba(255, 186, 96, 0.2);
+            background: rgba(18, 31, 57, 0.96);
+        }
+
+        body.theme-dark.section-user_maintenance .um-row .secondary-button {
+            background: linear-gradient(135deg, #d8952b, #efb25a);
+            color: #231102;
+            border-color: rgba(255, 198, 120, 0.35);
+            box-shadow: 0 8px 14px rgba(10, 8, 5, 0.28);
+        }
+
+        body.theme-dark.section-user_maintenance .um-row.um-row-password .secondary-button {
+            background: linear-gradient(135deg, #5883d1, #7fa1e0);
+            color: #071427;
+            border-color: rgba(146, 178, 233, 0.38);
+        }
+
+        body.theme-dark.section-user_maintenance .um-item[open] > summary {
+            background: rgba(34, 45, 73, 0.52);
+        }
+
+        body.theme-dark.section-user_maintenance .um-modal-form label > span::before {
+            background: linear-gradient(135deg, #ffcb79, #ff9700);
+            box-shadow: 0 0 0 3px rgba(255, 179, 77, 0.2);
+        }
+
+        body.theme-dark.section-user_maintenance .um-modal-form input:focus,
+        body.theme-dark.section-user_maintenance .um-modal-form select:focus {
+            border-color: #ffb866;
+            box-shadow: 0 0 0 4px rgba(255, 184, 102, 0.2);
+        }
+
+        @media (max-width: 920px) {
+            .um-toolbar {
+                grid-template-columns: 1fr;
+            }
+
+            .um-item > summary {
+                grid-template-columns: 1fr;
+            }
+
+            .um-right {
+                justify-content: flex-start;
+            }
+
+            .um-row {
+                grid-template-columns: 1fr;
+            }
+
+            .um-row-delete {
+                justify-content: stretch;
+            }
+        }
+    </style>
 {% endblock %}
 
 {% block content %}
-    <section class="almox-two-column" id="user-access-list">
+    <section class="um-layout" id="user-access-list">
         <article class="almox-panel">
             <div class="almox-panel-header">
                 <div>
-                    <h2>Usuários do portal</h2>
-                    <p>Acesso único para Ata, Relatórios, Planner, Presença e Almoxarifado.</p>
+                    <h2>Usuarios do portal</h2>
+                    <p>Acesso unico para Ata, Relatorios, Planner, Presenca e Almoxarifado.</p>
+                </div>
+                <div class="um-header-actions">
+                    <button type="button" class="primary-button" id="um_open_create">Criar usuario</button>
                 </div>
             </div>
 
             {% if users.length %}
-                <div class="table-wrap">
-                    <table class="almox-table">
-                        <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>Nome</th>
-                                <th>Usuário</th>
-                                <th>Membro Vinculado</th>
-                                <th>Perfil</th>
-                                <th>Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for user in users %}
-                                <tr>
-                                    <td>#{{ user.id }}</td>
-                                    <td>{{ user.name }}</td>
-                                    <td>@{{ user.username }}</td>
-                                    <td>{{ user.member_name if user.member_name else 'Não vinculado' }}</td>
-                                    <td>
-                                        <span class="role-chip {{ 'role-chip-admin' if user.is_admin else 'role-chip-common' }}">
-                                            {{ 'Administrador' if user.is_admin else 'Comum' }}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <form action="{{ urlFor('user_maintenance') }}/users/link/{{ user.id }}" method="post" class="inline-form">
-                                            <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
-                                            <select name="member_id">
-                                                <option value="">Sem vínculo</option>
-                                                {% for member in members %}
-                                                    <option
-                                                        value="{{ member.id }}"
-                                                        {% if user.member_id == member.id or user.member_id == (member.id ~ '') %}selected{% endif %}
-                                                    >
-                                                        {{ member.name }}
-                                                    </option>
-                                                {% endfor %}
-                                            </select>
-                                            <button type="submit" class="secondary-button">Vincular</button>
-                                        </form>
-
-                                        <details class="almox-user-actions">
-                                            <summary>Mais ações</summary>
-
-                                            <form action="{{ urlFor('user_maintenance') }}/users/reset-password/{{ user.id }}" method="post" class="inline-form">
-                                                <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
-                                                <input type="password" name="new_password" minlength="6" placeholder="Nova senha" required>
-                                                <button type="submit" class="secondary-button">Redefinir senha</button>
-                                            </form>
-
-                                            {% if currentUser.id != user.id %}
-                                                <form action="{{ urlFor('user_maintenance') }}/users/delete/{{ user.id }}" method="post" onsubmit="return confirm('Deseja excluir o usuário @{{ user.username }}?');">
-                                                    <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
-                                                    <button type="submit" class="danger-button">Excluir perfil</button>
-                                                </form>
-                                            {% endif %}
-                                        </details>
-                                    </td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+                <div class="um-toolbar">
+                    <input type="search" id="um_search" placeholder="Buscar por nome, usuario, e-mail ou membro" autocomplete="off">
+                    <select id="um_role">
+                        <option value="all">Todos os perfis</option>
+                        <option value="admin">Administrador</option>
+                        <option value="tutor">Tutor</option>
+                        <option value="common">Comum</option>
+                    </select>
+                    <select id="um_link">
+                        <option value="all">Todos os vinculos</option>
+                        <option value="linked">Com vinculo</option>
+                        <option value="unlinked">Sem vinculo</option>
+                    </select>
                 </div>
+
+                <p class="um-counter" id="um_counter"></p>
+
+                <div class="um-list" id="um_list">
+                    {% for user in users %}
+                        <details
+                            class="um-item"
+                            data-name="{{ (user.name or '') | lower }}"
+                            data-username="{{ (user.username or '') | lower }}"
+                            data-email="{{ (user.email or '') | lower }}"
+                            data-member="{{ (user.member_name or '') | lower }}"
+                            data-role="{{ user.role }}"
+                            data-link="{{ 'linked' if user.member_name else 'unlinked' }}"
+                        >
+                            <summary>
+                                <div class="um-main">
+                                    <p class="um-name">{{ user.name }}</p>
+                                    <p class="um-meta">
+                                        <span>#{{ user.id }}</span>
+                                        <span>@{{ user.username }}</span>
+                                        <span>{{ user.email if user.email else 'sem e-mail' }}</span>
+                                        <span>{{ user.member_name if user.member_name else 'sem vinculo' }}</span>
+                                    </p>
+                                </div>
+                                <div class="um-right">
+                                    <span class="role-chip {{ 'role-chip-admin' if user.is_admin else 'role-chip-common' }}">
+                                        {{ 'Administrador' if user.role == 'admin' else ('Tutor' if user.role == 'tutor' else 'Comum') }}
+                                    </span>
+                                    <span class="um-link-flag {{ 'is-unlinked' if not user.member_name else '' }}">
+                                        {{ 'Sem vinculo' if not user.member_name else 'Vinculado' }}
+                                    </span>
+                                </div>
+                            </summary>
+
+                            <div class="um-body">
+                                <form action="{{ urlFor('user_maintenance') }}/users/link/{{ user.id }}" method="post" class="um-row um-row-link">
+                                    <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+                                    <div class="um-row-field">
+                                        <span class="um-row-label">Membro vinculado</span>
+                                        <select name="member_id">
+                                            <option value="">Sem vinculo</option>
+                                            {% for member in members %}
+                                                <option value="{{ member.id }}" {% if user.member_id == member.id or user.member_id == (member.id ~ '') %}selected{% endif %}>{{ member.name }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <button type="submit" class="secondary-button">Salvar vinculo</button>
+                                </form>
+
+                                <form action="{{ urlFor('user_maintenance') }}/users/email/{{ user.id }}" method="post" class="um-row um-row-email">
+                                    <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+                                    <div class="um-row-field">
+                                        <span class="um-row-label">E-mail de notificacao</span>
+                                        <input type="email" name="email" value="{{ user.email if user.email else '' }}" placeholder="email@dominio.com">
+                                    </div>
+                                    <button type="submit" class="secondary-button">Salvar e-mail</button>
+                                </form>
+
+                                <form action="{{ urlFor('user_maintenance') }}/users/reset-password/{{ user.id }}" method="post" class="um-row um-row-password">
+                                    <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+                                    <div class="um-row-field">
+                                        <span class="um-row-label">Nova senha</span>
+                                        <input type="password" name="new_password" minlength="6" placeholder="Nova senha" required>
+                                    </div>
+                                    <button type="submit" class="secondary-button">Redefinir senha</button>
+                                </form>
+
+                                {% if currentUser.id != user.id %}
+                                    <form action="{{ urlFor('user_maintenance') }}/users/delete/{{ user.id }}" method="post" class="um-row-delete" onsubmit="return confirm('Deseja excluir o usuario @{{ user.username }}?');">
+                                        <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+                                        <button type="submit" class="danger-button">Excluir perfil</button>
+                                    </form>
+                                {% endif %}
+                            </div>
+                        </details>
+                    {% endfor %}
+                </div>
+
+                <p class="um-empty" id="um_empty" hidden>Nenhum usuario encontrado com os filtros atuais.</p>
             {% else %}
-                <p class="empty-state">Nenhum usuário cadastrado.</p>
+                <p class="empty-state">Nenhum usuario cadastrado.</p>
             {% endif %}
         </article>
 
-        <article class="almox-panel" id="user-access-create">
-            <div class="almox-panel-header">
-                <div>
-                    <h2>Novo usuário</h2>
-                    <p>Crie um novo acesso, escolha o perfil e vincule (opcionalmente) a um membro.</p>
+        <div
+            class="um-modal"
+            id="um_create_modal"
+            hidden
+            data-open-default="{{ '1' if userErrors.name or userErrors.username or userErrors.email or userErrors.password or userErrors.memberId else '0' }}"
+        >
+            <div class="um-modal-backdrop" id="um_modal_backdrop"></div>
+            <div class="um-modal-card" role="dialog" aria-modal="true" aria-labelledby="um_modal_title">
+                <div class="um-modal-top">
+                    <div>
+                        <h3 id="um_modal_title">Novo usuario</h3>
+                        <p>Crie um novo acesso, escolha o perfil e vincule (opcionalmente) a um membro.</p>
+                    </div>
+                    <button type="button" class="um-modal-close" id="um_close_create" aria-label="Fechar">Fechar</button>
                 </div>
+
+                <form action="{{ urlFor('user_maintenance') }}/users/create" method="post" class="um-modal-form" id="um_create_form">
+                    <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+
+                    <label>
+                        <span>Nome completo</span>
+                        <input type="text" name="name" value="{{ userFormData.name }}" required>
+                        {% if userErrors.name %}<small class="field-error">{{ userErrors.name[0] }}</small>{% endif %}
+                    </label>
+
+                    <label>
+                        <span>Usuario</span>
+                        <input type="text" name="username" value="{{ userFormData.username }}" required>
+                        {% if userErrors.username %}<small class="field-error">{{ userErrors.username[0] }}</small>{% endif %}
+                    </label>
+
+                    <label>
+                        <span>E-mail (para notificacoes)</span>
+                        <input type="email" name="email" value="{{ userFormData.email }}" placeholder="nome@dominio.com">
+                        {% if userErrors.email %}<small class="field-error">{{ userErrors.email[0] }}</small>{% endif %}
+                    </label>
+
+                    <label>
+                        <span>Senha</span>
+                        <input type="password" name="password" required>
+                        {% if userErrors.password %}<small class="field-error">{{ userErrors.password[0] }}</small>{% endif %}
+                    </label>
+
+                    <label>
+                        <span>Perfil</span>
+                        <select name="role">
+                            <option value="common" {% if userFormData.role == 'common' %}selected{% endif %}>Comum</option>
+                            <option value="tutor" {% if userFormData.role == 'tutor' %}selected{% endif %}>Tutor</option>
+                            <option value="admin" {% if userFormData.role == 'admin' %}selected{% endif %}>Administrador</option>
+                        </select>
+                    </label>
+
+                    <label>
+                        <span>Membro vinculado (opcional)</span>
+                        <select name="member_id">
+                            <option value="">Sem vinculo</option>
+                            {% for member in members %}
+                                <option value="{{ member.id }}" {% if userFormData.memberId == member.id or userFormData.memberId == (member.id ~ '') %}selected{% endif %}>{{ member.name }}</option>
+                            {% endfor %}
+                        </select>
+                        {% if userErrors.memberId %}<small class="field-error">{{ userErrors.memberId[0] }}</small>{% endif %}
+                    </label>
+
+                    <button type="submit" class="primary-button">Criar usuario</button>
+                </form>
             </div>
-
-            <form action="{{ urlFor('user_maintenance') }}/users/create" method="post" class="stacked-form">
-                <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
-
-                <label>
-                    <span>Nome completo</span>
-                    <input type="text" name="name" value="{{ userFormData.name }}">
-                    {% if userErrors.name %}<small class="field-error">{{ userErrors.name[0] }}</small>{% endif %}
-                </label>
-
-                <label>
-                    <span>Usuário</span>
-                    <input type="text" name="username" value="{{ userFormData.username }}">
-                    {% if userErrors.username %}<small class="field-error">{{ userErrors.username[0] }}</small>{% endif %}
-                </label>
-
-                <label>
-                    <span>Senha</span>
-                    <input type="password" name="password">
-                    {% if userErrors.password %}<small class="field-error">{{ userErrors.password[0] }}</small>{% endif %}
-                </label>
-
-                <label>
-                    <span>Perfil</span>
-                    <select name="role">
-                        <option value="common" {% if userFormData.role == 'common' %}selected{% endif %}>Comum</option>
-                        <option value="admin" {% if userFormData.role == 'admin' %}selected{% endif %}>Administrador</option>
-                    </select>
-                </label>
-
-                <label>
-                    <span>Membro vinculado (opcional)</span>
-                    <select name="member_id">
-                        <option value="">Sem vínculo</option>
-                        {% for member in members %}
-                            <option value="{{ member.id }}" {% if userFormData.memberId == member.id or userFormData.memberId == (member.id ~ '') %}selected{% endif %}>
-                                {{ member.name }}
-                            </option>
-                        {% endfor %}
-                    </select>
-                    {% if userErrors.memberId %}<small class="field-error">{{ userErrors.memberId[0] }}</small>{% endif %}
-                </label>
-
-                <button type="submit" class="primary-button">Criar usuário</button>
-            </form>
-        </article>
+        </div>
     </section>
+{% endblock %}
+
+{% block scripts %}
+    <script>
+        (function () {
+            var searchInput = document.getElementById('um_search');
+            var roleInput = document.getElementById('um_role');
+            var linkInput = document.getElementById('um_link');
+            var list = document.getElementById('um_list');
+            var counter = document.getElementById('um_counter');
+            var empty = document.getElementById('um_empty');
+            if (!searchInput || !roleInput || !linkInput || !list || !counter || !empty) {
+                return;
+            }
+
+            var items = Array.prototype.slice.call(list.querySelectorAll('.um-item'));
+            var total = items.length;
+
+            function refresh() {
+                var q = String(searchInput.value || '').trim().toLowerCase();
+                var role = String(roleInput.value || 'all');
+                var link = String(linkInput.value || 'all');
+                var visible = 0;
+
+                items.forEach(function (item) {
+                    var name = String(item.dataset.name || '');
+                    var username = String(item.dataset.username || '');
+                    var email = String(item.dataset.email || '');
+                    var member = String(item.dataset.member || '');
+                    var itemRole = String(item.dataset.role || '');
+                    var itemLink = String(item.dataset.link || 'unlinked');
+
+                    var okQuery = !q
+                        || name.indexOf(q) !== -1
+                        || username.indexOf(q) !== -1
+                        || email.indexOf(q) !== -1
+                        || member.indexOf(q) !== -1;
+                    var okRole = role === 'all' || role === itemRole;
+                    var okLink = link === 'all' || link === itemLink;
+                    var show = okQuery && okRole && okLink;
+
+                    item.hidden = !show;
+                    if (show) {
+                        visible += 1;
+                    }
+                });
+
+                counter.textContent = visible + ' de ' + total + ' usuarios visiveis';
+                empty.hidden = visible > 0;
+            }
+
+            searchInput.addEventListener('input', refresh);
+            roleInput.addEventListener('change', refresh);
+            linkInput.addEventListener('change', refresh);
+            refresh();
+        })();
+    </script>
+    <script>
+        (function () {
+            var openButton = document.getElementById('um_open_create');
+            var closeButton = document.getElementById('um_close_create');
+            var backdrop = document.getElementById('um_modal_backdrop');
+            var modal = document.getElementById('um_create_modal');
+            var form = document.getElementById('um_create_form');
+            var closeTimer = null;
+            if (!openButton || !closeButton || !backdrop || !modal || !form) {
+                return;
+            }
+
+            function openModal() {
+                if (closeTimer) {
+                    window.clearTimeout(closeTimer);
+                    closeTimer = null;
+                }
+                modal.hidden = false;
+                document.body.classList.add('um-modal-open');
+                window.requestAnimationFrame(function () {
+                    modal.classList.add('is-open');
+                });
+                var firstField = form.querySelector('input[name="name"]');
+                if (firstField) {
+                    firstField.focus();
+                }
+            }
+
+            function closeModal() {
+                modal.classList.remove('is-open');
+                document.body.classList.remove('um-modal-open');
+                if (closeTimer) {
+                    window.clearTimeout(closeTimer);
+                }
+                closeTimer = window.setTimeout(function () {
+                    modal.hidden = true;
+                }, 220);
+            }
+
+            openButton.addEventListener('click', openModal);
+            closeButton.addEventListener('click', closeModal);
+            backdrop.addEventListener('click', closeModal);
+
+            document.addEventListener('keydown', function (event) {
+                if (event.key === 'Escape' && !modal.hidden) {
+                    closeModal();
+                }
+            });
+
+            if (String(modal.dataset.openDefault || '') === '1') {
+                openModal();
+            }
+        })();
+    </script>
 {% endblock %}

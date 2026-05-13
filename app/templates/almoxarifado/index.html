@@ -195,7 +195,7 @@
                                         <span>@{{ user.username }}</span>
                                     </div>
                                     <span class="role-chip {{ 'role-chip-admin' if user.is_admin else 'role-chip-common' }}">
-                                        {{ 'Admin' if user.is_admin else 'Comum' }}
+                                        {{ 'Admin' if user.role == 'admin' else ('Tutor' if user.role == 'tutor' else 'Comum') }}
                                     </span>
                                 </li>
                             {% endfor %}
@@ -827,7 +827,7 @@
                                     <tr>
                                         <td>#{{ request.pedido_id }}</td>
                                         <td>{{ request.nome_usuario }}</td>
-                                        <td>{{ 'Administrador' if request.role_usuario == 'admin' else 'Comum' }}</td>
+                                        <td>{{ 'Administrador' if request.role_usuario == 'admin' else ('Tutor' if request.role_usuario == 'tutor' else 'Comum') }}</td>
                                         <td>{{ request.nome_item_estoque }}</td>
                                         <td>{{ request.qtd_retirada }}</td>
                                         <td>{{ request.data_pedido | formatDateTime }}</td>

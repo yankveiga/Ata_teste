@@ -192,7 +192,12 @@
 
                                         <div class="form-group form-group-full">
                                             <label class="form-label" for="planner_form_description">Descrição</label>
-                                            <textarea id="planner_form_description" name="description" rows="3" class="form-control">{{ plannerFormData.description }}</textarea>
+                                            <textarea id="planner_form_description" name="description" rows="3" class="form-control" required minlength="10" maxlength="2000">{{ plannerFormData.description }}</textarea>
+                                            {% if plannerFormErrors.description %}
+                                                <ul class="form-error-list">
+                                                    {% for error in plannerFormErrors.description %}<li>{{ error }}</li>{% endfor %}
+                                                </ul>
+                                            {% endif %}
                                         </div>
                                     </div>
                                 </section>

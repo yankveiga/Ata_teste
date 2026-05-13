@@ -327,7 +327,11 @@
 }
 
 .primary-button {
-  background: linear-gradient(135deg, var(--almox-accent-dark), var(--almox-accent));
+  background: linear-gradient(
+    135deg,
+    var(--almox-accent-dark, #c17200),
+    var(--almox-accent, #ff9900)
+  );
   color: #fffaf3;
 }
 

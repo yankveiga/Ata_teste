@@ -719,6 +719,13 @@ app.get("/services", requireAuth, (req, res) => {
       errors.title = ["Título da tarefa deve ter no máximo 180 caracteres."];
     }
 
+    const description = trimToNull(formData.description);
+    if (!description) {
+      errors.description = ["Descrição da tarefa é obrigatória."];
+    } else if (description.length < 10 || description.length > 2000) {
+      errors.description = ["Descrição da tarefa deve ter entre 10 e 2000 caracteres."];
+    }
+
     const dueAt = toSqlDateTime(formData.dueAt);
     const currentWeekStart = getCurrentWeekStartDate();
     const nowSql = toSqlDateTime(new Date());
@@ -732,7 +739,6 @@ app.get("/services", requireAuth, (req, res) => {
       }
     }
 
-    const description = trimToNull(formData.description) || "";
     if (Object.keys(errors).length > 0) {
       req.session.plannerFormState = {
         formData,
@@ -757,7 +763,7 @@ app.get("/services", requireAuth, (req, res) => {
         assignedMemberId,
         createdByUserId: req.currentUser.id,
         title,
-        description,
+        description: description || "",
         status: initialStatus,
         priority: "medium",
         label: null,

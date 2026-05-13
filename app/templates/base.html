@@ -34,6 +34,7 @@
     </script>
 
     {% block styles %}{% endblock %}
+    <link rel="stylesheet" href="{{ urlFor('static', { filename: 'css/app_polish.css' }) }}">
 
     <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
     <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
@@ -82,6 +83,18 @@
                     </a>
                 </li>
 
+                <li class="{{ 'hovered' if activeSection == 'messages' else '' }}">
+                    <a href="{{ urlFor('messages_home') }}">
+                        <span class="icon" id="nav_messages_icon">
+                            <ion-icon name="chatbubbles-outline"></ion-icon>
+                            {% if unreadMessageConversations and unreadMessageConversations > 0 %}
+                            <span class="nav-unread-badge" aria-label="{{ unreadMessageConversations }} conversas não lidas">{{ unreadMessageConversations }}</span>
+                            {% endif %}
+                        </span>
+                        <span class="title">Mensagens</span>
+                    </a>
+                </li>
+
                 <li class="{{ 'hovered' if activeSection == 'members' else '' }}">
                     <a href="{{ urlFor('list_members') }}">
                         <span class="icon"><ion-icon name="people-outline"></ion-icon></span>
@@ -110,7 +123,7 @@
                     </a>
                 </li>
 
-                <li class="nav-theme-item">
+                                <li class="nav-theme-item">
                     <button
                         type="button"
                         class="nav-theme-button"
@@ -205,6 +218,82 @@
             }
         })();
     </script>
+    <script>
+        (function() {
+            var navIcon = document.getElementById('nav_messages_icon');
+            var isMessagesSection = document.body.classList.contains('section-messages');
+            if (!navIcon || document.body.classList.contains('embedded-shell') || isMessagesSection) {
+                return;
+            }
+
+            function renderBadge(total) {
+                var badge = navIcon.querySelector('.nav-unread-badge');
+                if (!total || total <= 0) {
+                    if (badge) {
+                        badge.remove();
+                    }
+                    return;
+                }
+                if (!badge) {
+                    badge = document.createElement('span');
+                    badge.className = 'nav-unread-badge';
+                    navIcon.appendChild(badge);
+                }
+                badge.textContent = String(total);
+                badge.setAttribute('aria-label', total + ' conversas não lidas');
+            }
+
+            async function refreshUnread() {
+                try {
+                    var response = await fetch('/mensagens/unread-summary', {
+                        credentials: 'same-origin',
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
+                        },
+                    });
+                    if (!response.ok) {
+                        return;
+                    }
+                    var payload = await response.json();
+                    if (!payload || !payload.ok) {
+                        return;
+                    }
+                    renderBadge(Number(payload.total || 0));
+                } catch (_error) {}
+            }
+
+            var timer = null;
+            var disposed = false;
+
+            function scheduleNext() {
+                if (disposed) {
+                    return;
+                }
+                var delay = document.hidden ? 30000 : 12000;
+                timer = window.setTimeout(async function() {
+                    await refreshUnread();
+                    scheduleNext();
+                }, delay);
+            }
+
+            function handleVisibilityChange() {
+                if (disposed) {
+                    return;
+                }
+                if (timer) {
+                    window.clearTimeout(timer);
+                    timer = null;
+                }
+                refreshUnread();
+                scheduleNext();
+            }
+
+            document.addEventListener('visibilitychange', handleVisibilityChange);
+            refreshUnread();
+            scheduleNext();
+        })();
+    </script>
     {% endif %}
 
     {# SECAO: scripts de infraestrutura e scripts especificos injetados por pagina. #}
@@ -212,3 +301,5 @@
     {% block scripts %}{% endblock %}
 </body>
 </html>
+
+

@@ -1,0 +1,411 @@
+/*
+ * ARQUIVO: app_polish.css
+ * FUNCAO: camada final de polimento visual global (acabamento app-like).
+ * IMPACTO DE MUDANCAS:
+ * - Overrides sutis para componentes compartilhados sem alterar fluxo funcional.
+ * - Mantem coerencia entre claro/escuro com foco em contraste e legibilidade.
+ */
+
+:root {
+  --polish-ring: 0 0 0 4px rgba(31, 91, 230, 0.14);
+  --polish-shadow-soft: 0 16px 30px rgba(15, 23, 42, 0.08);
+  --polish-shadow-strong: 0 24px 42px rgba(15, 23, 42, 0.12);
+}
+
+html.theme-dark,
+body.theme-dark {
+  --polish-ring: 0 0 0 4px rgba(142, 168, 255, 0.22);
+  --polish-shadow-soft: 0 18px 32px rgba(2, 6, 23, 0.5);
+  --polish-shadow-strong: 0 28px 46px rgba(2, 6, 23, 0.58);
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.topbar {
+  padding-bottom: 6px;
+}
+
+.content-wrapper {
+  padding-bottom: 34px;
+}
+
+.content-panel,
+.almox-panel {
+  border-radius: 30px;
+  box-shadow: var(--polish-shadow-soft);
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .content-panel:hover,
+  .almox-panel:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--polish-shadow-strong);
+  }
+}
+
+.panel-header {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.36), rgba(255, 255, 255, 0)),
+    transparent;
+}
+
+html.theme-dark .panel-header,
+body.theme-dark .panel-header {
+  background:
+    linear-gradient(180deg, rgba(143, 170, 245, 0.08), rgba(143, 170, 245, 0)),
+    transparent;
+}
+
+.btn-primary-action,
+.btn-secondary-action,
+.btn-submit,
+.btn-cancel,
+.btn-create-ata,
+.primary-button,
+.secondary-button,
+.danger-button,
+.ghost-danger-button {
+  transition: transform 150ms ease, box-shadow 180ms ease, filter 180ms ease, border-color 180ms ease;
+}
+
+.btn-primary-action:hover,
+.btn-submit:hover,
+.btn-create-ata:hover,
+.primary-button:hover {
+  transform: translateY(-1px);
+  filter: saturate(1.04);
+  box-shadow: 0 18px 30px rgba(31, 91, 230, 0.32);
+}
+
+.btn-secondary-action:hover,
+.btn-cancel:hover,
+.secondary-button:hover,
+.ghost-danger-button:hover {
+  transform: translateY(-1px);
+  border-color: var(--ui-border-strong);
+  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.08);
+}
+
+.danger-button:hover,
+.btn-delete:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.04);
+  box-shadow: 0 12px 22px rgba(153, 27, 27, 0.28);
+}
+
+.btn-primary-action:active,
+.btn-submit:active,
+.btn-create-ata:active,
+.primary-button:active,
+.secondary-button:active,
+.danger-button:active,
+.ghost-danger-button:active {
+  transform: translateY(0);
+}
+
+.form-control,
+.form-control-file,
+.stacked-form input,
+.stacked-form select,
+.stacked-form textarea,
+.inline-form input,
+.inline-form select,
+.table-filter-input,
+.inline-number-input {
+  transition: border-color 160ms ease, box-shadow 180ms ease, background-color 180ms ease;
+}
+
+.form-control::placeholder,
+.stacked-form input::placeholder,
+.inline-form input::placeholder {
+  color: color-mix(in srgb, var(--ui-muted) 78%, transparent);
+}
+
+.form-control:focus,
+.form-control-file:focus,
+.stacked-form input:focus,
+.stacked-form select:focus,
+.stacked-form textarea:focus,
+.inline-form input:focus,
+.inline-form select:focus,
+.table-filter-input:focus,
+.inline-number-input:focus {
+  box-shadow: var(--polish-ring);
+}
+
+.styled-table thead th {
+  background: linear-gradient(180deg, rgba(31, 91, 230, 0.06), rgba(31, 91, 230, 0.01));
+}
+
+.styled-table tbody tr:nth-child(even) {
+  background: rgba(148, 163, 184, 0.05);
+}
+
+.styled-table tbody tr:hover {
+  background: color-mix(in srgb, var(--ui-accent-soft) 78%, transparent);
+}
+
+html.theme-dark .styled-table thead th,
+body.theme-dark .styled-table thead th {
+  background: linear-gradient(180deg, rgba(142, 168, 255, 0.14), rgba(142, 168, 255, 0.02));
+}
+
+html.theme-dark .styled-table tbody tr:nth-child(even),
+body.theme-dark .styled-table tbody tr:nth-child(even) {
+  background: rgba(96, 122, 170, 0.12);
+}
+
+.empty-state {
+  padding: 1rem 1.1rem;
+  border-radius: 14px;
+  border: 1px dashed color-mix(in srgb, var(--ui-border) 88%, transparent);
+  background: color-mix(in srgb, var(--ui-surface-soft) 92%, #ffffff 8%);
+}
+
+html.theme-dark .empty-state,
+body.theme-dark .empty-state {
+  border-color: color-mix(in srgb, var(--ui-border) 85%, transparent);
+  background: color-mix(in srgb, var(--ui-surface-soft) 88%, #0b1326 12%);
+}
+
+@media (max-width: 720px) {
+  .content-panel,
+  .almox-panel {
+    border-radius: 24px;
+  }
+
+  .btn-primary-action,
+  .btn-secondary-action,
+  .btn-submit,
+  .btn-cancel,
+  .btn-create-ata,
+  .primary-button,
+  .secondary-button,
+  .danger-button,
+  .ghost-danger-button {
+    width: 100%;
+  }
+}
+
+/* SECAO: polimento premium da tela de Mensagens (estilo chat app). */
+
+body.section-messages .chat-app {
+  min-height: calc(100vh - 170px);
+  border-radius: 30px;
+  border: 1px solid rgba(19, 42, 80, 0.22);
+}
+
+body.section-messages .chat-sidebar-head {
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(195, 215, 248, 0.2);
+}
+
+body.section-messages .chat-conversation-link {
+  border-radius: 16px;
+  padding: 10px;
+}
+
+body.section-messages .chat-conversation-link.is-active {
+  position: relative;
+}
+
+body.section-messages .chat-conversation-link.is-active::before {
+  content: "";
+  position: absolute;
+  left: 6px;
+  top: 10px;
+  bottom: 10px;
+  width: 3px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #5cfca8, #1dbd69);
+}
+
+body.section-messages .chat-main-head {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+
+body.section-messages .chat-main-messages {
+  background-image: radial-gradient(rgba(112, 140, 196, 0.1) 1px, transparent 1px);
+  background-size: 14px 14px;
+  background-position: 0 0;
+}
+
+body.section-messages .chat-message {
+  animation: chatPopIn 160ms ease;
+}
+
+body.section-messages .chat-bubble {
+  border-radius: 18px 18px 18px 7px;
+}
+
+body.section-messages .chat-message.is-mine .chat-bubble {
+  border-radius: 18px 18px 7px 18px;
+}
+
+body.section-messages .chat-main-compose {
+  position: sticky;
+  bottom: 0;
+  z-index: 4;
+  padding: 12px;
+  border-top: 1px solid rgba(27, 52, 89, 0.16);
+}
+
+body.section-messages .chat-main-compose textarea {
+  min-height: 50px;
+}
+
+body.theme-dark.section-messages .chat-app {
+  border-color: rgba(121, 150, 207, 0.34);
+}
+
+body.theme-dark.section-messages .chat-sidebar-head {
+  border-bottom-color: rgba(154, 179, 224, 0.18);
+}
+
+body.theme-dark.section-messages .chat-main-messages {
+  background-image: radial-gradient(rgba(131, 158, 211, 0.16) 1px, transparent 1px);
+}
+
+body.theme-dark.section-messages .chat-main-compose {
+  border-top-color: rgba(149, 172, 214, 0.28);
+}
+
+/* SECAO: polimento premium da tela de Relatorios (kanban e navegacao). */
+
+body.section-reports .report-tabs-nav {
+  position: sticky;
+  top: 68px;
+  z-index: 20;
+  padding: 10px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(100, 116, 139, 0.18);
+  backdrop-filter: blur(10px);
+}
+
+body.section-reports .report-member-photo-card,
+body.section-reports .report-member-project-chip,
+body.section-reports .report-goal-item,
+body.section-reports .report-kanban-column,
+body.section-reports .report-entry-item {
+  transition: transform 170ms ease, box-shadow 170ms ease, border-color 170ms ease;
+}
+
+body.section-reports .report-member-photo-card:hover,
+body.section-reports .report-member-project-chip:hover,
+body.section-reports .report-goal-item:hover {
+  transform: translateY(-2px);
+}
+
+body.section-reports .report-kanban-column {
+  border-radius: 20px;
+  border-width: 1px;
+}
+
+body.section-reports .report-kanban-column-header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.84), rgba(255, 255, 255, 0.64));
+  border-bottom: 1px solid rgba(100, 116, 139, 0.16);
+  margin: -4px -4px 8px;
+  padding: 10px 8px 8px;
+  border-top-left-radius: 14px;
+  border-top-right-radius: 14px;
+}
+
+body.section-reports .report-goal-item {
+  border-radius: 16px;
+}
+
+body.section-reports .report-goal-save-button {
+  border-radius: 12px;
+}
+
+body.section-reports .report-goal-late-badge {
+  letter-spacing: 0.02em;
+}
+
+body.theme-dark.section-reports .report-tabs-nav {
+  background: rgba(12, 21, 39, 0.82);
+  border-color: rgba(109, 136, 184, 0.36);
+}
+
+body.theme-dark.section-reports .report-kanban-column-header {
+  background: linear-gradient(180deg, rgba(20, 33, 54, 0.9), rgba(20, 33, 54, 0.72));
+  border-bottom-color: rgba(109, 136, 184, 0.3);
+}
+
+/* SECAO: polimento premium de Manutencao de Usuarios (densidade e leitura). */
+
+body.section-user_maintenance .um-toolbar {
+  padding: 10px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(138, 47, 22, 0.16);
+  backdrop-filter: blur(8px);
+}
+
+body.section-user_maintenance .um-counter {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.4rem 0.72rem;
+  border-radius: 999px;
+  background: rgba(255, 243, 224, 0.85);
+  border: 1px solid rgba(209, 120, 5, 0.22);
+}
+
+body.section-user_maintenance .um-item {
+  border-radius: 16px;
+  box-shadow: 0 10px 20px rgba(42, 18, 6, 0.08);
+}
+
+body.section-user_maintenance .um-item > summary {
+  padding: 13px 14px;
+}
+
+body.section-user_maintenance .um-modal-card {
+  border-radius: 22px;
+}
+
+body.section-user_maintenance .um-modal-top {
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(138, 47, 22, 0.14);
+}
+
+body.theme-dark.section-user_maintenance .um-toolbar {
+  background: rgba(16, 26, 44, 0.82);
+  border-color: rgba(118, 138, 184, 0.34);
+}
+
+body.theme-dark.section-user_maintenance .um-counter {
+  background: rgba(31, 48, 82, 0.7);
+  border-color: rgba(136, 164, 226, 0.38);
+}
+
+body.theme-dark.section-user_maintenance .um-modal-top {
+  border-bottom-color: rgba(121, 141, 185, 0.28);
+}
+
+@keyframes chatPopIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 980px) {
+  body.section-reports .report-tabs-nav {
+    top: 60px;
+  }
+}

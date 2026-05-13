@@ -49,6 +49,15 @@ BOOTSTRAP_ADMIN=false
 BOOTSTRAP_ADMIN_USERNAME=admin
 BOOTSTRAP_ADMIN_PASSWORD=
 BOOTSTRAP_ADMIN_NAME=Administrador
+
+# Opcional (notificacoes externas por e-mail via Brevo)
+APP_BASE_URL=http://127.0.0.1:3000
+EMAIL_PROVIDER=brevo
+BREVO_API_KEY=
+EMAIL_FROM=notificacoes@seu-dominio.com
+EMAIL_FROM_NAME=Portal PET C3
+EMAIL_REPLY_TO=
+NOTIFICATION_SWEEP_INTERVAL_MS=300000
 ```
 
 3. Crie usuário inicial (opcional):
@@ -70,6 +79,7 @@ npm run dev
 npm start
 npm run create-user
 npm run verify
+npm run notify:run-once
 ```
 
 Observação: `npm run verify` exige `DATABASE_URL` válido.
