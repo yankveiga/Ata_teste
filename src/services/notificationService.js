@@ -83,6 +83,7 @@ function createNotificationService({ database, config, logger = console }) {
     sentAt,
   }) {
     if (!emailService.enabled) {
+      logger.warn?.("[notify] Chat e-mail desativado: provider/chave/remetente invalidos.");
       return { sent: 0, skipped: "email_disabled" };
     }
 
@@ -98,6 +99,9 @@ function createNotificationService({ database, config, logger = console }) {
       const targetUser = database.getUserById(participant.id);
       const email = emailService.normalizeEmail(targetUser?.email);
       if (!email) {
+        logger.info?.(
+          `[notify] Chat e-mail pulado: destinatario sem e-mail (user_id=${participant.id}).`,
+        );
         continue;
       }
 
@@ -119,9 +123,14 @@ function createNotificationService({ database, config, logger = console }) {
       });
       if (result.ok) {
         sent += 1;
+      } else {
+        logger.warn?.(
+          `[notify] Chat e-mail pulado para ${email}: ${result.reason || "motivo_desconhecido"}.`,
+        );
       }
     }
 
+    logger.info?.(`[notify] Chat e-mail: enviados=${sent} conversa=${conversationId}`);
     return { sent };
   }
 

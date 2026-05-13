@@ -5,25 +5,22 @@
  * - Alterar variaveis de cor/tipografia muda identidade visual e contraste da experiencia de login.
  * - Alterar espacamentos e dimensoes pode prejudicar usabilidade em mobile.
  */
-/* static/css/login.css - Com Fundo Gradiente, Novo Botão e Partículas */
+/* static/css/login.css - Com Fundo Gradiente, Novo Botao e Particulas */
 
-/* =============== Variáveis Globais =============== */
+/* =============== Variaveis Globais =============== */
 :root {
-    /* Cor de acento original (verde petróleo) - para referências ou outros elementos */
+    /* Cor de acento original (verde petroleo) - para referencias ou outros elementos */
     --original-primary-accent: #004d7a;
     --original-primary-accent-dark: color-mix(in srgb, var(--original-primary-accent) 85%, black);
 
-    /* Novas cores para o botão de login */
-    --login-btn-bg: #ffffff; /* Botão branco */
-    --login-btn-text: #004d7a; /* Texto azul escuro (cor do gradiente) */
-    --login-btn-hover-bg: #e9ecef; /* Hover cinza bem claro */
-    /* Para hover do botão se você quiser usar a cor original: */
-    /* --login-btn-hover-bg: color-mix(in srgb, var(--original-primary-accent) 10%, white); */
-    /* --login-btn-hover-text: var(--original-primary-accent); */
+    /* Novas cores para o botao de login */
+    --login-btn-bg: linear-gradient(135deg, #ffffff 0%, #eef6ff 100%);
+    --login-btn-text: #0b3960;
+    --login-btn-hover-bg: linear-gradient(135deg, #f7fbff 0%, #dbeeff 100%);
 
     --white: #fff;
-    /* Fundo da página com gradiente que você escolheu */
-    --page-bg-gradient: linear-gradient(to right top, #051937, #004d7a, #008793);
+    /* Fundo da pagina com gradiente que voce escolheu */
+    --page-bg-gradient: linear-gradient(135deg, #020816 0%, #0a2349 46%, #0f3f5f 100%);
 
     /* Efeito Glassmorphism */
     --form-bg-glass: rgba(255, 255, 255, 0.1); /* Mais transparente */
@@ -37,31 +34,28 @@
     --error-bg-glass: rgba(252, 165, 165, 0.8); /* Fundo de erro para o vidro */
     --error-border-glass: rgba(254, 226, 226, 0.85);
 
-    /* Mapeando variáveis para nomes consistentes (alguns podem ser redundantes agora) */
-    --main-bg: var(--page-bg-gradient); /* Body usará o gradiente */
+    /* Mapeando variaveis para nomes consistentes (alguns podem ser redundantes agora) */
+    --main-bg: var(--page-bg-gradient); /* Body usara o gradiente */
     --card-bg: var(--form-bg-glass);
     --black1: var(--text-color-on-glass);
     --black2: var(--text-muted-on-glass);
-    
-    /* Variáveis para o botão de submit (se referenciadas pelo HTML) */
-    --yellow: var(--login-btn-bg); 
+
+    /* Variaveis para o botao de submit (se referenciadas pelo HTML) */
+    --yellow: var(--login-btn-bg);
     --text-on-accent: var(--login-btn-text);
-    --primary-blue-dark: var(--login-btn-hover-bg); /* Para o hover do botão de submit */
-    
+    --primary-blue-dark: var(--login-btn-hover-bg); /* Para o hover do botao de submit */
+
     --light-border-color: var(--form-border-glass); /* Borda dos inputs */
     --card-shadow: var(--card-shadow-glass);
 }
 
 /* ===================================================================== */
-/* ESTILOS MODERNOS PARA A PÁGINA DE LOGIN (COM GLASSMORPHISM)         */
+/* ESTILOS MODERNOS PARA A PAGINA DE LOGIN (COM GLASSMORPHISM)         */
 /* ===================================================================== */
 
 body.login-page-body {
     font-family: "Ubuntu", sans-serif;
     background: var(--main-bg); /* Aplica o gradiente */
-    /* Para gradiente animado (opcional, descomente e ajuste @keyframes) */
-    /* background-size: 400% 400%; */
-    /* animation: gradientAnimation 20s ease infinite; */
     display: flex;
     justify-content: center;
     align-items: center;
@@ -70,31 +64,29 @@ body.login-page-body {
     padding: 20px;
     box-sizing: border-box;
     line-height: 1.6;
-    overflow: hidden; /* Para evitar barras de rolagem das partículas/animações */
-    position: relative; /* Para z-index do overlay e partículas */
+    overflow: hidden; /* Para evitar barras de rolagem das particulas/animacoes */
+    position: relative; /* Para z-index do overlay e particulas */
 }
 
-
-
-/* Container para as partículas (se estiver usando a biblioteca JS) */
+/* Container para as particulas (se estiver usando a biblioteca JS) */
 #particles-background {
     position: fixed;
     width: 100%;
     height: 100%;
     top: 0;
     left: 0;
-    z-index: -1; /* Atrás de tudo, exceto talvez um fundo de body ainda mais básico */
+    z-index: -1; /* Atras de tudo, exceto talvez um fundo de body ainda mais basico */
 }
 /* SECAO: cabecalho visual com logo e titulo da tela de login. */
 
 .titulo-com-logo {
     display: flex;
-    align-items: flex-end; /* Se você quiser que eles fiquem alinhados pela base */
+    align-items: flex-end;
     justify-content: center;
-    position: relative; /* Container com posição relativa para que os filhos se posicionem em relação a ele */
+    position: relative;
     color: var(--white);
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-    margin: 0;
+    margin: 0 0 26px;
     font-size: 2em;
     font-weight: 500;
 }
@@ -102,19 +94,18 @@ body.login-page-body {
 .logo-pet {
     height: 2em;
     width: auto;
-    position: absolute; /* Agora podemos mover a logo onde quisermos */
-    top: -20%; /* Ajuste vertical da logo */
-    left: 5%; /* Ajuste horizontal da logo */
-    /* Se quiser "sobrepor" a logo ao texto, você pode usar valores negativos aqui */
-    transform: translateY(-10px); /* Exemplo de sobreposição, movendo a logo para cima */
+    position: absolute;
+    top: -20%;
+    left: 5%;
+    transform: translateY(-10px);
 }
 
 .titulo-com-logo h1 {
-    position: absolute; /* Posiciona o título diretamente */
-    top: 30px; /* Ajuste o valor conforme necessário */
-    left: 0; /* Ajuste para centralizar ou posicionar à esquerda */
-    font-size: 1.5em; /* Ajuste o tamanho do título se necessário */
-    margin: 0; /* Remove margens extras */
+    position: absolute;
+    top: 30px;
+    left: 0;
+    font-size: 1.5em;
+    margin: 0;
 }
 /* SECAO: card principal de autenticacao (glassmorphism). */
 
@@ -131,7 +122,7 @@ body.login-page-body {
     text-align: center;
     position: relative;
     z-index: 1; /* Acima do fundo e do overlay (se houver) */
-    opacity: 0; /* Para animação de entrada */
+    opacity: 0; /* Para animacao de entrada */
     transform: translateY(20px) scale(0.98);
     animation: fadeInForm 0.7s 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
 }
@@ -150,7 +141,7 @@ body.login-page-body {
 }
 
 .login-container h1 {
-    color: var(--white); /* Título branco para bom contraste com fundos escuros/coloridos */
+    color: var(--white);
     text-shadow: 0 1px 2px rgba(0,0,0,0.2);
     margin-bottom: 15px;
     font-size: 2em;
@@ -184,21 +175,26 @@ body.login-page-body {
     padding: 12px 15px;
     font-size: 1em;
     color: var(--text-color-on-glass);
-    background-color: rgba(255, 255, 255, 0.1); /* Fundo do input bem transparente */
+    background-color: rgba(255, 255, 255, 0.1);
     border: 1px solid var(--form-border-glass);
     border-radius: 8px;
     box-sizing: border-box;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+    transition: border-color 0.22s ease, box-shadow 0.22s ease, background-color 0.22s ease, transform 0.22s ease;
 }
 .form-control::placeholder {
     color: var(--text-muted-on-glass);
     opacity: 0.7;
 }
 
+.form-control:hover {
+    border-color: rgba(195, 221, 255, 0.46);
+    background-color: rgba(255, 255, 255, 0.14);
+}
+
 .form-group .input-icon {
     position: absolute;
     left: 15px;
-    top: 42px; /* Ajuste fino aqui para alinhar com o texto do input */
+    top: 42px;
     font-size: 1.2em;
     color: var(--text-muted-on-glass);
     pointer-events: none;
@@ -209,19 +205,22 @@ body.login-page-body {
 }
 
 .form-control:focus {
-    border-color: var(--original-primary-accent); /* Destaque com o verde petróleo original */
+    border-color: var(--original-primary-accent);
     outline: none;
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--original-primary-accent) 25%, transparent);
-    background-color: rgba(255, 255, 255, 0.2); /* Um pouco mais opaco no foco */
+    box-shadow:
+        0 0 0 3px color-mix(in srgb, var(--original-primary-accent) 24%, transparent),
+        0 12px 20px rgba(0, 20, 60, 0.16);
+    background-color: rgba(255, 255, 255, 0.2);
+    transform: translateY(-1px);
 }
 
 .form-error {
     color: var(--error-color);
     background-color: var(--error-bg-glass);
-    border: 1px solid var(--error-border-glass); /* Adiciona uma borda também */
-    padding: 8px 10px; /* Mais padding */
-    border-radius: 6px; /* Consistente */
-    font-size: 0.9em; /* Um pouco maior */
+    border: 1px solid var(--error-border-glass);
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-size: 0.9em;
     margin-top: 8px;
     animation: shake 0.4s ease;
 }
@@ -229,7 +228,7 @@ body.login-page-body {
 
 @keyframes shake {
     0%, 100% { transform: translateX(0); }
-    20%, 60% { transform: translateX(-8px); } /* Menos agressivo */
+    20%, 60% { transform: translateX(-8px); }
     40%, 80% { transform: translateX(8px); }
 }
 
@@ -240,27 +239,29 @@ body.login-page-body {
     width: 100%;
     padding: 14px 20px;
     font-size: 1.05em;
-    font-weight: 600; /* Mais peso para o botão */
+    font-weight: 600;
     margin-top: 15px;
-    background-color: var(--login-btn-bg); /* Fundo branco */
-    color: var(--login-btn-text);       /* Texto azul escuro */
-    border: none; /* Removida a borda sutil, opcional */
+    background: var(--login-btn-bg);
+    color: var(--login-btn-text);
+    border: 1px solid rgba(126, 176, 233, 0.65);
     border-radius: 8px;
     cursor: pointer;
-    transition: background-color 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
+    transition: background-color 0.2s ease, transform 0.14s ease, box-shadow 0.2s ease, border-color 0.2s ease;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    box-shadow: 0 3px 6px rgba(0,0,0,0.08); /* Sombra um pouco mais definida */
+    box-shadow: 0 12px 20px rgba(0, 20, 60, 0.2);
 }
 .login-form .btn-submit:hover {
-    background-color: var(--login-btn-hover-bg); /* Cinza claro no hover */
-    /* color: var(--login-btn-hover-text); /* Se o texto do hover for diferente */
-    transform: translateY(-2px); /* Efeito de elevação maior */
-    box-shadow: 0 5px 10px rgba(0,0,0,0.12);
+    background: var(--login-btn-hover-bg);
+    transform: translateY(-2px);
+    border-color: rgba(93, 155, 226, 0.78);
+    box-shadow:
+        0 16px 26px rgba(0, 20, 60, 0.24),
+        0 0 0 3px rgba(144, 193, 255, 0.22);
 }
 .login-form .btn-submit:active {
     transform: translateY(0px);
-    box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+    box-shadow: 0 7px 12px rgba(0, 20, 60, 0.18);
 }
 
 
@@ -275,13 +276,13 @@ body.login-page-body {
     margin-bottom: 10px;
 }
 .login-links a {
-    color: var(--white); /* Links brancos para contraste */
+    color: var(--white);
     text-decoration: none;
     font-weight: 500;
 }
 .login-links a:hover {
     text-decoration: underline;
-    color: var(--text-muted-on-glass); /* Ou uma cor de acento clara */
+    color: var(--text-muted-on-glass);
 }
 
 /* Flash messages */
@@ -321,14 +322,14 @@ body.login-page-body {
     border: 2px solid var(--form-border-glass);
     border-radius: 4px; margin-right: 10px; cursor: pointer; position: relative;
     transition: background-color 0.2s, border-color 0.2s;
-    background-color: rgba(255,255,255,0.2); /* Fundo do checkbox mais sutil */
+    background-color: rgba(255,255,255,0.2);
 }
 .form-check-input:checked {
-    background-color: var(--original-primary-accent); /* Cor do seu verde petróleo original */
+    background-color: var(--original-primary-accent);
     border-color: var(--original-primary-accent);
 }
 .form-check-input:checked::before {
-    content: '✔'; font-size: 12px; color: var(--white);
+    content: '?'; font-size: 12px; color: var(--white);
     position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
 }
 .form-check-label {
@@ -350,6 +351,7 @@ body.login-page-body {
     .titulo-com-logo {
         padding-left: 38px;
         font-size: 1.8em;
+        margin-bottom: 22px;
     }
 
     .logo-pet {
@@ -358,4 +360,24 @@ body.login-page-body {
         left: -2%;
         transform: translateY(-8px);
     }
+}
+
+/* SECAO: override de prioridade para garantir estilo final do botao de login. */
+.login-container .login-form .btn-submit {
+    background: linear-gradient(135deg, #ffffff 0%, #eef6ff 100%) !important;
+    color: #0b3960 !important;
+    border: 1px solid rgba(126, 176, 233, 0.65) !important;
+    box-shadow: 0 12px 20px rgba(0, 20, 60, 0.2) !important;
+}
+
+.login-container .login-form .btn-submit:hover {
+    background: linear-gradient(135deg, #f7fbff 0%, #dbeeff 100%) !important;
+    border-color: rgba(93, 155, 226, 0.78) !important;
+    box-shadow:
+        0 16px 26px rgba(0, 20, 60, 0.24),
+        0 0 0 3px rgba(144, 193, 255, 0.22) !important;
+}
+
+.login-container .login-form .btn-submit:active {
+    box-shadow: 0 7px 12px rgba(0, 20, 60, 0.18) !important;
 }
