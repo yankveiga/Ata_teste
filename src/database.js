@@ -3183,6 +3183,46 @@ function listReportMonthGoalsForMember(memberId, { monthKey, limit = 1200 } = {}
     .map(mapReportWeekGoal);
 }
 
+// FUNCAO: listReportMonthMemberNotesForPdf.
+function listReportMonthMemberNotesForPdf(memberId, { monthKey, limit = 200 } = {}) {
+  const normalizedMonth = String(monthKey || "").trim();
+  if (!/^\d{4}-\d{2}$/.test(normalizedMonth)) {
+    return [];
+  }
+
+  return getDb()
+    .prepare(
+      `
+      SELECT
+        n.id,
+        n.member_id,
+        n.author_user_id,
+        n.target_tutor_user_id,
+        n.week_start,
+        n.content,
+        n.sent_to_chat_at,
+        n.sent_to_chat_conversation_id,
+        n.created_at,
+        n.updated_at,
+        m.name AS member_name,
+        au.username AS author_username,
+        au.name AS author_name,
+        tu.username AS target_tutor_username,
+        tu.name AS target_tutor_name
+      FROM report_fortnight_member_note n
+      INNER JOIN member m ON m.id = n.member_id
+      INNER JOIN "user" au ON au.id = n.author_user_id
+      LEFT JOIN "user" tu ON tu.id = n.target_tutor_user_id
+      WHERE n.member_id = ?
+        AND n.week_start LIKE (? || '-%')
+      ORDER BY n.week_start DESC, n.id DESC
+      LIMIT ?
+    `,
+    )
+    .all(memberId, normalizedMonth, limit)
+    .map(mapReportFortnightMemberNote);
+}
+
 // FUNCAO: serializeAuditPayload.
 function serializeAuditPayload(payload) {
   if (!payload || typeof payload !== "object") {
@@ -5665,6 +5705,7 @@ module.exports = {
   listReportMembersSummary,
   listReportProjectsForMember,
   listReportMonthGoalsForMember,
+  listReportMonthMemberNotesForPdf,
   listPlannerTasks,
   getPlannerTaskById,
   refreshPlannerTaskLifecycle,

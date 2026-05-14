@@ -5,7 +5,7 @@
 {% endblock %}
 
 {% block content %}
-<section class="chat-app" data-open-conversation-id="{{ selectedConversation.id if selectedConversation else '' }}">
+<section class="chat-app {{ 'has-open-conversation' if selectedConversation else 'is-list-mode' }}" data-open-conversation-id="{{ selectedConversation.id if selectedConversation else '' }}">
   <aside class="chat-sidebar">
     <header class="chat-sidebar-head">
       <h2>Conversas</h2>
@@ -61,6 +61,10 @@
   <section class="chat-main">
     {% if selectedConversation %}
       <header class="chat-main-head">
+        <a href="{{ urlFor('messages_home') }}" class="chat-mobile-back" aria-label="Voltar para conversas">
+          <span aria-hidden="true">&lt;</span>
+          Conversas
+        </a>
         <span class="chat-avatar" aria-hidden="true">
           {% if selectedConversation.other_user_photo %}
             <img src="{{ mediaUrl(selectedConversation.other_user_photo) }}" alt="Foto">
