@@ -17,40 +17,10 @@ let database;
 let bridgeState;
 // ESTADO GLOBAL: sequencia crescente para correlacao de mensagens SQL.
 let querySequence = 0;
-// ESTADO GLOBAL: contador de sinais entre worker e thread principal.
-const bridgeSignal = new Int32Array(new SharedArrayBuffer(4));
-const DEFAULT_QUERY_TIMEOUT_MS = 15000;
+// ESTADO GLOBAL: buffer de espera usado no modo sincrono.
+const sleeper = new Int32Array(new SharedArrayBuffer(4));
 // CONSTANTE DE DOMINIO: timezone oficial usada em datas/horarios do sistema.
 const APP_TIMEZONE = process.env.APP_TIMEZONE || "America/Sao_Paulo";
-
-function notifyBridgeSignal(signal) {
-  if (!signal) {
-    return;
-  }
-  Atomics.add(signal, 0, 1);
-  Atomics.notify(signal, 0, 1);
-}
-
-function disposeBridge() {
-  if (!bridgeState) {
-    return;
-  }
-
-  const state = bridgeState;
-  bridgeState = null;
-
-  try {
-    state.port?.close?.();
-  } catch (_error) {
-    // noop
-  }
-
-  try {
-    state.worker?.terminate?.();
-  } catch (_error) {
-    // noop
-  }
-}
 
 // FUNCAO: normalizeError.
 function normalizeError(payload) {
@@ -129,20 +99,7 @@ function createSyncBridge() {
     });
 
     let channel = null;
-    let signal = null;
     let connected = false;
-
-    function notifySignal() {
-      if (signal) {
-        Atomics.add(signal, 0, 1);
-        Atomics.notify(signal, 0, 1);
-      }
-    }
-
-    client.on("error", () => {
-      connected = false;
-      notifySignal();
-    });
 
     // FUNCAO INTERNA DO WORKER: conecta no banco uma unica vez.
     async function ensureConnected() {
@@ -168,7 +125,6 @@ function createSyncBridge() {
             command: result.command || "",
           },
         });
-        notifySignal();
       } catch (error) {
         channel.postMessage({
           id,
@@ -181,7 +137,6 @@ function createSyncBridge() {
             constraint: error.constraint,
           },
         });
-        notifySignal();
       }
     }
 
@@ -191,7 +146,6 @@ function createSyncBridge() {
         return;
       }
       channel = message.port;
-      signal = message.signalBuffer ? new Int32Array(message.signalBuffer) : null;
       channel.on("message", (payload) => {
         handle(payload);
       });
@@ -200,31 +154,19 @@ function createSyncBridge() {
 
   const worker = new Worker(workerCode, { eval: true });
   const { port1, port2 } = new MessageChannel();
-  const state = {
-    worker,
-    port: port1,
-    pending: new Map(),
-    signal: bridgeSignal,
-    closed: false,
-    lastError: null,
-  };
-  worker.postMessage({ port: port2, signalBuffer: bridgeSignal.buffer }, [port2]);
+  worker.postMessage({ port: port2 }, [port2]);
   if (typeof worker.unref === "function") {
     worker.unref();
   }
-  worker.on("error", (error) => {
-    state.lastError = error;
-    state.closed = true;
-    notifyBridgeSignal(state.signal);
-  });
-  worker.on("exit", (code) => {
-    if (code !== 0 && !state.lastError) {
-      state.lastError = new Error(`Database worker exited unexpectedly (code ${code}).`);
-    }
-    state.closed = true;
-    notifyBridgeSignal(state.signal);
-  });
-  bridgeState = state;
+  if (typeof port1.unref === "function") {
+    port1.unref();
+  }
+
+  bridgeState = {
+    worker,
+    port: port1,
+    pending: new Map(),
+  };
 
   return bridgeState;
 }
@@ -233,28 +175,10 @@ function createSyncBridge() {
 function querySync(sql, params = []) {
   const bridge = createSyncBridge();
   const id = ++querySequence;
-  const startedAt = Date.now();
-  const timeoutMs = Math.max(
-    1000,
-    Number.parseInt(process.env.DB_SYNC_QUERY_TIMEOUT_MS || `${DEFAULT_QUERY_TIMEOUT_MS}`, 10) || DEFAULT_QUERY_TIMEOUT_MS,
-  );
   bridge.port.postMessage({ id, sql, params });
 
   // LOOP SINCRONO: aguarda retorno do worker mantendo API simples para chamadas locais.
   while (true) {
-    if (bridge.closed || bridge.lastError) {
-      const reason = bridge.lastError
-        ? String(bridge.lastError.message || bridge.lastError)
-        : "Database worker unavailable.";
-      disposeBridge();
-      throw new Error(reason);
-    }
-
-    if (Date.now() - startedAt > timeoutMs) {
-      disposeBridge();
-      throw new Error(`Database query timeout after ${timeoutMs}ms.`);
-    }
-
     const ready = bridge.pending.get(id);
     if (ready) {
       bridge.pending.delete(id);
@@ -271,8 +195,7 @@ function querySync(sql, params = []) {
       continue;
     }
 
-    const signalValue = Atomics.load(bridge.signal, 0);
-    Atomics.wait(bridge.signal, 0, signalValue, 250);
+    Atomics.wait(sleeper, 0, 0, 10);
   }
 }
 
@@ -739,12 +662,15 @@ function ensureSchema() {
       target_tutor_user_id INTEGER,
       week_start TEXT NOT NULL,
       content TEXT NOT NULL,
+      sent_to_chat_at TEXT,
+      sent_to_chat_conversation_id INTEGER,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT,
       UNIQUE (member_id, week_start),
       FOREIGN KEY (member_id) REFERENCES member(id),
       FOREIGN KEY (author_user_id) REFERENCES "user"(id),
-      FOREIGN KEY (target_tutor_user_id) REFERENCES "user"(id)
+      FOREIGN KEY (target_tutor_user_id) REFERENCES "user"(id),
+      FOREIGN KEY (sent_to_chat_conversation_id) REFERENCES chat_conversation(id)
     );
 
     CREATE TABLE IF NOT EXISTS chat_conversation (
@@ -885,8 +811,6 @@ function ensureSchema() {
   ensureColumn("report_week_goal", "completed_late", "INTEGER NOT NULL DEFAULT 0");
   ensureColumn("planner_task", "completed_late", "INTEGER NOT NULL DEFAULT 0");
   ensureColumn("chat_conversation_participant", "last_read_at", "TEXT");
-  dropColumnIfExists("report_fortnight_member_note", "sent_to_chat_at");
-  dropColumnIfExists("report_fortnight_member_note", "sent_to_chat_conversation_id");
   getDb().exec("CREATE INDEX IF NOT EXISTS ix_planner_task_status ON planner_task(status)");
   getDb().exec("CREATE INDEX IF NOT EXISTS ix_planner_task_priority ON planner_task(priority)");
   getDb().exec("CREATE INDEX IF NOT EXISTS ix_planner_task_workflow_state ON planner_task(workflow_state)");
@@ -1109,11 +1033,6 @@ function mapUser(row) {
   };
 }
 
-// FUNCAO: dropColumnIfExists.
-function dropColumnIfExists(tableName, columnName) {
-  querySync(`ALTER TABLE ${tableName === "user" ? '"user"' : tableName} DROP COLUMN IF EXISTS ${columnName}`);
-}
-
 function mapWritingGeneralEntry(row) {
   if (!row) {
     return null;
@@ -1181,6 +1100,8 @@ function mapReportFortnightMemberNote(row) {
     target_tutor_user_id: row.target_tutor_user_id || null,
     week_start: row.week_start || "",
     content: row.content || "",
+    sent_to_chat_at: row.sent_to_chat_at || null,
+    sent_to_chat_conversation_id: row.sent_to_chat_conversation_id || null,
     created_at: row.created_at || null,
     updated_at: row.updated_at || null,
     member_name: row.member_name || "",
@@ -4982,6 +4903,8 @@ function getReportFortnightMemberNote({ memberId, weekStart }) {
         n.target_tutor_user_id,
         n.week_start,
         n.content,
+        n.sent_to_chat_at,
+        n.sent_to_chat_conversation_id,
         n.created_at,
         n.updated_at,
         m.name AS member_name,
@@ -5000,38 +4923,6 @@ function getReportFortnightMemberNote({ memberId, weekStart }) {
     )
     .get(memberId, weekStart);
   return mapReportFortnightMemberNote(row);
-}
-
-function listReportMonthMemberNotesForPdf(memberId, { monthKey, limit = 200 } = {}) {
-  return getDb()
-    .prepare(
-      `
-      SELECT
-        n.id,
-        n.member_id,
-        n.author_user_id,
-        n.target_tutor_user_id,
-        n.week_start,
-        n.content,
-        n.created_at,
-        n.updated_at,
-        m.name AS member_name,
-        au.username AS author_username,
-        au.name AS author_name,
-        tu.username AS target_tutor_username,
-        tu.name AS target_tutor_name
-      FROM report_fortnight_member_note n
-      INNER JOIN member m ON m.id = n.member_id
-      INNER JOIN "user" au ON au.id = n.author_user_id
-      LEFT JOIN "user" tu ON tu.id = n.target_tutor_user_id
-      WHERE n.member_id = ?
-        AND n.week_start LIKE (? || '-%')
-      ORDER BY n.week_start DESC, n.id DESC
-      LIMIT ?
-    `,
-    )
-    .all(memberId, monthKey, Math.max(1, Number(limit || 200)))
-    .map(mapReportFortnightMemberNote);
 }
 
 function upsertReportFortnightMemberNote({
@@ -5078,6 +4969,19 @@ function upsertReportFortnightMemberNote({
     )
     .run(normalizedContent, targetTutorUserId, updatedAt, current.id);
   return getReportFortnightMemberNote({ memberId, weekStart });
+}
+
+function markReportFortnightMemberNoteAsSentToChat(id, conversationId) {
+  const now = toSqlDateTime(new Date());
+  getDb()
+    .prepare(
+      `
+      UPDATE report_fortnight_member_note
+      SET sent_to_chat_at = ?, sent_to_chat_conversation_id = ?
+      WHERE id = ?
+    `,
+    )
+    .run(now, conversationId, id);
 }
 
 function getUserByMemberId(memberId) {
@@ -5636,8 +5540,8 @@ module.exports = {
   upsertReportFortnightTutorNote,
   markReportFortnightTutorNoteAsSentToChat,
   getReportFortnightMemberNote,
-  listReportMonthMemberNotesForPdf,
   upsertReportFortnightMemberNote,
+  markReportFortnightMemberNoteAsSentToChat,
   createChatConversation,
   getChatConversationById,
   listChatConversationParticipants,
