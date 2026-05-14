@@ -71,7 +71,7 @@ function registerAuthRoutes(ctx) {
     sendApiError,
     syncReportWeekGoalFromPlannerTask,
   } = ctx;
-  const loginDefaultPath = String(process.env.LOGIN_DEFAULT_PATH || "/home").trim() || "/home";
+  const loginDefaultPath = "/relatorios";
 
   function canDeletePlannerTask(req, task) {
     if (!task) {
