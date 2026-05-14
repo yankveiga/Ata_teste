@@ -806,6 +806,10 @@ function ensureSchema() {
   ensureColumn("planner_task", "recurrence_next_index", "INTEGER");
   ensureColumn("task_audit_log", "member_id", "INTEGER");
   ensureColumn("task_audit_log", "project_id", "INTEGER");
+  ensureColumn("report_fortnight_tutor_note", "sent_to_chat_at", "TEXT");
+  ensureColumn("report_fortnight_tutor_note", "sent_to_chat_conversation_id", "INTEGER");
+  ensureColumn("report_fortnight_member_note", "sent_to_chat_at", "TEXT");
+  ensureColumn("report_fortnight_member_note", "sent_to_chat_conversation_id", "INTEGER");
   ensureColumn("report_week_goal", "due_at", "TEXT");
   ensureColumn("report_week_goal", "task_state", "TEXT NOT NULL DEFAULT 'active'");
   ensureColumn("report_week_goal", "completed_late", "INTEGER NOT NULL DEFAULT 0");
