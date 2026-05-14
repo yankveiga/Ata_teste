@@ -114,9 +114,17 @@
   list-style: none;
   margin: 0;
   padding: 2px;
-  display: grid;
-  gap: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
   overflow-y: auto;
+  align-items: stretch;
+}
+
+.chat-conversation-list li {
+  margin: 0;
+  padding: 0;
+  flex: 0 0 auto;
 }
 
 .chat-conversation-list::-webkit-scrollbar,
@@ -133,12 +141,12 @@
 .chat-conversation-link {
   display: grid;
   grid-template-columns: 46px 1fr auto;
-  gap: 10px;
+  gap: 8px;
   text-decoration: none;
   color: #f7fbff;
   border: 1px solid rgba(171, 193, 227, 0.12);
   border-radius: 14px;
-  padding: 9px;
+  padding: 7px 8px;
   background: rgba(12, 23, 40, 0.42);
   transition: border-color 0.16s ease, transform 0.16s ease, background 0.16s ease;
 }
@@ -158,7 +166,7 @@
 .chat-conversation-meta {
   min-width: 0;
   display: grid;
-  gap: 2px;
+  gap: 1px;
 }
 
 .chat-conversation-meta strong {

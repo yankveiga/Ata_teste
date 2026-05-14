@@ -83,13 +83,13 @@ function registerReportRoutes(ctx) {
     const monthKey = normalizeMonthKey(req.query.month) || getCurrentMonthKeyInSaoPaulo();
 
     if (!targetMember) {
-      req.flash("warning", "Selecione um membro vÃ¡lido para gerar o relatÃ³rio mensal.");
+      req.flash("warning", "Selecione um membro válido para gerar o relatório mensal.");
       return res.redirect("/relatorios");
     }
 
     const canGenerate = canGenerateMonthlyReport(req, currentMember, targetMember);
     if (!canGenerate) {
-      req.flash("warning", "VocÃª nÃ£o tem permissÃ£o para gerar esse relatÃ³rio mensal.");
+      req.flash("warning", "Você não tem permissão para gerar esse relatório mensal.");
       return res.redirect(
         `/relatorios${buildReportsQuery({
           memberId: targetMember.id,
@@ -102,10 +102,15 @@ function registerReportRoutes(ctx) {
         monthKey,
         limit: 2500,
       });
+      const memberFortnightNotes = database.listReportMonthMemberNotesForPdf(targetMember.id, {
+        monthKey,
+        limit: 200,
+      });
       const pdf = await generateMonthlyReportPdf({
         member: targetMember,
         monthKey,
         goals,
+        memberFortnightNotes,
         generatedByName: req.currentUser?.name || req.currentUser?.username || null,
       });
 
@@ -116,8 +121,8 @@ function registerReportRoutes(ctx) {
       );
       return res.send(pdf);
     } catch (error) {
-      logError(req, "Erro ao gerar PDF mensal de relatÃ³rio:", error);
-      req.flash("danger", `Erro ao gerar relatÃ³rio mensal: ${error.message}`);
+      logError(req, "Erro ao gerar PDF mensal de relatório:", error);
+      req.flash("danger", `Erro ao gerar relatório mensal: ${error.message}`);
       return res.redirect(
         `/relatorios${buildReportsQuery({
           memberId: targetMember.id,
@@ -132,7 +137,7 @@ function registerReportRoutes(ctx) {
     if (!ensureValidCsrf(req, res)) {
       return;
     }
-    req.flash("info", "O registro quinzenal agora Ã© feito em \"Metas da Quinzena\".");
+    req.flash("info", "O registro quinzenal agora é feito em \"Metas da Quinzena\".");
     return res.redirect("/relatorios#report-goals-panel");
   });
 
@@ -142,7 +147,7 @@ function registerReportRoutes(ctx) {
     if (!ensureValidCsrf(req, res)) {
       return;
     }
-    req.flash("info", "A ediÃ§Ã£o quinzenal agora Ã© feita em \"Metas da Quinzena\".");
+    req.flash("info", "A edição quinzenal agora é feita em \"Metas da Quinzena\".");
     return res.redirect("/relatorios#report-goals-panel");
   });
 
@@ -152,7 +157,7 @@ function registerReportRoutes(ctx) {
     if (!ensureValidCsrf(req, res)) {
       return;
     }
-    req.flash("info", "A remoÃ§Ã£o quinzenal agora Ã© feita em \"Metas da Quinzena\".");
+    req.flash("info", "A remoção quinzenal agora é feita em \"Metas da Quinzena\".");
     return res.redirect("/relatorios#report-goals-panel");
   });
 
@@ -187,18 +192,18 @@ function registerReportRoutes(ctx) {
       if (wantsJson) {
         return res.status(400).json({
           ok: false,
-          message: "Membro invÃ¡lido para cadastrar tarefa.",
+          message: "Membro inválido para cadastrar tarefa.",
         });
       }
-      req.flash("warning", "Membro invÃ¡lido para cadastrar meta da quinzena.");
+      req.flash("warning", "Membro inválido para cadastrar meta da quinzena.");
       return res.redirect("/relatorios");
     }
 
     const project = projectId ? database.getProjectById(projectId) : null;
     if (!project) {
-      goalFormErrors.projectId = ["Selecione um projeto vÃ¡lido."];
+      goalFormErrors.projectId = ["Selecione um projeto válido."];
     } else if (!database.isProjectMember(project.id, selectedMember.id)) {
-      goalFormErrors.projectId = ["Este membro nÃ£o participa do projeto selecionado."];
+      goalFormErrors.projectId = ["Este membro não participa do projeto selecionado."];
     }
 
     Object.assign(goalFormErrors, validateWeekGoalForm(goalFormData).errors);
@@ -206,7 +211,7 @@ function registerReportRoutes(ctx) {
     const nowSql = toSqlDateTime(new Date());
     const currentWeekStart = getCurrentWeekStartDate();
     if (!dueAt) {
-      goalFormErrors.dueAt = ["Informe uma data de entrega vÃ¡lida."];
+      goalFormErrors.dueAt = ["Informe uma data de entrega válida."];
     } else {
       const dueDateKey = String(dueAt).slice(0, 10);
       if (dueDateKey < currentWeekStart) {
@@ -239,17 +244,17 @@ function registerReportRoutes(ctx) {
         recurrenceQueue = [selectedMember.id];
       }
       if (!recurrenceQueue.length) {
-        goalFormErrors.memberId = ["Selecione pelo menos um membro da fila de recorrÃªncia."];
+        goalFormErrors.memberId = ["Selecione pelo menos um membro da fila de recorrência."];
       }
       if (!Number.isInteger(recurrenceIntervalDays) || recurrenceIntervalDays < 1 || recurrenceIntervalDays > 60) {
-        goalFormErrors.recurrenceIntervalDays = ["Intervalo de recorrÃªncia deve ser entre 1 e 60 dias."];
+        goalFormErrors.recurrenceIntervalDays = ["Intervalo de recorrência deve ser entre 1 e 60 dias."];
       }
     }
 
     if (!req.currentUser?.is_admin) {
       if (!isOwnGoal && !canCreateAsCoordinator) {
         goalFormErrors.memberId = [
-          "Sem permissÃ£o: somente admin, o prÃ³prio membro ou coordenador do projeto podem adicionar metas aqui.",
+          "Sem permissão: somente admin, o próprio membro ou coordenador do projeto podem adicionar metas aqui.",
         ];
       }
     }
@@ -258,7 +263,7 @@ function registerReportRoutes(ctx) {
       if (wantsJson) {
         return res.status(422).json({
           ok: false,
-          message: "Revise os campos obrigatÃ³rios.",
+          message: "Revise os campos obrigatórios.",
           errors: goalFormErrors,
         });
       }
@@ -376,14 +381,14 @@ function registerReportRoutes(ctx) {
     }
 
     if (!goal) {
-      return sendGoalUpdateError(404, "Meta quinzenal nÃ£o encontrada.");
+      return sendGoalUpdateError(404, "Meta quinzenal não encontrada.");
     }
 
     if (!canManageReportGoal(req, {
       memberId: goal.member_id,
       projectId: goal.project_id,
     })) {
-      return sendGoalUpdateError(403, "Sem permissÃ£o para editar esta meta quinzenal.");
+      return sendGoalUpdateError(403, "Sem permissão para editar esta meta quinzenal.");
     }
 
     const activity = String(req.body.activity || "").trim();
@@ -419,7 +424,7 @@ function registerReportRoutes(ctx) {
       const firstError = goalFormErrors.activity?.[0]
         || goalFormErrors.description?.[0]
         || goalFormErrors.dueAt?.[0]
-        || "NÃ£o foi possÃ­vel salvar a meta.";
+        || "Não foi possível salvar a meta.";
       if (wantsJson) {
         return res.status(422).json({
           ok: false,
@@ -462,7 +467,7 @@ function registerReportRoutes(ctx) {
       if (linkedTask.workflow_state === "missed" && goalAction === "save") {
         return sendGoalUpdateError(
           409,
-          "Tarefa em histÃ³rico de nÃ£o feitas. Use 'Feito com atraso' ou 'Estender prazo'.",
+          "Tarefa em histórico de não feitas. Use 'Feito com atraso' ou 'Estender prazo'.",
         );
       }
 
@@ -533,7 +538,7 @@ function registerReportRoutes(ctx) {
     const goal = goalId ? database.getReportWeekGoalById(goalId) : null;
     const returnProjectId = parseId(req.body.return_project_id);
     if (!goal) {
-      req.flash("warning", "Meta quinzenal nÃ£o encontrada.");
+      req.flash("warning", "Meta quinzenal não encontrada.");
       return res.redirect("/relatorios");
     }
 
@@ -543,7 +548,7 @@ function registerReportRoutes(ctx) {
     if (!canDeleteFromCompleted && !canDeleteFromExecution) {
       req.flash(
         "warning",
-        "Sem permissÃ£o para apagar esta meta neste projeto.",
+        "Sem permissão para apagar esta meta neste projeto.",
       );
       return res.redirect(
         `/relatorios${buildReportsQuery({
@@ -566,8 +571,8 @@ function registerReportRoutes(ctx) {
       database.deleteReportWeekGoalWithAudit(goal.id, req.currentUser.id);
       req.flash("success", "Atividade removida com sucesso.");
     } catch (error) {
-      logError(req, "Erro ao apagar meta concluÃ­da:", error);
-      req.flash("danger", `Erro ao apagar atividade concluÃ­da: ${error.message}`);
+      logError(req, "Erro ao apagar meta concluída:", error);
+      req.flash("danger", `Erro ao apagar atividade concluída: ${error.message}`);
     }
 
     return res.redirect(
@@ -583,13 +588,13 @@ function registerReportRoutes(ctx) {
       return;
     }
     if (!req.currentUser?.is_admin) {
-      req.flash("warning", "Sem permissÃ£o para criar registro geral.");
+      req.flash("warning", "Sem permissão para criar registro geral.");
       return res.redirect("/relatorios#report-writing-panel");
     }
 
     const content = String(req.body.content || "").trim();
     if (!content) {
-      req.flash("warning", "ConteÃºdo Ã© obrigatÃ³rio para registro geral.");
+      req.flash("warning", "Conteúdo é obrigatório para registro geral.");
       return res.redirect("/relatorios#report-writing-panel");
     }
 
@@ -613,14 +618,14 @@ function registerReportRoutes(ctx) {
       return;
     }
     if (!req.currentUser?.is_admin) {
-      req.flash("warning", "Sem permissÃ£o para editar registro geral.");
+      req.flash("warning", "Sem permissão para editar registro geral.");
       return res.redirect("/relatorios#report-writing-panel");
     }
 
     const entryId = parseId(req.params.id);
     const content = String(req.body.content || "").trim();
     if (!entryId || !content) {
-      req.flash("warning", "Dados invÃ¡lidos para editar registro geral.");
+      req.flash("warning", "Dados inválidos para editar registro geral.");
       return res.redirect("/relatorios#report-writing-panel");
     }
 
@@ -631,7 +636,7 @@ function registerReportRoutes(ctx) {
         content,
       });
       if (!updated) {
-        req.flash("warning", "Registro geral nÃ£o encontrado.");
+        req.flash("warning", "Registro geral não encontrado.");
       } else {
         req.flash("success", "Registro geral atualizado.");
       }
@@ -647,20 +652,20 @@ function registerReportRoutes(ctx) {
       return;
     }
     if (!req.currentUser?.is_admin) {
-      req.flash("warning", "Sem permissÃ£o para excluir registro geral.");
+      req.flash("warning", "Sem permissão para excluir registro geral.");
       return res.redirect("/relatorios#report-writing-panel");
     }
 
     const entryId = parseId(req.params.id);
     if (!entryId) {
-      req.flash("warning", "Registro geral invÃ¡lido.");
+      req.flash("warning", "Registro geral inválido.");
       return res.redirect("/relatorios#report-writing-panel");
     }
 
     try {
       const deleted = database.deleteWritingGeneralEntry(entryId);
       if (!deleted) {
-        req.flash("warning", "Registro geral nÃ£o encontrado.");
+        req.flash("warning", "Registro geral não encontrado.");
       } else {
         req.flash("success", "Registro geral removido.");
       }
@@ -676,14 +681,14 @@ function registerReportRoutes(ctx) {
       return;
     }
     if (req.currentUser?.role !== "tutor") {
-      req.flash("warning", "Somente tutor pode criar anotaÃ§Ã£o privada.");
+      req.flash("warning", "Somente tutor pode criar anotação privada.");
       return res.redirect("/relatorios#report-writing-panel");
     }
 
     const title = String(req.body.title || "").trim();
     const content = String(req.body.content || "").trim();
     if (!title || !content) {
-      req.flash("warning", "TÃ­tulo e conteÃºdo sÃ£o obrigatÃ³rios para anotaÃ§Ã£o privada.");
+      req.flash("warning", "Título e conteúdo são obrigatórios para anotação privada.");
       return res.redirect("/relatorios#report-writing-panel");
     }
 
@@ -693,10 +698,10 @@ function registerReportRoutes(ctx) {
         content,
         tutorUserId: req.currentUser.id,
       });
-      req.flash("success", "AnotaÃ§Ã£o privada criada com sucesso.");
+      req.flash("success", "Anotação privada criada com sucesso.");
     } catch (error) {
-      logError(req, "Erro ao criar anotaÃ§Ã£o privada:", error);
-      req.flash("danger", `Erro ao criar anotaÃ§Ã£o privada: ${error.message}`);
+      logError(req, "Erro ao criar anotação privada:", error);
+      req.flash("danger", `Erro ao criar anotação privada: ${error.message}`);
     }
     return res.redirect("/relatorios#report-writing-panel");
   });
@@ -706,7 +711,7 @@ function registerReportRoutes(ctx) {
       return;
     }
     if (req.currentUser?.role !== "tutor") {
-      req.flash("warning", "Somente tutor pode editar anotaÃ§Ã£o privada.");
+      req.flash("warning", "Somente tutor pode editar anotação privada.");
       return res.redirect("/relatorios#report-writing-panel");
     }
 
@@ -714,22 +719,22 @@ function registerReportRoutes(ctx) {
     const title = String(req.body.title || "").trim();
     const content = String(req.body.content || "").trim();
     if (!entryId || !title || !content) {
-      req.flash("warning", "Dados invÃ¡lidos para editar anotaÃ§Ã£o privada.");
+      req.flash("warning", "Dados inválidos para editar anotação privada.");
       return res.redirect("/relatorios#report-writing-panel");
     }
 
     const existing = database.getWritingTutorPrivateEntryById(entryId);
     if (!existing || existing.tutor_user_id !== req.currentUser.id) {
-      req.flash("warning", "AnotaÃ§Ã£o privada nÃ£o encontrada.");
+      req.flash("warning", "Anotação privada não encontrada.");
       return res.redirect("/relatorios#report-writing-panel");
     }
 
     try {
       database.updateWritingTutorPrivateEntry(entryId, { title, content });
-      req.flash("success", "AnotaÃ§Ã£o privada atualizada.");
+      req.flash("success", "Anotação privada atualizada.");
     } catch (error) {
-      logError(req, "Erro ao editar anotaÃ§Ã£o privada:", error);
-      req.flash("danger", `Erro ao editar anotaÃ§Ã£o privada: ${error.message}`);
+      logError(req, "Erro ao editar anotação privada:", error);
+      req.flash("danger", `Erro ao editar anotação privada: ${error.message}`);
     }
     return res.redirect("/relatorios#report-writing-panel");
   });
@@ -739,28 +744,28 @@ function registerReportRoutes(ctx) {
       return;
     }
     if (req.currentUser?.role !== "tutor") {
-      req.flash("warning", "Somente tutor pode excluir anotaÃ§Ã£o privada.");
+      req.flash("warning", "Somente tutor pode excluir anotação privada.");
       return res.redirect("/relatorios#report-writing-panel");
     }
 
     const entryId = parseId(req.params.id);
     if (!entryId) {
-      req.flash("warning", "AnotaÃ§Ã£o privada invÃ¡lida.");
+      req.flash("warning", "Anotação privada inválida.");
       return res.redirect("/relatorios#report-writing-panel");
     }
 
     const existing = database.getWritingTutorPrivateEntryById(entryId);
     if (!existing || existing.tutor_user_id !== req.currentUser.id) {
-      req.flash("warning", "AnotaÃ§Ã£o privada nÃ£o encontrada.");
+      req.flash("warning", "Anotação privada não encontrada.");
       return res.redirect("/relatorios#report-writing-panel");
     }
 
     try {
       database.deleteWritingTutorPrivateEntry(entryId);
-      req.flash("success", "AnotaÃ§Ã£o privada removida.");
+      req.flash("success", "Anotação privada removida.");
     } catch (error) {
-      logError(req, "Erro ao excluir anotaÃ§Ã£o privada:", error);
-      req.flash("danger", `Erro ao excluir anotaÃ§Ã£o privada: ${error.message}`);
+      logError(req, "Erro ao excluir anotação privada:", error);
+      req.flash("danger", `Erro ao excluir anotação privada: ${error.message}`);
     }
     return res.redirect("/relatorios#report-writing-panel");
   });
@@ -770,7 +775,7 @@ function registerReportRoutes(ctx) {
       return;
     }
     if (req.currentUser?.role !== "tutor") {
-      req.flash("warning", "Somente tutor pode salvar avaliaÃ§Ã£o complementar.");
+      req.flash("warning", "Somente tutor pode salvar avaliação complementar.");
       return res.redirect("/relatorios#report-writing-panel");
     }
 
@@ -780,17 +785,17 @@ function registerReportRoutes(ctx) {
     const content = String(req.body.content || "").trim();
 
     if (!memberId) {
-      req.flash("warning", "Selecione um membro para salvar a avaliaÃ§Ã£o.");
+      req.flash("warning", "Selecione um membro para salvar a avaliação.");
       return res.redirect("/relatorios#report-writing-panel");
     }
 
     if (weekStart < currentWeekStart) {
-      req.flash("warning", "A quinzena jÃ¡ foi encerrada e nÃ£o pode ser editada.");
+      req.flash("warning", "A quinzena já foi encerrada e não pode ser editada.");
       return res.redirect(`/relatorios${buildReportsQuery({ memberId })}#report-writing-panel`);
     }
 
     if (!content || content.length < 10) {
-      req.flash("warning", "A avaliaÃ§Ã£o complementar deve ter pelo menos 10 caracteres.");
+      req.flash("warning", "A avaliação complementar deve ter pelo menos 10 caracteres.");
       return res.redirect(`/relatorios${buildReportsQuery({ memberId })}#report-writing-panel`);
     }
 
@@ -804,15 +809,15 @@ function registerReportRoutes(ctx) {
 
       const memberUser = database.getUserByMemberId(memberId);
       if (!memberUser?.id) {
-        req.flash("success", "AvaliaÃ§Ã£o complementar salva.");
-        req.flash("warning", "Membro sem usuÃ¡rio vinculado: envio ao chat nÃ£o realizado.");
+        req.flash("success", "Avaliação complementar salva.");
+        req.flash("warning", "Membro sem usuário vinculado: envio ao chat não realizado.");
         return res.redirect(`/relatorios${buildReportsQuery({ memberId })}#report-writing-panel`);
       }
 
       let conversation = database.findDirectConversationByUsers(req.currentUser.id, memberUser.id);
       if (!conversation?.id) {
         conversation = database.createChatConversation({
-          title: `Tutor â€¢ ${memberUser.name || memberUser.username}`,
+          title: `Tutor • ${memberUser.name || memberUser.username}`,
           createdByUserId: req.currentUser.id,
           participantUserIds: [req.currentUser.id, memberUser.id],
         });
@@ -835,11 +840,11 @@ function registerReportRoutes(ctx) {
         });
       }
       database.markReportFortnightTutorNoteAsSentToChat(note.id, conversation.id);
-      req.flash("success", "AvaliaÃ§Ã£o salva e enviada ao chat privado.");
+      req.flash("success", "Avaliação salva e enviada ao chat privado.");
       return res.redirect(`/mensagens/conversas/${conversation.id}`);
     } catch (error) {
-      logError(req, "Erro ao salvar avaliaÃ§Ã£o complementar:", error);
-      req.flash("danger", `Erro ao salvar avaliaÃ§Ã£o complementar: ${error.message}`);
+      logError(req, "Erro ao salvar avaliação complementar:", error);
+      req.flash("danger", `Erro ao salvar avaliação complementar: ${error.message}`);
       return res.redirect(`/relatorios${buildReportsQuery({ memberId })}#report-writing-panel`);
     }
   });
@@ -849,7 +854,7 @@ function registerReportRoutes(ctx) {
       return;
     }
     if (req.currentUser?.role !== "tutor") {
-      req.flash("warning", "Somente tutor pode enviar avaliaÃ§Ã£o para o chat.");
+      req.flash("warning", "Somente tutor pode enviar avaliação para o chat.");
       return res.redirect("/relatorios#report-writing-panel");
     }
 
@@ -857,7 +862,7 @@ function registerReportRoutes(ctx) {
     const currentWeekStart = getCurrentWeekStartDate();
     const weekStart = normalizeWeekStartInput(req.body.week_start, currentWeekStart);
     if (!memberId) {
-      req.flash("warning", "Membro invÃ¡lido para envio ao chat.");
+      req.flash("warning", "Membro inválido para envio ao chat.");
       return res.redirect("/relatorios#report-writing-panel");
     }
 
@@ -867,13 +872,13 @@ function registerReportRoutes(ctx) {
       weekStart,
     });
     if (!note || !String(note.content || "").trim()) {
-      req.flash("warning", "Salve a avaliaÃ§Ã£o complementar antes de enviar ao chat.");
+      req.flash("warning", "Salve a avaliação complementar antes de enviar ao chat.");
       return res.redirect(`/relatorios${buildReportsQuery({ memberId })}#report-writing-panel`);
     }
 
     const memberUser = database.getUserByMemberId(memberId);
     if (!memberUser?.id) {
-      req.flash("warning", "Este membro nÃ£o possui usuÃ¡rio vinculado para receber mensagens.");
+      req.flash("warning", "Este membro não possui usuário vinculado para receber mensagens.");
       return res.redirect(`/relatorios${buildReportsQuery({ memberId })}#report-writing-panel`);
     }
 
@@ -881,7 +886,7 @@ function registerReportRoutes(ctx) {
       let conversation = database.findDirectConversationByUsers(req.currentUser.id, memberUser.id);
       if (!conversation?.id) {
         conversation = database.createChatConversation({
-          title: `Tutor â€¢ ${memberUser.name || memberUser.username}`,
+          title: `Tutor • ${memberUser.name || memberUser.username}`,
           createdByUserId: req.currentUser.id,
           participantUserIds: [req.currentUser.id, memberUser.id],
         });
@@ -904,10 +909,10 @@ function registerReportRoutes(ctx) {
         });
       }
       database.markReportFortnightTutorNoteAsSentToChat(note.id, conversation.id);
-      req.flash("success", "AvaliaÃ§Ã£o enviada ao chat privado com sucesso.");
+      req.flash("success", "Avaliação enviada ao chat privado com sucesso.");
       return res.redirect(`/mensagens/conversas/${conversation.id}`);
     } catch (error) {
-      logError(req, "Erro ao enviar avaliaÃ§Ã£o complementar ao chat:", error);
+      logError(req, "Erro ao enviar avaliação complementar ao chat:", error);
       req.flash("danger", `Erro ao enviar ao chat: ${error.message}`);
       return res.redirect(`/relatorios${buildReportsQuery({ memberId })}#report-writing-panel`);
     }
@@ -918,7 +923,7 @@ function registerReportRoutes(ctx) {
       return;
     }
     if (req.currentUser?.role === "tutor") {
-      req.flash("warning", "Este complemento Ã© para membros (nÃ£o tutor).");
+      req.flash("warning", "Este complemento e para membros (nao tutor).");
       return res.redirect("/relatorios#report-writing-panel");
     }
 
@@ -929,12 +934,12 @@ function registerReportRoutes(ctx) {
     const content = String(req.body.content || "").trim();
 
     if (!currentMember?.is_active || Number(currentMember.id) !== Number(memberId)) {
-      req.flash("warning", "Sem permissÃ£o para complementar este relatÃ³rio.");
+      req.flash("warning", "Sem permissao para complementar este relatorio.");
       return res.redirect("/relatorios#report-writing-panel");
     }
 
     if (weekStart < currentWeekStart) {
-      req.flash("warning", "A quinzena jÃ¡ foi encerrada e nÃ£o pode ser editada.");
+      req.flash("warning", "A quinzena ja foi encerrada e nao pode ser editada.");
       return res.redirect(`/relatorios${buildReportsQuery({ memberId })}#report-writing-panel`);
     }
 
@@ -943,49 +948,18 @@ function registerReportRoutes(ctx) {
       return res.redirect(`/relatorios${buildReportsQuery({ memberId })}#report-writing-panel`);
     }
 
-    const tutorUser = database.listUsers().find((user) => user.role === "tutor") || null;
-    if (!tutorUser) {
-      req.flash("warning", "Nenhum tutor cadastrado para receber o complemento.");
-      return res.redirect(`/relatorios${buildReportsQuery({ memberId })}#report-writing-panel`);
-    }
-
     try {
-      const note = database.upsertReportFortnightMemberNote({
+      const tutorUser = database.listUsers().find((user) => user.role === "tutor") || null;
+      database.upsertReportFortnightMemberNote({
         memberId,
         authorUserId: req.currentUser.id,
-        targetTutorUserId: tutorUser.id,
+        targetTutorUserId: tutorUser?.id || null,
         weekStart,
         content,
       });
 
-      let conversation = database.findDirectConversationByUsers(req.currentUser.id, tutorUser.id);
-      if (!conversation?.id) {
-        conversation = database.createChatConversation({
-          title: `Tutor â€¢ ${tutorUser.name || tutorUser.username}`,
-          createdByUserId: req.currentUser.id,
-          participantUserIds: [req.currentUser.id, tutorUser.id],
-        });
-      }
-
-      const weekLabel = String(weekStart).split("-").reverse().join("/");
-      const chatMessage = database.createChatMessage({
-        conversationId: conversation.id,
-        authorUserId: req.currentUser.id,
-        text: `Complemento do relatório da quinzena (${weekLabel})\n\n${note.content}`,
-      });
-      if (notificationService) {
-        notificationService.sendChatNewMessageNotification({
-          conversationId: conversation.id,
-          messageText: chatMessage?.text || note.content,
-          authorUserId: req.currentUser.id,
-          sentAt: chatMessage?.sent_at || null,
-        }).catch((notifyError) => {
-          logError(req, "Erro ao notificar e-mail de complemento do relatório:", notifyError);
-        });
-      }
-      database.markReportFortnightMemberNoteAsSentToChat(note.id, conversation.id);
-      req.flash("success", "Complemento salvo e enviado ao chat do tutor.");
-      return res.redirect(`/mensagens/conversas/${conversation.id}`);
+      req.flash("success", "Complemento salvo. Ele sera incluido no relatorio em PDF.");
+      return res.redirect(`/relatorios${buildReportsQuery({ memberId })}#report-writing-panel`);
     } catch (error) {
       logError(req, "Erro ao salvar complemento do membro:", error);
       req.flash("danger", `Erro ao salvar complemento: ${error.message}`);
@@ -994,6 +968,6 @@ function registerReportRoutes(ctx) {
   });
 }
 
-module.exports = { registerReportRoutes };
 
+module.exports = { registerReportRoutes };
 

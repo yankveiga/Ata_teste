@@ -17,8 +17,8 @@ let database;
 let bridgeState;
 // ESTADO GLOBAL: sequencia crescente para correlacao de mensagens SQL.
 let querySequence = 0;
-// ESTADO GLOBAL: buffer de espera usado no modo sincrono.
-const sleeper = new Int32Array(new SharedArrayBuffer(4));
+// ESTADO GLOBAL: contador de sinais entre worker e thread principal.
+const bridgeSignal = new Int32Array(new SharedArrayBuffer(4));
 // CONSTANTE DE DOMINIO: timezone oficial usada em datas/horarios do sistema.
 const APP_TIMEZONE = process.env.APP_TIMEZONE || "America/Sao_Paulo";
 
@@ -99,6 +99,7 @@ function createSyncBridge() {
     });
 
     let channel = null;
+    let signal = null;
     let connected = false;
 
     // FUNCAO INTERNA DO WORKER: conecta no banco uma unica vez.
@@ -125,6 +126,10 @@ function createSyncBridge() {
             command: result.command || "",
           },
         });
+        if (signal) {
+          Atomics.add(signal, 0, 1);
+          Atomics.notify(signal, 0, 1);
+        }
       } catch (error) {
         channel.postMessage({
           id,
@@ -137,6 +142,10 @@ function createSyncBridge() {
             constraint: error.constraint,
           },
         });
+        if (signal) {
+          Atomics.add(signal, 0, 1);
+          Atomics.notify(signal, 0, 1);
+        }
       }
     }
 
@@ -146,6 +155,7 @@ function createSyncBridge() {
         return;
       }
       channel = message.port;
+      signal = message.signalBuffer ? new Int32Array(message.signalBuffer) : null;
       channel.on("message", (payload) => {
         handle(payload);
       });
@@ -154,7 +164,7 @@ function createSyncBridge() {
 
   const worker = new Worker(workerCode, { eval: true });
   const { port1, port2 } = new MessageChannel();
-  worker.postMessage({ port: port2 }, [port2]);
+  worker.postMessage({ port: port2, signalBuffer: bridgeSignal.buffer }, [port2]);
   if (typeof worker.unref === "function") {
     worker.unref();
   }
@@ -162,13 +172,49 @@ function createSyncBridge() {
     port1.unref();
   }
 
-  bridgeState = {
+  const state = {
     worker,
     port: port1,
     pending: new Map(),
+    waiters: new Map(),
+    signal: bridgeSignal,
   };
+  port1.on("message", (message) => {
+    settleBridgeMessage(state, message);
+  });
+  if (typeof port1.unref === "function") {
+    port1.unref();
+  }
+  bridgeState = state;
 
   return bridgeState;
+}
+
+function settleBridgeMessage(bridge, message) {
+  if (!message || message.id === undefined || message.id === null) {
+    return;
+  }
+  const waiter = bridge.waiters.get(message.id);
+  if (waiter) {
+    bridge.waiters.delete(message.id);
+    if (!message.ok) {
+      waiter.reject(normalizeError(message.error));
+      return;
+    }
+    waiter.resolve(message.result);
+    return;
+  }
+  bridge.pending.set(message.id, message);
+}
+
+function queryAsync(sql, params = []) {
+  const bridge = createSyncBridge();
+  const id = ++querySequence;
+
+  return new Promise((resolve, reject) => {
+    bridge.waiters.set(id, { resolve, reject });
+    bridge.port.postMessage({ id, sql, params });
+  });
 }
 
 // FUNCAO: querySync.
@@ -190,12 +236,12 @@ function querySync(sql, params = []) {
 
     const packet = receiveMessageOnPort(bridge.port);
     if (packet && packet.message) {
-      const message = packet.message;
-      bridge.pending.set(message.id, message);
+      settleBridgeMessage(bridge, packet.message);
       continue;
     }
 
-    Atomics.wait(sleeper, 0, 0, 10);
+    const signalValue = Atomics.load(bridge.signal, 0);
+    Atomics.wait(bridge.signal, 0, signalValue, 250);
   }
 }
 
@@ -240,6 +286,10 @@ function createDbAdapter() {
     // ADAPTADOR: devolve statement com operacoes run/get/all.
     prepare(sql) {
       return createPreparedStatement(sql);
+    },
+    // ADAPTADOR ASSINCRONO: caminho nao-bloqueante para migracao gradual.
+    queryAsync(sql, params = []) {
+      return queryAsync(toPostgresSql(sql), params);
     },
   };
 }
@@ -662,15 +712,12 @@ function ensureSchema() {
       target_tutor_user_id INTEGER,
       week_start TEXT NOT NULL,
       content TEXT NOT NULL,
-      sent_to_chat_at TEXT,
-      sent_to_chat_conversation_id INTEGER,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT,
       UNIQUE (member_id, week_start),
       FOREIGN KEY (member_id) REFERENCES member(id),
       FOREIGN KEY (author_user_id) REFERENCES "user"(id),
-      FOREIGN KEY (target_tutor_user_id) REFERENCES "user"(id),
-      FOREIGN KEY (sent_to_chat_conversation_id) REFERENCES chat_conversation(id)
+      FOREIGN KEY (target_tutor_user_id) REFERENCES "user"(id)
     );
 
     CREATE TABLE IF NOT EXISTS chat_conversation (
@@ -811,6 +858,8 @@ function ensureSchema() {
   ensureColumn("report_week_goal", "completed_late", "INTEGER NOT NULL DEFAULT 0");
   ensureColumn("planner_task", "completed_late", "INTEGER NOT NULL DEFAULT 0");
   ensureColumn("chat_conversation_participant", "last_read_at", "TEXT");
+  dropColumnIfExists("report_fortnight_member_note", "sent_to_chat_at");
+  dropColumnIfExists("report_fortnight_member_note", "sent_to_chat_conversation_id");
   getDb().exec("CREATE INDEX IF NOT EXISTS ix_planner_task_status ON planner_task(status)");
   getDb().exec("CREATE INDEX IF NOT EXISTS ix_planner_task_priority ON planner_task(priority)");
   getDb().exec("CREATE INDEX IF NOT EXISTS ix_planner_task_workflow_state ON planner_task(workflow_state)");
@@ -1033,6 +1082,11 @@ function mapUser(row) {
   };
 }
 
+// FUNCAO: dropColumnIfExists.
+function dropColumnIfExists(tableName, columnName) {
+  querySync(`ALTER TABLE ${tableName === "user" ? '"user"' : tableName} DROP COLUMN IF EXISTS ${columnName}`);
+}
+
 function mapWritingGeneralEntry(row) {
   if (!row) {
     return null;
@@ -1100,8 +1154,6 @@ function mapReportFortnightMemberNote(row) {
     target_tutor_user_id: row.target_tutor_user_id || null,
     week_start: row.week_start || "",
     content: row.content || "",
-    sent_to_chat_at: row.sent_to_chat_at || null,
-    sent_to_chat_conversation_id: row.sent_to_chat_conversation_id || null,
     created_at: row.created_at || null,
     updated_at: row.updated_at || null,
     member_name: row.member_name || "",
@@ -4903,8 +4955,6 @@ function getReportFortnightMemberNote({ memberId, weekStart }) {
         n.target_tutor_user_id,
         n.week_start,
         n.content,
-        n.sent_to_chat_at,
-        n.sent_to_chat_conversation_id,
         n.created_at,
         n.updated_at,
         m.name AS member_name,
@@ -4923,6 +4973,38 @@ function getReportFortnightMemberNote({ memberId, weekStart }) {
     )
     .get(memberId, weekStart);
   return mapReportFortnightMemberNote(row);
+}
+
+function listReportMonthMemberNotesForPdf(memberId, { monthKey, limit = 200 } = {}) {
+  return getDb()
+    .prepare(
+      `
+      SELECT
+        n.id,
+        n.member_id,
+        n.author_user_id,
+        n.target_tutor_user_id,
+        n.week_start,
+        n.content,
+        n.created_at,
+        n.updated_at,
+        m.name AS member_name,
+        au.username AS author_username,
+        au.name AS author_name,
+        tu.username AS target_tutor_username,
+        tu.name AS target_tutor_name
+      FROM report_fortnight_member_note n
+      INNER JOIN member m ON m.id = n.member_id
+      INNER JOIN "user" au ON au.id = n.author_user_id
+      LEFT JOIN "user" tu ON tu.id = n.target_tutor_user_id
+      WHERE n.member_id = ?
+        AND n.week_start LIKE (? || '-%')
+      ORDER BY n.week_start DESC, n.id DESC
+      LIMIT ?
+    `,
+    )
+    .all(memberId, monthKey, Math.max(1, Number(limit || 200)))
+    .map(mapReportFortnightMemberNote);
 }
 
 function upsertReportFortnightMemberNote({
@@ -4969,19 +5051,6 @@ function upsertReportFortnightMemberNote({
     )
     .run(normalizedContent, targetTutorUserId, updatedAt, current.id);
   return getReportFortnightMemberNote({ memberId, weekStart });
-}
-
-function markReportFortnightMemberNoteAsSentToChat(id, conversationId) {
-  const now = toSqlDateTime(new Date());
-  getDb()
-    .prepare(
-      `
-      UPDATE report_fortnight_member_note
-      SET sent_to_chat_at = ?, sent_to_chat_conversation_id = ?
-      WHERE id = ?
-    `,
-    )
-    .run(now, conversationId, id);
 }
 
 function getUserByMemberId(memberId) {
@@ -5540,8 +5609,8 @@ module.exports = {
   upsertReportFortnightTutorNote,
   markReportFortnightTutorNoteAsSentToChat,
   getReportFortnightMemberNote,
+  listReportMonthMemberNotesForPdf,
   upsertReportFortnightMemberNote,
-  markReportFortnightMemberNoteAsSentToChat,
   createChatConversation,
   getChatConversationById,
   listChatConversationParticipants,

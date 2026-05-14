@@ -769,7 +769,7 @@
 <div class="panel-header">
 <div>
 <h2>Complemento do Relatório da Quinzena</h2>
-<p>Espaço para complemento do membro. Ao salvar, envia direto para o chat com o tutor.</p>
+<p>Espaço para complemento do membro. Ao salvar, ele fica registrado e entra no PDF mensal.</p>
 </div>
 </div>
 <div class="panel-body">
@@ -789,14 +789,8 @@
 {% endif %}
 </div>
 <div class="form-group report-monthly-export-actions">
-<button type="submit" class="btn-submit" {% if isSelectedFortnightClosed or not defaultTutorUser %}disabled{% endif %}>Salvar e enviar ao chat</button>
+<button type="submit" class="btn-submit" {% if isSelectedFortnightClosed %}disabled{% endif %}>Salvar complemento</button>
 </div>
-{% if memberFortnightNote and memberFortnightNote.sent_to_chat_at %}
-<small>Último envio ao chat: {{ memberFortnightNote.sent_to_chat_at | formatDateTime }}</small>
-{% endif %}
-{% if not defaultTutorUser %}
-<small class="field-error">Nenhum tutor cadastrado para receber o complemento.</small>
-{% endif %}
 </form>
 </div>
 </section>

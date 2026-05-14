@@ -14,6 +14,81 @@ const bcrypt = require("bcryptjs");
 
 const { urlFor } = require("../src/utils");
 
+function cleanupVerifyArtifacts(database, artifacts) {
+  if (!database || !artifacts) {
+    return;
+  }
+
+  try {
+    if (artifacts.createdAtaId) {
+      database.deleteAta(artifacts.createdAtaId);
+    }
+  } catch (error) {
+    console.error("Falha ao limpar ata de verificacao:", error.message);
+  }
+
+  const db = database.getDb();
+  const createdItemIds = Array.isArray(artifacts.createdInventoryItemIds)
+    ? artifacts.createdInventoryItemIds.filter((id) => Number.isFinite(Number(id)))
+    : [];
+
+  createdItemIds.forEach((itemId) => {
+    try {
+      db.prepare("DELETE FROM inventory_loan WHERE item_id = ?").run(itemId);
+      db.prepare("DELETE FROM pedido WHERE estoque_id = ?").run(itemId);
+      db.prepare("DELETE FROM estoque WHERE id = ?").run(itemId);
+    } catch (error) {
+      console.error(`Falha ao limpar item de verificacao ${itemId}:`, error.message);
+    }
+  });
+
+  if (artifacts.createdCategoryId) {
+    try {
+      db.prepare("DELETE FROM inventory_category WHERE id = ?").run(artifacts.createdCategoryId);
+    } catch (error) {
+      console.error("Falha ao limpar categoria de verificacao:", error.message);
+    }
+  }
+
+  if (artifacts.createdLocationId) {
+    try {
+      db.prepare("DELETE FROM inventory_location WHERE id = ?").run(artifacts.createdLocationId);
+    } catch (error) {
+      console.error("Falha ao limpar local de verificacao:", error.message);
+    }
+  }
+
+  const usernames = Array.isArray(artifacts.verifyUsernames) ? artifacts.verifyUsernames : [];
+  usernames.forEach((username) => {
+    const user = database.getUserByUsername(username);
+    if (!user?.id) {
+      return;
+    }
+
+    const userId = user.id;
+    try {
+      db.prepare("DELETE FROM notification_email_delivery WHERE recipient_user_id = ?").run(userId);
+      db.prepare("DELETE FROM chat_message WHERE author_user_id = ?").run(userId);
+      db.prepare("DELETE FROM chat_conversation_participant WHERE user_id = ?").run(userId);
+      db.prepare("DELETE FROM chat_conversation WHERE created_by_user_id = ?").run(userId);
+      db.prepare("DELETE FROM writing_general_entry WHERE author_user_id = ?").run(userId);
+      db.prepare("DELETE FROM writing_tutor_private_entry WHERE tutor_user_id = ?").run(userId);
+      db.prepare("DELETE FROM report_fortnight_member_note WHERE author_user_id = ? OR target_tutor_user_id = ?").run(userId, userId);
+      db.prepare("DELETE FROM report_fortnight_tutor_note WHERE tutor_user_id = ?").run(userId);
+      db.prepare("DELETE FROM report_week_goal_deletion_log WHERE deleted_by_user_id = ?").run(userId);
+      db.prepare("DELETE FROM planner_task_completion_log WHERE completed_by_user_id = ?").run(userId);
+      db.prepare("DELETE FROM planner_task WHERE created_by_user_id = ? OR last_extended_by_user_id = ?").run(userId, userId);
+      db.prepare("DELETE FROM report_week_goal WHERE created_by_user_id = ?").run(userId);
+      db.prepare("DELETE FROM report_entry WHERE created_by_user_id = ?").run(userId);
+      db.prepare("DELETE FROM inventory_loan WHERE user_id = ? OR extended_by_user_id = ? OR returned_by_user_id = ?").run(userId, userId, userId);
+      db.prepare("DELETE FROM pedido WHERE usuario_id = ?").run(userId);
+      db.prepare('DELETE FROM "user" WHERE id = ?').run(userId);
+    } catch (error) {
+      console.error(`Falha ao limpar usuario de verificacao @${username}:`, error.message);
+    }
+  });
+}
+
 // SECAO: rotina de verificacao ponta a ponta usando a base Postgres configurada.
 
 async function main() {
@@ -24,8 +99,16 @@ async function main() {
   const database = require("../src/database");
   const { createApp } = require("../src/app");
   const { generateAtaPdf } = require("../src/pdf");
+  const artifacts = {
+    verifyUsernames: ["codex_verify_admin", "codex_verify_common", "codex_verify_tutor"],
+    createdAtaId: null,
+    createdInventoryItemIds: [],
+    createdCategoryId: null,
+    createdLocationId: null,
+  };
 
   database.ensureSchema();
+  try {
 
     const adminUsername = "codex_verify_admin";
     const adminPassword = "codex123";
@@ -213,6 +296,8 @@ async function main() {
     const locationName = `Local Verificacao ${Date.now()}`;
     const category = database.createInventoryCategory(categoryName);
     const location = database.createInventoryLocation(locationName);
+    artifacts.createdCategoryId = category?.id || null;
+    artifacts.createdLocationId = location?.id || null;
     assert.ok(category?.id, "Falha ao criar categoria de patrimônio.");
     assert.ok(location?.id, "Falha ao criar local de patrimônio.");
 
@@ -226,6 +311,7 @@ async function main() {
       description: "Produto criado durante a verificação automatizada.",
     });
     assert.ok(createdItem?.id, "Falha ao criar item de estoque para teste.");
+    artifacts.createdInventoryItemIds.push(createdItem?.id || null);
     assert.equal(createdItem.item_type, "stock");
     assert.equal(createdItem.category, category.name);
     assert.equal(createdItem.location, location.name);
@@ -233,7 +319,7 @@ async function main() {
     const withdrawal = database.withdrawInventoryItem({
       nameOrCode: String(createdItem.id),
       quantity: 2,
-      userId: commonUser.id,
+      userId: adminUser.id,
     });
     assert.equal(withdrawal.success, true, "Falha ao registrar retirada de estoque.");
 
@@ -247,12 +333,13 @@ async function main() {
       description: "Patrimônio criado para teste automatizado de empréstimo.",
     });
     assert.ok(patrimonyItem?.id, "Falha ao criar item patrimonial para teste.");
+    artifacts.createdInventoryItemIds.push(patrimonyItem?.id || null);
     assert.equal(patrimonyItem.item_type, "patrimony");
 
     const invalidStockBorrow = database.borrowInventoryItem({
       nameOrCode: String(createdItem.id),
       quantity: 1,
-      userId: commonUser.id,
+      userId: adminUser.id,
     });
     assert.equal(
       invalidStockBorrow.success,
@@ -263,7 +350,7 @@ async function main() {
     const invalidPatrimonyWithdraw = database.withdrawInventoryItem({
       nameOrCode: String(patrimonyItem.id),
       quantity: 1,
-      userId: commonUser.id,
+      userId: adminUser.id,
     });
     assert.equal(
       invalidPatrimonyWithdraw.success,
@@ -274,7 +361,7 @@ async function main() {
     const loan = database.borrowInventoryItem({
       nameOrCode: String(patrimonyItem.id),
       quantity: 1,
-      userId: commonUser.id,
+      userId: adminUser.id,
     });
     assert.equal(loan.success, true, "Falha ao registrar empréstimo patrimonial.");
     assert.equal(loan.loan.status, "active");
@@ -291,7 +378,7 @@ async function main() {
       activeLoans.some(
         (entry) =>
           entry.id === loan.loan.id &&
-          entry.user_id === commonUser.id &&
+          entry.user_id === adminUser.id &&
           entry.item_name === patrimonyName,
       ),
       "Lista de materiais emprestados não registrou o patrimônio de teste.",
@@ -299,7 +386,7 @@ async function main() {
 
     const returnLoan = database.returnInventoryLoan({
       loanId: loan.loan.id,
-      actorUserId: commonUser.id,
+      actoruserId: adminUser.id,
     });
     assert.equal(returnLoan.success, true, "Falha ao registrar devolução.");
 
@@ -329,7 +416,7 @@ async function main() {
     assert.ok(
       requests.some(
         (request) =>
-          request.usuario_id === commonUser.id &&
+          request.usuario_id === adminUser.id &&
           request.nome_item_estoque === inventoryName,
       ),
       "Histórico de retiradas não registrou a movimentação de teste.",
@@ -457,6 +544,7 @@ async function main() {
     });
 
     assert.ok(createdAta?.id, "Falha ao criar ata na base de teste.");
+    artifacts.createdAtaId = createdAta?.id || null;
 
     const loadedAta = database.getAtaById(createdAta.id);
     assert.ok(loadedAta, "Falha ao recarregar a ata criada.");
@@ -473,7 +561,10 @@ async function main() {
     assert.equal(urlFor("almox_home"), "/almoxarifado");
     assert.equal(urlFor("create_ata", { project_id: project.id }), `/atas/create/for/${project.id}`);
 
-  console.log("Verificação concluída com sucesso.");
+    console.log("Verificação concluída com sucesso.");
+  } finally {
+    cleanupVerifyArtifacts(database, artifacts);
+  }
 }
 
 main().catch((error) => {

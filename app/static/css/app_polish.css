@@ -206,7 +206,11 @@ body.section-messages .chat-sidebar-head {
 
 body.section-messages .chat-conversation-link {
   border-radius: 16px;
-  padding: 10px;
+  padding: 8px;
+}
+
+body.section-messages .chat-conversation-list {
+  gap: 5px;
 }
 
 body.section-messages .chat-conversation-link.is-active {

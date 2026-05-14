@@ -217,7 +217,13 @@ function groupGoalsByProject(goals) {
   );
 }
 
-function generateMonthlyReportPdf({ member, monthKey, goals, generatedByName = null }) {
+function generateMonthlyReportPdf({
+  member,
+  monthKey,
+  goals,
+  memberFortnightNotes = [],
+  generatedByName = null,
+}) {
   return new Promise((resolve, reject) => {
     const chunks = [];
     const doc = new PDFDocument({
@@ -240,58 +246,88 @@ function generateMonthlyReportPdf({ member, monthKey, goals, generatedByName = n
     doc.text(`Membro: ${member.name}`);
     doc.text(`Mês de referência: ${formatMonthLabel(monthKey)}`);
     doc.text(`Total de metas no mês: ${goals.length}`);
+    doc.text(`Complementos da quinzena no mês: ${memberFortnightNotes.length}`);
     if (generatedByName) {
       doc.text(`Gerado por: ${generatedByName}`);
     }
     doc.text(`Gerado em: ${new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}`);
     doc.moveDown();
 
-    if (!goals.length) {
-      doc.font("Helvetica-Oblique").text("Nenhuma meta encontrada para o período selecionado.");
+    if (!goals.length && !memberFortnightNotes.length) {
+      doc.font("Helvetica-Oblique").text("Nenhuma informação encontrada para o período selecionado.");
       doc.end();
       return;
     }
 
-    const grouped = groupGoalsByProject(goals);
-    grouped.forEach((projectGroup) => {
-      if (doc.y > 720) {
+    if (goals.length) {
+      const grouped = groupGoalsByProject(goals);
+      grouped.forEach((projectGroup) => {
+        if (doc.y > 720) {
+          doc.addPage();
+        }
+
+        doc
+          .font("Helvetica-Bold")
+          .fontSize(13)
+          .text(projectGroup.projectName, { underline: true });
+        doc.moveDown(0.35);
+
+        projectGroup.goals.forEach((goal, index) => {
+          const statusLabel = goal.is_completed
+            ? (goal.completed_late ? "Concluída com atraso" : "Concluída")
+            : "Em aberto";
+          const weekLabel = goal.week_start || "-";
+          const activityLabel = goal.completed_late
+            ? `ATRASADA - ${goal.activity || "Sem atividade"}`
+            : (goal.activity || "Sem atividade");
+          doc
+            .font("Helvetica-Bold")
+            .fontSize(11)
+            .text(`${index + 1}. ${activityLabel}`);
+          doc
+            .font("Helvetica")
+            .fontSize(10.5)
+            .text(`Status: ${statusLabel} | Semana: ${weekLabel}`);
+          if (goal.description && goal.description.trim()) {
+            doc.text(`Descrição: ${goal.description.trim()}`);
+          } else {
+            doc.text("Descrição: (sem descrição)");
+          }
+          if (goal.completed_at) {
+            doc.text(`Concluída em: ${goal.completed_at}`);
+          }
+          doc.moveDown(0.5);
+        });
+        doc.moveDown(0.4);
+      });
+    }
+
+    if (memberFortnightNotes.length) {
+      if (doc.y > 640) {
         doc.addPage();
       }
-
       doc
         .font("Helvetica-Bold")
         .fontSize(13)
-        .text(projectGroup.projectName, { underline: true });
+        .text("Complementos da Quinzena", { underline: true });
       doc.moveDown(0.35);
 
-      projectGroup.goals.forEach((goal, index) => {
-        const statusLabel = goal.is_completed
-          ? (goal.completed_late ? "Concluída com atraso" : "Concluída")
-          : "Em aberto";
-        const weekLabel = goal.week_start || "-";
-        const activityLabel = goal.completed_late
-          ? `ATRASADA - ${goal.activity || "Sem atividade"}`
-          : (goal.activity || "Sem atividade");
+      memberFortnightNotes.forEach((note, index) => {
+        if (doc.y > 730) {
+          doc.addPage();
+        }
         doc
           .font("Helvetica-Bold")
           .fontSize(11)
-          .text(`${index + 1}. ${activityLabel}`);
+          .text(`${index + 1}. Semana ${note.week_start || "-"}`);
         doc
           .font("Helvetica")
           .fontSize(10.5)
-          .text(`Status: ${statusLabel} | Semana: ${weekLabel}`);
-        if (goal.description && goal.description.trim()) {
-          doc.text(`Descrição: ${goal.description.trim()}`);
-        } else {
-          doc.text("Descrição: (sem descrição)");
-        }
-        if (goal.completed_at) {
-          doc.text(`Concluída em: ${goal.completed_at}`);
-        }
+          .text(`Autor: ${note.author_name || note.author_username || "Membro"}`);
+        doc.text(`Texto: ${String(note.content || "").trim() || "(sem conteúdo)"}`);
         doc.moveDown(0.5);
       });
-      doc.moveDown(0.4);
-    });
+    }
 
     doc.end();
   });

@@ -77,27 +77,27 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
       const userErrors = {};
 
       if (!userFormData.name) {
-        userErrors.name = ["O nome completo Ã© obrigatÃ³rio."];
+        userErrors.name = ["O nome completo é obrigatório."];
       } else if (userFormData.name.length < 3 || userFormData.name.length > 120) {
         userErrors.name = ["O nome deve ter entre 3 e 120 caracteres."];
       }
 
       if (!userFormData.username) {
-        userErrors.username = ["O nome de usuÃ¡rio Ã© obrigatÃ³rio."];
+        userErrors.username = ["O nome de usuário é obrigatório."];
       } else if (!/^[a-zA-Z0-9._-]{3,40}$/.test(userFormData.username)) {
         userErrors.username = [
-          "Use de 3 a 40 caracteres com letras, nÃºmeros, ponto, traÃ§o ou sublinhado.",
+          "Use de 3 a 40 caracteres com letras, números, ponto, traço ou sublinhado.",
         ];
       }
 
       if (!rawPassword) {
-        userErrors.password = ["A senha Ã© obrigatÃ³ria."];
+        userErrors.password = ["A senha é obrigatória."];
       } else if (rawPassword.length < 6) {
         userErrors.password = ["A senha deve ter pelo menos 6 caracteres."];
       }
 
       if (userFormData.email && !isValidEmail(userFormData.email)) {
-        userErrors.email = ["Informe um e-mail vÃ¡lido."];
+        userErrors.email = ["Informe um e-mail válido."];
       }
 
       if (!["admin", "tutor", "common"].includes(userFormData.role)) {
@@ -106,11 +106,11 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
 
       const memberId = parseId(userFormData.memberId);
       if (userFormData.memberId && !memberId) {
-        userErrors.memberId = ["Selecione um membro vÃ¡lido."];
+        userErrors.memberId = ["Selecione um membro válido."];
       } else if (memberId) {
         const member = database.getMemberById(memberId);
         if (!member || !member.is_active) {
-          userErrors.memberId = ["Selecione um membro ativo vÃ¡lido."];
+          userErrors.memberId = ["Selecione um membro ativo válido."];
         }
       }
 
@@ -134,7 +134,7 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
 
         req.flash(
           "success",
-          `UsuÃ¡rio "${createdUser.username}" criado com sucesso como ${
+          `Usuário "${createdUser.username}" criado com sucesso como ${
             createdUser.role === "common"
               ? "comum"
               : createdUser.role === "tutor"
@@ -151,8 +151,8 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
             userErrors.username = ["Já existe um usuário com esse nome de acesso."];
           }
         } else {
-          logError(req, "Erro ao criar usuÃ¡rio:", error);
-          req.flash("danger", `Erro ao criar usuÃ¡rio: ${error.message}`);
+          logError(req, "Erro ao criar usuário:", error);
+          req.flash("danger", `Erro ao criar usuário: ${error.message}`);
         }
 
         return renderUserMaintenance(res, {
@@ -178,27 +178,27 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
 
       const userId = parseId(req.params.id);
       if (!userId) {
-        req.flash("warning", "UsuÃ¡rio invÃ¡lido para vinculaÃ§Ã£o.");
+        req.flash("warning", "Usuário inválido para vinculação.");
         return res.redirect(userMaintenancePath());
       }
 
       const user = database.getUserById(userId);
       if (!user) {
-        req.flash("warning", "UsuÃ¡rio nÃ£o encontrado.");
+        req.flash("warning", "Usuário não encontrado.");
         return res.redirect(userMaintenancePath());
       }
 
       const memberIdRaw = String(req.body.member_id || "").trim();
       const memberId = parseId(memberIdRaw);
       if (memberIdRaw && !memberId) {
-        req.flash("warning", "Selecione um membro vÃ¡lido.");
+        req.flash("warning", "Selecione um membro válido.");
         return res.redirect(userMaintenancePath());
       }
 
       if (memberId) {
         const member = database.getMemberById(memberId);
         if (!member || !member.is_active) {
-          req.flash("warning", "Selecione um membro ativo vÃ¡lido.");
+          req.flash("warning", "Selecione um membro ativo válido.");
           return res.redirect(userMaintenancePath());
         }
       }
@@ -208,17 +208,17 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
         if (updatedUser?.member_name) {
           req.flash(
             "success",
-            `UsuÃ¡rio @${updatedUser.username} vinculado ao membro ${updatedUser.member_name}.`,
+            `Usuário @${updatedUser.username} vinculado ao membro ${updatedUser.member_name}.`,
           );
         } else {
           req.flash(
             "success",
-            `VÃ­nculo de membro removido do usuÃ¡rio @${user.username}.`,
+            `Vínculo de membro removido do usuário @${user.username}.`,
           );
         }
       } catch (error) {
-        logError(req, "Erro ao vincular usuÃ¡rio ao membro:", error);
-        req.flash("danger", `Erro ao vincular usuÃ¡rio: ${error.message}`);
+        logError(req, "Erro ao vincular usuário ao membro:", error);
+        req.flash("danger", `Erro ao vincular usuário: ${error.message}`);
       }
 
       return res.redirect(userMaintenancePath());
@@ -236,13 +236,13 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
 
       const userId = parseId(req.params.id);
       if (!userId) {
-        req.flash("warning", "UsuÃ¡rio invÃ¡lido para redefiniÃ§Ã£o de senha.");
+        req.flash("warning", "Usuário inválido para redefinição de senha.");
         return res.redirect(userMaintenancePath());
       }
 
       const user = database.getUserById(userId);
       if (!user) {
-        req.flash("warning", "UsuÃ¡rio nÃ£o encontrado.");
+        req.flash("warning", "Usuário não encontrado.");
         return res.redirect(userMaintenancePath());
       }
 
@@ -257,7 +257,7 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
         database.updateUserPassword(userId, passwordHash);
         req.flash("success", `Senha de @${user.username} redefinida com sucesso.`);
       } catch (error) {
-        logError(req, "Erro ao redefinir senha de usuÃ¡rio:", error);
+        logError(req, "Erro ao redefinir senha de usuário:", error);
         req.flash("danger", `Erro ao redefinir senha: ${error.message}`);
       }
 
@@ -327,12 +327,12 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
 
       const userId = parseId(req.params.id);
       if (!userId) {
-        req.flash("warning", "UsuÃ¡rio invÃ¡lido para exclusÃ£o.");
+        req.flash("warning", "Usuário inválido para exclusão.");
         return res.redirect(userMaintenancePath());
       }
 
       if (req.currentUser?.id === userId) {
-        req.flash("warning", "VocÃª nÃ£o pode excluir seu prÃ³prio usuÃ¡rio.");
+        req.flash("warning", "Você não pode excluir seu próprio usuário.");
         return res.redirect(userMaintenancePath());
       }
 
@@ -340,22 +340,22 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
         const result = database.deleteUser(userId);
         if (!result?.deleted) {
           if (result?.reason === "not_found") {
-            req.flash("warning", "UsuÃ¡rio nÃ£o encontrado.");
+            req.flash("warning", "Usuário não encontrado.");
           } else if (result?.reason === "has_history") {
             req.flash(
               "warning",
-              "NÃ£o Ã© possÃ­vel excluir usuÃ¡rio com histÃ³rico de retiradas ou emprÃ©stimos.",
+              "Não é possível excluir usuário com histórico de retiradas ou empréstimos.",
             );
           } else {
-            req.flash("warning", "NÃ£o foi possÃ­vel excluir o usuÃ¡rio.");
+            req.flash("warning", "Não foi possível excluir o usuário.");
           }
           return res.redirect(userMaintenancePath());
         }
 
-        req.flash("success", `UsuÃ¡rio @${result.user.username} excluÃ­do com sucesso.`);
+        req.flash("success", `Usuário @${result.user.username} excluído com sucesso.`);
       } catch (error) {
-        logError(req, "Erro ao excluir usuÃ¡rio:", error);
-        req.flash("danger", `Erro ao excluir usuÃ¡rio: ${error.message}`);
+        logError(req, "Erro ao excluir usuário:", error);
+        req.flash("danger", `Erro ao excluir usuário: ${error.message}`);
       }
 
       return res.redirect(userMaintenancePath());
@@ -413,7 +413,7 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
 
         req.flash(
           "success",
-          `Material "${createdItem.name}" (${createdItem.item_type === "patrimony" ? "patrimÃ´nio" : "estoque"}) adicionado com sucesso.`,
+          `Material "${createdItem.name}" (${createdItem.item_type === "patrimony" ? "patrimônio" : "estoque"}) adicionado com sucesso.`,
         );
         return res.redirect(almoxPath(activeTab));
       } catch (error) {
@@ -463,7 +463,7 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
         return res.redirect(almoxPath(activeTab));
       } catch (error) {
         if (isUniqueConstraintError(error)) {
-          errors.name = ["JÃ¡ existe uma categoria com esse nome."];
+          errors.name = ["Já existe uma categoria com esse nome."];
         } else {
           logError(req, "Erro ao criar categoria:", error);
           req.flash("danger", `Erro ao criar categoria: ${error.message}`);
@@ -493,14 +493,14 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
 
       const categoryId = parseId(req.params.id);
       if (!categoryId) {
-        req.flash("warning", "Categoria invÃ¡lida.");
+        req.flash("warning", "Categoria inválida.");
         return res.redirect(almoxPath("manage"));
       }
 
       try {
         const deleted = database.deleteInventoryCategory(categoryId);
         if (!deleted) {
-          req.flash("warning", "Categoria nÃ£o encontrada.");
+          req.flash("warning", "Categoria não encontrada.");
         } else {
           req.flash("success", `Categoria "${deleted.name}" removida com sucesso.`);
         }
@@ -548,7 +548,7 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
         return res.redirect(almoxPath(activeTab));
       } catch (error) {
         if (isUniqueConstraintError(error)) {
-          errors.name = ["JÃ¡ existe um local com esse nome."];
+          errors.name = ["Já existe um local com esse nome."];
         } else {
           logError(req, "Erro ao criar local:", error);
           req.flash("danger", `Erro ao criar local: ${error.message}`);
@@ -578,14 +578,14 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
 
       const locationId = parseId(req.params.id);
       if (!locationId) {
-        req.flash("warning", "Local invÃ¡lido.");
+        req.flash("warning", "Local inválido.");
         return res.redirect(almoxPath("manage"));
       }
 
       try {
         const deleted = database.deleteInventoryLocation(locationId);
         if (!deleted) {
-          req.flash("warning", "Local nÃ£o encontrado.");
+          req.flash("warning", "Local não encontrado.");
         } else {
           req.flash("success", `Local "${deleted.name}" removido com sucesso.`);
         }
@@ -613,7 +613,7 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
 
       const itemId = parseId(req.params.id);
       if (!itemId) {
-        req.flash("warning", "Produto invÃ¡lido para exclusÃ£o.");
+        req.flash("warning", "Produto inválido para exclusão.");
         return res.redirect(almoxPath(req.body.tab || "stock"));
       }
 
@@ -621,7 +621,7 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
         const deletedItem = database.deleteInventoryItem(itemId);
 
         if (!deletedItem) {
-          req.flash("warning", "Produto nÃ£o encontrado.");
+          req.flash("warning", "Produto não encontrado.");
         } else {
           req.flash(
             "success",
@@ -714,7 +714,7 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
     const quantity = Number(loanFormData.quantity);
 
     if (!loanFormData.nameOrCode) {
-      loanErrors.nameOrCode = ["Informe o nome exato ou o ID do patrimÃ´nio."];
+      loanErrors.nameOrCode = ["Informe o nome exato ou o ID do patrimônio."];
     }
 
     if (!Number.isInteger(quantity) || quantity <= 0) {
@@ -762,20 +762,20 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
 
     const loanId = parseId(req.params.id);
     if (!loanId) {
-      req.flash("warning", "EmprÃ©stimo invÃ¡lido.");
+      req.flash("warning", "Empréstimo inválido.");
       return res.redirect(almoxPath("borrowed"));
     }
 
     const loan = database.getInventoryLoanById(loanId);
     if (!loan) {
-      req.flash("warning", "EmprÃ©stimo nÃ£o encontrado.");
+      req.flash("warning", "Empréstimo não encontrado.");
       return res.redirect(almoxPath("borrowed"));
     }
 
     if (!req.currentUser.is_admin && loan.user_id !== req.currentUser.id) {
       req.flash(
         "warning",
-        "VocÃª sÃ³ pode registrar a devoluÃ§Ã£o dos emprÃ©stimos feitos no seu usuÃ¡rio.",
+        "Você só pode registrar a devolução dos empréstimos feitos no seu usuário.",
       );
       return res.redirect(almoxPath("borrowed"));
     }
@@ -811,14 +811,14 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
       const extraDays = Number(req.body.extra_days);
 
       if (!loanId) {
-        req.flash("warning", "EmprÃ©stimo invÃ¡lido.");
+        req.flash("warning", "Empréstimo inválido.");
         return res.redirect(almoxPath("borrowed"));
       }
 
       if (!Number.isInteger(extraDays) || extraDays <= 0 || extraDays > 90) {
         req.flash(
           "warning",
-          "Informe uma prorrogaÃ§Ã£o vÃ¡lida entre 1 e 90 dias.",
+          "Informe uma prorrogação válida entre 1 e 90 dias.",
         );
         return res.redirect(almoxPath("borrowed"));
       }
@@ -863,7 +863,7 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
       // DETALHE: Se houver erro de validacao, encerra cedo para evitar persistencia inconsistente.
 
       if (Object.keys(errors).length > 0) {
-        return sendApiError(req, res, 400, "Dados invÃ¡lidos.", errors);
+        return sendApiError(req, res, 400, "Dados inválidos.", errors);
       }
 
       try {
@@ -900,7 +900,7 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
 
       const itemId = parseId(req.params.id);
       if (!itemId) {
-        return sendApiError(req, res, 400, "Item invÃ¡lido.");
+        return sendApiError(req, res, 400, "Item inválido.");
       }
 
       const parsed = parseInventoryPayload(req.body);
@@ -908,7 +908,7 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
       // DETALHE: Se houver erro de validacao, encerra cedo para evitar persistencia inconsistente.
 
       if (Object.keys(errors).length > 0) {
-        return sendApiError(req, res, 400, "Dados invÃ¡lidos.", errors);
+        return sendApiError(req, res, 400, "Dados inválidos.", errors);
       }
 
       try {
@@ -924,7 +924,7 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
         });
 
         if (!updated) {
-          return sendApiError(req, res, 404, "Item nÃ£o encontrado.");
+          return sendApiError(req, res, 404, "Item não encontrado.");
         }
 
         return res.json(updated);
@@ -950,13 +950,13 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
 
       const itemId = parseId(req.params.id);
       if (!itemId) {
-        return sendApiError(req, res, 400, "Item invÃ¡lido.");
+        return sendApiError(req, res, 400, "Item inválido.");
       }
 
       try {
         const deleted = database.deleteInventoryItem(itemId);
         if (!deleted) {
-          return sendApiError(req, res, 404, "Item nÃ£o encontrado.");
+          return sendApiError(req, res, 404, "Item não encontrado.");
         }
 
         return res.json({
@@ -1001,7 +1001,7 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
       // DETALHE: Se houver erro de validacao, encerra cedo para evitar persistencia inconsistente.
 
       if (Object.keys(errors).length > 0) {
-        return sendApiError(req, res, 400, "Dados invÃ¡lidos.", errors);
+        return sendApiError(req, res, 400, "Dados inválidos.", errors);
       }
 
       try {
@@ -1009,7 +1009,7 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
         return res.status(201).json({ id: category.id, nome: category.name });
       } catch (error) {
         if (isUniqueConstraintError(error)) {
-          return sendApiError(req, res, 400, "Categoria jÃ¡ cadastrada.");
+          return sendApiError(req, res, 400, "Categoria já cadastrada.");
         }
         logError(req, "Erro ao criar categoria via API:", error);
         return sendApiError(req, res, 500, error.message);
@@ -1032,7 +1032,7 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
 
       const categoryId = parseId(req.params.id);
       if (!categoryId) {
-        return sendApiError(req, res, 400, "Categoria invÃ¡lida.");
+        return sendApiError(req, res, 400, "Categoria inválida.");
       }
 
       const { normalized, errors } = validateCatalogName(
@@ -1042,19 +1042,19 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
       // DETALHE: Se houver erro de validacao, encerra cedo para evitar persistencia inconsistente.
 
       if (Object.keys(errors).length > 0) {
-        return sendApiError(req, res, 400, "Dados invÃ¡lidos.", errors);
+        return sendApiError(req, res, 400, "Dados inválidos.", errors);
       }
 
       try {
         const category = database.updateInventoryCategory(categoryId, normalized);
         if (!category) {
-          return sendApiError(req, res, 404, "Categoria nÃ£o encontrada.");
+          return sendApiError(req, res, 404, "Categoria não encontrada.");
         }
 
         return res.json({ id: category.id, nome: category.name });
       } catch (error) {
         if (isUniqueConstraintError(error)) {
-          return sendApiError(req, res, 400, "Categoria jÃ¡ cadastrada.");
+          return sendApiError(req, res, 400, "Categoria já cadastrada.");
         }
         logError(req, "Erro ao atualizar categoria via API:", error);
         return sendApiError(req, res, 500, error.message);
@@ -1077,13 +1077,13 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
 
       const categoryId = parseId(req.params.id);
       if (!categoryId) {
-        return sendApiError(req, res, 400, "Categoria invÃ¡lida.");
+        return sendApiError(req, res, 400, "Categoria inválida.");
       }
 
       try {
         const deleted = database.deleteInventoryCategory(categoryId);
         if (!deleted) {
-          return sendApiError(req, res, 404, "Categoria nÃ£o encontrada.");
+          return sendApiError(req, res, 404, "Categoria não encontrada.");
         }
 
         return res.json({
@@ -1128,7 +1128,7 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
       // DETALHE: Se houver erro de validacao, encerra cedo para evitar persistencia inconsistente.
 
       if (Object.keys(errors).length > 0) {
-        return sendApiError(req, res, 400, "Dados invÃ¡lidos.", errors);
+        return sendApiError(req, res, 400, "Dados inválidos.", errors);
       }
 
       try {
@@ -1136,7 +1136,7 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
         return res.status(201).json({ id: location.id, nome: location.name });
       } catch (error) {
         if (isUniqueConstraintError(error)) {
-          return sendApiError(req, res, 400, "Local jÃ¡ cadastrado.");
+          return sendApiError(req, res, 400, "Local já cadastrado.");
         }
         logError(req, "Erro ao criar local via API:", error);
         return sendApiError(req, res, 500, error.message);
@@ -1159,7 +1159,7 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
 
       const locationId = parseId(req.params.id);
       if (!locationId) {
-        return sendApiError(req, res, 400, "Local invÃ¡lido.");
+        return sendApiError(req, res, 400, "Local inválido.");
       }
 
       const { normalized, errors } = validateCatalogName(
@@ -1169,19 +1169,19 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
       // DETALHE: Se houver erro de validacao, encerra cedo para evitar persistencia inconsistente.
 
       if (Object.keys(errors).length > 0) {
-        return sendApiError(req, res, 400, "Dados invÃ¡lidos.", errors);
+        return sendApiError(req, res, 400, "Dados inválidos.", errors);
       }
 
       try {
         const location = database.updateInventoryLocation(locationId, normalized);
         if (!location) {
-          return sendApiError(req, res, 404, "Local nÃ£o encontrado.");
+          return sendApiError(req, res, 404, "Local não encontrado.");
         }
 
         return res.json({ id: location.id, nome: location.name });
       } catch (error) {
         if (isUniqueConstraintError(error)) {
-          return sendApiError(req, res, 400, "Local jÃ¡ cadastrado.");
+          return sendApiError(req, res, 400, "Local já cadastrado.");
         }
         logError(req, "Erro ao atualizar local via API:", error);
         return sendApiError(req, res, 500, error.message);
@@ -1204,13 +1204,13 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
 
       const locationId = parseId(req.params.id);
       if (!locationId) {
-        return sendApiError(req, res, 400, "Local invÃ¡lido.");
+        return sendApiError(req, res, 400, "Local inválido.");
       }
 
       try {
         const deleted = database.deleteInventoryLocation(locationId);
         if (!deleted) {
-          return sendApiError(req, res, 404, "Local nÃ£o encontrado.");
+          return sendApiError(req, res, 404, "Local não encontrado.");
         }
 
         return res.json({
@@ -1233,11 +1233,11 @@ app.get("/api/project/:project_id/members", requireAuth, (req, res) => {
     const project = projectId ? database.getProjectById(projectId) : null;
 
     if (!project) {
-      return sendApiError(req, res, 404, "Projeto nÃ£o encontrado.");
+      return sendApiError(req, res, 404, "Projeto não encontrado.");
     }
 
     if (!canCreateAtaForProject(req, project) && !canManageProject(req, project)) {
-      return sendApiError(req, res, 403, "VocÃª nÃ£o tem acesso aos membros deste projeto.");
+      return sendApiError(req, res, 403, "Você não tem acesso aos membros deste projeto.");
     }
 
     return res.json({
