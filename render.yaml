@@ -6,6 +6,8 @@ services:
     autoDeploy: true
     branch: main
     envVars:
+      - key: PORT
+        value: 10000
       - key: NODE_ENV
         value: production
       - key: SECRET_KEY

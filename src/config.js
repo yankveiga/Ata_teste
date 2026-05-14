@@ -69,7 +69,10 @@ const config = {
   appName: "Gestor de Atas",
   baseDir,
   nodeEnv: process.env.NODE_ENV || "development",
-  port: Number(process.env.PORT || 3000),
+  port: Number(
+    process.env.PORT
+    || (String(process.env.NODE_ENV || "").trim() === "production" ? 10000 : 3000),
+  ),
   appBaseUrl: String(process.env.APP_BASE_URL || "http://localhost:3000").trim(),
   appTimeZone: String(process.env.APP_TIMEZONE || "America/Sao_Paulo").trim(),
   reportsTimeZone: String(process.env.REPORTS_TIMEZONE || process.env.APP_TIMEZONE || "America/Sao_Paulo").trim(),
