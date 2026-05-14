@@ -80,6 +80,7 @@ const ALMOX_TABS = new Set([
 const INVENTORY_ITEM_TYPES = new Set(["stock", "patrimony"]);
 const DEFAULT_PROJECT_COLOR = "#0b6bcb";
 const REPORTS_TIMEZONE = "America/Sao_Paulo";
+const ENABLE_REQUEST_LOGS = String(process.env.REQUEST_LOGS || "").trim() === "1";
 
 function getDatePartsInTimeZone(date, timeZone) {
   const formatter = new Intl.DateTimeFormat("en-CA", {
@@ -274,6 +275,10 @@ function createApp() {
   app.set("trust proxy", 1);
   app.set("view engine", "html");
 
+  app.get("/healthz", (req, res) => {
+    res.status(200).type("text/plain").send("ok");
+  });
+
   const env = nunjucks.configure(config.viewsDir, {
     autoescape: true,
     express: app,
@@ -312,6 +317,18 @@ app.use(
   app.use(express.urlencoded({ extended: true }));
   app.use(express.json());
   app.use(requestContextMiddleware);
+  if (ENABLE_REQUEST_LOGS) {
+    app.use((req, res, next) => {
+      const startedAt = Date.now();
+      res.on("finish", () => {
+        const elapsedMs = Date.now() - startedAt;
+        console.log(
+          `[http] ${req.method} ${req.originalUrl || req.url} -> ${res.statusCode} (${elapsedMs}ms)`,
+        );
+      });
+      next();
+    });
+  }
   app.use("/static", express.static(config.staticDir));
 
   app.use((req, res, next) => {

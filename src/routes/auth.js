@@ -71,6 +71,7 @@ function registerAuthRoutes(ctx) {
     sendApiError,
     syncReportWeekGoalFromPlannerTask,
   } = ctx;
+  const loginDefaultPath = String(process.env.LOGIN_DEFAULT_PATH || "/home").trim() || "/home";
 
   function canDeletePlannerTask(req, task) {
     if (!task) {
@@ -202,7 +203,7 @@ function registerAuthRoutes(ctx) {
 
 app.get("/login", (req, res) => {
     if (req.currentUser) {
-      return res.redirect(urlFor("relatorios"));
+      return res.redirect(loginDefaultPath);
     }
 
     return renderLogin(res, {
@@ -224,7 +225,7 @@ app.get("/login", (req, res) => {
     }
 
     if (req.currentUser) {
-      return res.redirect(urlFor("relatorios"));
+      return res.redirect(loginDefaultPath);
     }
 
     const formData = {
@@ -266,7 +267,7 @@ app.get("/login", (req, res) => {
 
     const nextPath = safeRedirectPath(
       req.body.next,
-      urlFor("relatorios"),
+      loginDefaultPath,
     );
     return res.redirect(nextPath);
   });
@@ -290,7 +291,7 @@ app.get("/login", (req, res) => {
   // DETALHE: Rota GET /: consulta dados necessarios e monta resposta (HTML/JSON) para a tela solicitada.
 
   app.get("/", requireAuth, (req, res) => {
-    return res.redirect(urlFor("relatorios"));
+    return res.redirect(loginDefaultPath);
   });
 
     // SECAO: rotas gerais de navegacao (services/home/presenca).
@@ -298,7 +299,7 @@ app.get("/login", (req, res) => {
 // DETALHE: Rota GET /services: consulta dados necessarios e monta resposta (HTML/JSON) para a tela solicitada.
 
 app.get("/services", requireAuth, (req, res) => {
-    return res.redirect(urlFor("relatorios"));
+    return res.redirect(loginDefaultPath);
   });
 
   // DETALHE: Rota GET /manutencao-usuarios: hub administrativo para membros, projetos e usuarios de acesso.

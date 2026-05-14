@@ -5,6 +5,7 @@ services:
     plan: free
     autoDeploy: true
     branch: main
+    healthCheckPath: /healthz
     envVars:
       - key: PORT
         value: 10000

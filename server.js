@@ -53,7 +53,7 @@ async function ensureSchemaWithRetry(maxAttempts = 5) {
       }
       const waitMs = Math.min(1000 * (2 ** (attempt - 1)), 8000);
       console.warn(
-        `Banco indisponÃ­vel na inicializaÃ§Ã£o (tentativa ${attempt}/${maxAttempts}). Nova tentativa em ${waitMs}ms...`,
+        `Banco indisponivel na inicializacao (tentativa ${attempt}/${maxAttempts}). Nova tentativa em ${waitMs}ms...`,
       );
       await sleep(waitMs);
     }
@@ -65,9 +65,9 @@ async function startServer() {
 
   const defaultWorkbookPath = path.join(config.baseDir, "planilha_presenca.xlsx");
   if (
-    config.presenceWorkbookPath !== defaultWorkbookPath &&
-    !fs.existsSync(config.presenceWorkbookPath) &&
-    fs.existsSync(defaultWorkbookPath)
+    config.presenceWorkbookPath !== defaultWorkbookPath
+    && !fs.existsSync(config.presenceWorkbookPath)
+    && fs.existsSync(defaultWorkbookPath)
   ) {
     fs.mkdirSync(path.dirname(config.presenceWorkbookPath), { recursive: true });
     fs.copyFileSync(defaultWorkbookPath, config.presenceWorkbookPath);
@@ -83,7 +83,7 @@ async function startServer() {
   }
 
   console.log("Banco: PostgreSQL/Neon");
-  console.log(`Planilha presenÃ§a: ${config.presenceWorkbookPath}`);
+  console.log(`Planilha presenca: ${config.presenceWorkbookPath}`);
 
   const app = createApp();
   const notificationService = createNotificationService({ database, config });
@@ -96,13 +96,44 @@ async function startServer() {
     runOnStart: true,
   });
 
-  app.listen(config.port, () => {
-    console.log(`Gestor de Atas disponÃ­vel em http://0.0.0.0:${config.port}`);
+  const server = app.listen(config.port, () => {
+    console.log(`Gestor de Atas disponivel em http://0.0.0.0:${config.port}`);
   });
+
+  let shuttingDown = false;
+  const gracefulShutdown = (signal) => {
+    if (shuttingDown) {
+      return;
+    }
+    shuttingDown = true;
+    console.log(`Sinal ${signal} recebido. Encerrando servidor...`);
+    server.close(() => {
+      console.log("Servidor HTTP encerrado.");
+      process.exit(0);
+    });
+
+    const forceExitTimer = setTimeout(() => {
+      console.warn("Encerramento forcado por timeout.");
+      process.exit(0);
+    }, 10000);
+    if (typeof forceExitTimer.unref === "function") {
+      forceExitTimer.unref();
+    }
+  };
+
+  process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+  process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 }
 
 startServer().catch((error) => {
-  console.error("Falha ao iniciar aplicaÃ§Ã£o:", error);
+  console.error("Falha ao iniciar aplicacao:", error);
   process.exit(1);
 });
 
+process.on("uncaughtException", (error) => {
+  console.error("Erro nao tratado (uncaughtException):", error);
+});
+
+process.on("unhandledRejection", (reason) => {
+  console.error("Promise rejeitada sem tratamento (unhandledRejection):", reason);
+});
