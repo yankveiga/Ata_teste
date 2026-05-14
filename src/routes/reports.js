@@ -169,11 +169,17 @@ function registerReportRoutes(ctx) {
     }
     const wantsJson = wantsJsonResponse(req);
 
-    const selectedMemberId = parseId(req.body.member_id);
+    const selectedMemberIds = parseQueueMemberIds(req.body.member_ids);
+    const fallbackMemberId = parseId(req.body.member_id);
+    if (!selectedMemberIds.length && fallbackMemberId) {
+      selectedMemberIds.push(fallbackMemberId);
+    }
+    const selectedMemberId = selectedMemberIds[0] || null;
     const projectId = parseId(req.body.project_id);
     const goalFormData = {
       projectId: String(req.body.project_id || "").trim(),
       memberId: String(req.body.member_id || "").trim(),
+      memberIds: selectedMemberIds.map((id) => String(id)),
       activity: String(req.body.activity || "").trim(),
       description: String(req.body.description || "").trim(),
       dueAt: String(req.body.due_at || "").trim(),
@@ -185,25 +191,29 @@ function registerReportRoutes(ctx) {
     };
     const goalFormErrors = {};
 
-    const selectedMember = selectedMemberId
-      ? database.getMemberById(selectedMemberId)
-      : null;
-    if (!selectedMember) {
+    if (!selectedMemberIds.length) {
       if (wantsJson) {
         return res.status(400).json({
           ok: false,
-          message: "Membro inválido para cadastrar tarefa.",
+          message: "Selecione ao menos um membro para cadastrar tarefa.",
         });
       }
-      req.flash("warning", "Membro inválido para cadastrar meta da quinzena.");
+      req.flash("warning", "Selecione ao menos um membro para cadastrar meta da quinzena.");
       return res.redirect("/relatorios");
     }
 
+    const selectedMember = selectedMemberId
+      ? database.getMemberById(selectedMemberId)
+      : null;
+
     const project = projectId ? database.getProjectById(projectId) : null;
     if (!project) {
-      goalFormErrors.projectId = ["Selecione um projeto válido."];
-    } else if (!database.isProjectMember(project.id, selectedMember.id)) {
-      goalFormErrors.projectId = ["Este membro não participa do projeto selecionado."];
+      goalFormErrors.projectId = ["Selecione um projeto valido."];
+    } else {
+      const invalidMemberIds = selectedMemberIds.filter((memberId) => !database.isProjectMember(project.id, memberId));
+      if (invalidMemberIds.length > 0) {
+        goalFormErrors.projectId = ["Um ou mais membros selecionados nao participam do projeto."];
+      }
     }
 
     Object.assign(goalFormErrors, validateWeekGoalForm(goalFormData).errors);
@@ -211,7 +221,7 @@ function registerReportRoutes(ctx) {
     const nowSql = toSqlDateTime(new Date());
     const currentWeekStart = getCurrentWeekStartDate();
     if (!dueAt) {
-      goalFormErrors.dueAt = ["Informe uma data de entrega válida."];
+      goalFormErrors.dueAt = ["Informe uma data de entrega valida."];
     } else {
       const dueDateKey = String(dueAt).slice(0, 10);
       if (dueDateKey < currentWeekStart) {
@@ -220,7 +230,11 @@ function registerReportRoutes(ctx) {
     }
 
     const currentMember = getCurrentMember(req);
-    const isOwnGoal = Boolean(currentMember?.is_active && currentMember.id === selectedMember.id);
+    const canCreateWithinProject = Boolean(
+      currentMember?.is_active
+      && project
+      && database.isProjectMember(project.id, currentMember.id),
+    );
     const canCreateAsCoordinator = Boolean(
       currentMember?.is_active
       && project
@@ -244,17 +258,20 @@ function registerReportRoutes(ctx) {
         recurrenceQueue = [selectedMember.id];
       }
       if (!recurrenceQueue.length) {
-        goalFormErrors.memberId = ["Selecione pelo menos um membro da fila de recorrência."];
+        goalFormErrors.memberId = ["Selecione pelo menos um membro da fila de recorrencia."];
+      }
+      if (selectedMemberIds.length > 1) {
+        goalFormErrors.memberId = ["Para tarefa conjunta, desative a recorrencia."];
       }
       if (!Number.isInteger(recurrenceIntervalDays) || recurrenceIntervalDays < 1 || recurrenceIntervalDays > 60) {
-        goalFormErrors.recurrenceIntervalDays = ["Intervalo de recorrência deve ser entre 1 e 60 dias."];
+        goalFormErrors.recurrenceIntervalDays = ["Intervalo de recorrencia deve ser entre 1 e 60 dias."];
       }
     }
 
     if (!req.currentUser?.is_admin) {
-      if (!isOwnGoal && !canCreateAsCoordinator) {
+      if (!canCreateWithinProject) {
         goalFormErrors.memberId = [
-          "Sem permissão: somente admin, o próprio membro ou coordenador do projeto podem adicionar metas aqui.",
+          "Sem permissao: apenas membros do projeto podem adicionar metas aqui.",
         ];
       }
     }
@@ -263,12 +280,12 @@ function registerReportRoutes(ctx) {
       if (wantsJson) {
         return res.status(422).json({
           ok: false,
-          message: "Revise os campos obrigatórios.",
+          message: "Revise os campos obrigatorios.",
           errors: goalFormErrors,
         });
       }
       return renderReportPage(req, res, {
-        selectedMemberId: selectedMember.id,
+        selectedMemberId: selectedMember?.id || null,
         selectedProjectId: project?.id || null,
         goalFormData,
         goalFormErrors,
@@ -276,48 +293,62 @@ function registerReportRoutes(ctx) {
     }
 
     let createdTask = null;
+    let createdGoalsCount = 0;
     try {
       const initialStatus = dueAt && nowSql && dueAt <= nowSql
         ? "in_progress"
         : "todo";
-      const assignedMemberId = recurrenceEnabled && recurrenceQueue.length
-        ? recurrenceQueue[0]
-        : selectedMember.id;
-      const recurrenceNextIndex = recurrenceEnabled && recurrenceQueue.length > 1
-        ? 1
-        : 0;
-      createdTask = database.createPlannerTask({
-        projectId: project.id,
-        assignedMemberId,
-        createdByUserId: req.currentUser.id,
-        title: goalFormData.activity,
-        description: goalFormData.description,
-        dueAt,
-        status: goalFormData.isCompleted ? "done" : initialStatus,
-        workflowState: "active",
-        priority: "medium",
-        recurrenceIntervalDays: recurrenceEnabled ? recurrenceIntervalDays : null,
-        recurrenceUnit: recurrenceEnabled ? recurrenceUnit : null,
-        recurrenceEvery: recurrenceEnabled ? recurrenceIntervalDays : null,
-        recurrenceMemberQueue: recurrenceEnabled ? recurrenceQueue : null,
-        recurrenceNextIndex: recurrenceEnabled ? recurrenceNextIndex : null,
+
+      selectedMemberIds.forEach((memberId) => {
+        const assignedMemberId = recurrenceEnabled && recurrenceQueue.length
+          ? recurrenceQueue[0]
+          : memberId;
+        const recurrenceNextIndex = recurrenceEnabled && recurrenceQueue.length > 1
+          ? 1
+          : 0;
+        const task = database.createPlannerTask({
+          projectId: project.id,
+          assignedMemberId,
+          createdByUserId: req.currentUser.id,
+          title: goalFormData.activity,
+          description: goalFormData.description,
+          dueAt,
+          status: goalFormData.isCompleted ? "done" : initialStatus,
+          workflowState: "active",
+          priority: "medium",
+          recurrenceIntervalDays: recurrenceEnabled ? recurrenceIntervalDays : null,
+          recurrenceUnit: recurrenceEnabled ? recurrenceUnit : null,
+          recurrenceEvery: recurrenceEnabled ? recurrenceIntervalDays : null,
+          recurrenceMemberQueue: recurrenceEnabled ? recurrenceQueue : null,
+          recurrenceNextIndex: recurrenceEnabled ? recurrenceNextIndex : null,
+        });
+        if (!createdTask) {
+          createdTask = task;
+        }
+        let syncedTask = task;
+        if (goalFormData.isCompleted && task?.id) {
+          const completedAt = toSqlDateTime(new Date());
+          syncedTask = database.updatePlannerTaskCompletion({
+            id: task.id,
+            isCompleted: true,
+            completedAt,
+            updatedAt: completedAt,
+            actorUserId: req.currentUser.id,
+          }) || task;
+        }
+        database.syncReportWeekGoalFromPlannerTask(syncedTask, {
+          createdByUserId: req.currentUser.id,
+        });
+        createdGoalsCount += 1;
       });
-      let syncedTask = createdTask;
-      if (goalFormData.isCompleted && createdTask?.id) {
-        const completedAt = toSqlDateTime(new Date());
-        syncedTask = database.updatePlannerTaskCompletion({
-          id: createdTask.id,
-          isCompleted: true,
-          completedAt,
-          updatedAt: completedAt,
-          actorUserId: req.currentUser.id,
-        }) || createdTask;
-      }
-      database.syncReportWeekGoalFromPlannerTask(syncedTask, {
-        createdByUserId: req.currentUser.id,
-      });
+
       if (!wantsJson) {
-        req.flash("success", "Tarefa adicionada com sucesso.");
+        req.flash(
+          "success",
+          createdGoalsCount > 1
+            ? `Tarefa adicionada para ${createdGoalsCount} membros.`
+            : "Tarefa adicionada com sucesso.",
+        );
       }
     } catch (error) {
       logError(req, "Erro ao criar meta quinzenal:", error);
@@ -329,7 +360,7 @@ function registerReportRoutes(ctx) {
       }
       req.flash("danger", `Erro ao criar meta quinzenal: ${error.message}`);
       return renderReportPage(req, res, {
-        selectedMemberId: selectedMember.id,
+        selectedMemberId: selectedMember?.id || null,
         selectedProjectId: project?.id || null,
         goalFormData,
         goalFormErrors,
@@ -337,13 +368,14 @@ function registerReportRoutes(ctx) {
     }
 
     const redirectUrl = `/relatorios${buildReportsQuery({
-      memberId: selectedMember.id,
+      memberId: selectedMember?.id || null,
     })}#report-goals-panel`;
     if (wantsJson) {
       return res.json({
         ok: true,
-        message: "Tarefa criada.",
+        message: createdGoalsCount > 1 ? "Tarefas criadas." : "Tarefa criada.",
         goalId: createdTask?.id || null,
+        createdCount: createdGoalsCount,
         redirectUrl,
       });
     }
@@ -352,8 +384,6 @@ function registerReportRoutes(ctx) {
       redirectUrl,
     );
   });
-
-  // DETALHE: Rota POST /relatorios/goals/:id/update: atualiza atividade/descricao/status de uma meta quinzenal.
 
   app.post("/relatorios/goals/:id/update", requireAuth, (req, res) => {
     if (!ensureValidCsrf(req, res)) {

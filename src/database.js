@@ -168,53 +168,14 @@ function createSyncBridge() {
   if (typeof worker.unref === "function") {
     worker.unref();
   }
-  if (typeof port1.unref === "function") {
-    port1.unref();
-  }
-
-  const state = {
+  bridgeState = {
     worker,
     port: port1,
     pending: new Map(),
-    waiters: new Map(),
     signal: bridgeSignal,
   };
-  port1.on("message", (message) => {
-    settleBridgeMessage(state, message);
-  });
-  if (typeof port1.unref === "function") {
-    port1.unref();
-  }
-  bridgeState = state;
 
   return bridgeState;
-}
-
-function settleBridgeMessage(bridge, message) {
-  if (!message || message.id === undefined || message.id === null) {
-    return;
-  }
-  const waiter = bridge.waiters.get(message.id);
-  if (waiter) {
-    bridge.waiters.delete(message.id);
-    if (!message.ok) {
-      waiter.reject(normalizeError(message.error));
-      return;
-    }
-    waiter.resolve(message.result);
-    return;
-  }
-  bridge.pending.set(message.id, message);
-}
-
-function queryAsync(sql, params = []) {
-  const bridge = createSyncBridge();
-  const id = ++querySequence;
-
-  return new Promise((resolve, reject) => {
-    bridge.waiters.set(id, { resolve, reject });
-    bridge.port.postMessage({ id, sql, params });
-  });
 }
 
 // FUNCAO: querySync.
@@ -236,7 +197,8 @@ function querySync(sql, params = []) {
 
     const packet = receiveMessageOnPort(bridge.port);
     if (packet && packet.message) {
-      settleBridgeMessage(bridge, packet.message);
+      const message = packet.message;
+      bridge.pending.set(message.id, message);
       continue;
     }
 
@@ -286,10 +248,6 @@ function createDbAdapter() {
     // ADAPTADOR: devolve statement com operacoes run/get/all.
     prepare(sql) {
       return createPreparedStatement(sql);
-    },
-    // ADAPTADOR ASSINCRONO: caminho nao-bloqueante para migracao gradual.
-    queryAsync(sql, params = []) {
-      return queryAsync(toPostgresSql(sql), params);
     },
   };
 }

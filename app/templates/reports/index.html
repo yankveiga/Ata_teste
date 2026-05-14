@@ -174,16 +174,16 @@
 
  {% if canUseAdvancedGoalCreateForm %}
  <div class="form-group">
- <label class="form-label" for="goal_member_id">Membro do projeto</label>
- <select id="goal_member_id" name="member_id" class="form-control">
- <option value="{{ goalFormData.memberId if goalFormData.memberId else selectedMember.id }}">{{ selectedMember.name }}</option>
- </select>
+ <label class="form-label">Membros do projeto</label>
+ <div id="goal_member_checks" class="report-goal-member-checks" data-selected-member-ids="{{ goalFormData.memberIds | join(',') if goalFormData.memberIds else (goalFormData.memberId if goalFormData.memberId else selectedMember.id) }}">
+ </div>
+ <input id="goal_member_id_hidden" type="hidden" name="member_id" value="{{ goalFormData.memberId if goalFormData.memberId else selectedMember.id }}">
  {% if goalFormErrors.memberId %}
  <ul class="errors form-error-list">
  {% for error in goalFormErrors.memberId %}<li>{{ error }}</li>{% endfor %}
  </ul>
  {% endif %}
- <p class="report-create-inline-error" data-error-for="member_id" hidden></p>
+ <p class="report-create-inline-error" data-error-for="member_ids" hidden></p>
  </div>
  {% else %}
  <div class="form-group">
@@ -1035,6 +1035,7 @@ document.addEventListener('DOMContentLoaded', function() {
   };
   const goalProjectInput = document.getElementById('goal_project_id');
   const goalMemberInput = document.getElementById('goal_member_id');
+  const goalMemberChecks = document.getElementById('goal_member_checks');
   const goalMemberHiddenInput = document.getElementById('goal_member_id_hidden');
   const goalRecurrenceToggle = document.getElementById('goal_recurrence_enabled');
   const goalRecurrenceDetails = document.getElementById('goal_recurrence_details');
@@ -1350,6 +1351,11 @@ document.addEventListener('DOMContentLoaded', function() {
     let valid = true;
 
     const projectValue = String(goalProjectInput?.value || '').trim();
+    const selectedMemberIds = goalMemberChecks
+      ? Array.from(goalMemberChecks.querySelectorAll('input[name=\"member_ids\"]:checked')).map(function(input) {
+          return String(input.value || '').trim();
+        }).filter(Boolean)
+      : [];
     const memberValue = String(
       goalMemberInput
         ? goalMemberInput.value
@@ -1363,7 +1369,10 @@ document.addEventListener('DOMContentLoaded', function() {
       setGoalCreateFieldError('project_id', 'Selecione um projeto.');
       valid = false;
     }
-    if (!memberValue) {
+    if (goalMemberChecks && !selectedMemberIds.length) {
+      setGoalCreateFieldError('member_ids', 'Selecione ao menos um membro do projeto.');
+      valid = false;
+    } else if (!goalMemberChecks && !memberValue) {
       setGoalCreateFieldError('member_id', 'Selecione o membro do projeto.');
       valid = false;
     }
@@ -1472,7 +1481,7 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   function renderGoalCreateMembers(members) {
-    if (!goalMemberInput || !goalProjectInput) {
+    if ((!goalMemberInput && !goalMemberChecks) || !goalProjectInput) {
       return;
     }
 
@@ -1487,30 +1496,79 @@ document.addEventListener('DOMContentLoaded', function() {
         return String(member.id) === currentMemberId;
       });
 
-    goalMemberInput.innerHTML = '';
-    const placeholder = document.createElement('option');
-    placeholder.value = '';
-    placeholder.textContent = 'Selecione';
-    goalMemberInput.appendChild(placeholder);
-
-    visibleMembers.forEach(function(member) {
-      const option = document.createElement('option');
-      option.value = String(member.id);
-      option.textContent = member.name;
-      if (
-        (selectedMemberId && selectedMemberId === String(member.id))
-        || (!selectedMemberId && visibleMembers.length === 1)
-      ) {
-        option.selected = true;
+    if (goalMemberInput) {
+      goalMemberInput.innerHTML = '';
+      const placeholder = document.createElement('option');
+      placeholder.value = '';
+      placeholder.textContent = 'Selecione';
+      goalMemberInput.appendChild(placeholder);
+      visibleMembers.forEach(function(member) {
+        const option = document.createElement('option');
+        option.value = String(member.id);
+        option.textContent = member.name;
+        if (
+          (selectedMemberId && selectedMemberId === String(member.id))
+          || (!selectedMemberId && visibleMembers.length === 1)
+        ) {
+          option.selected = true;
+        }
+        goalMemberInput.appendChild(option);
+      });
+      const selectedOption = goalMemberInput.options[goalMemberInput.selectedIndex];
+      const selectedValue = selectedOption ? String(selectedOption.value || '').trim() : '';
+      goalProjectInput.dataset.selectedMemberId = selectedValue;
+      if (goalMemberHiddenInput) {
+        goalMemberHiddenInput.value = selectedValue || currentMemberId || '';
       }
-      goalMemberInput.appendChild(option);
-    });
-
-    const selectedOption = goalMemberInput.options[goalMemberInput.selectedIndex];
-    const selectedValue = selectedOption ? String(selectedOption.value || '').trim() : '';
-    goalProjectInput.dataset.selectedMemberId = selectedValue;
-    if (goalMemberHiddenInput) {
-      goalMemberHiddenInput.value = selectedValue || currentMemberId || '';
+    }
+    if (goalMemberChecks) {
+      const seedIds = String(goalMemberChecks.dataset.selectedMemberIds || '')
+        .split(',')
+        .map(function(item) { return String(item || '').trim(); })
+        .filter(Boolean);
+      const selectedIdSet = new Set(seedIds.length ? seedIds : (selectedMemberId ? [selectedMemberId] : []));
+      goalMemberChecks.innerHTML = '';
+      visibleMembers.forEach(function(member) {
+        const memberId = String(member.id);
+        const wrap = document.createElement('label');
+        wrap.className = 'checkbox-inline';
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.name = 'member_ids';
+        input.value = memberId;
+        if (
+          selectedIdSet.has(memberId)
+          || (!selectedIdSet.size && visibleMembers.length === 1)
+        ) {
+          input.checked = true;
+        }
+        const text = document.createElement('span');
+        text.textContent = member.name;
+        wrap.appendChild(input);
+        wrap.appendChild(text);
+        goalMemberChecks.appendChild(wrap);
+      });
+      const checkedIds = Array.from(goalMemberChecks.querySelectorAll('input[name=\"member_ids\"]:checked'))
+        .map(function(input) { return String(input.value || '').trim(); })
+        .filter(Boolean);
+      goalMemberChecks.dataset.selectedMemberIds = checkedIds.join(',');
+      goalProjectInput.dataset.selectedMemberId = checkedIds[0] || '';
+      if (goalMemberHiddenInput) {
+        goalMemberHiddenInput.value = checkedIds[0] || currentMemberId || '';
+      }
+      goalMemberChecks.querySelectorAll('input[name=\"member_ids\"]').forEach(function(input) {
+        input.addEventListener('change', function() {
+          const ids = Array.from(goalMemberChecks.querySelectorAll('input[name=\"member_ids\"]:checked'))
+            .map(function(item) { return String(item.value || '').trim(); })
+            .filter(Boolean);
+          goalMemberChecks.dataset.selectedMemberIds = ids.join(',');
+          goalProjectInput.dataset.selectedMemberId = ids[0] || '';
+          if (goalMemberHiddenInput) {
+            goalMemberHiddenInput.value = ids[0] || currentMemberId || '';
+          }
+          validateGoalCreateForm();
+        });
+      });
     }
 
     if (goalRecurrenceQueue) {
@@ -1544,7 +1602,7 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   function loadGoalCreateMembers(projectId) {
-    if (!goalMemberInput) {
+    if (!goalMemberInput && !goalMemberChecks) {
       return;
     }
     if (!projectId) {
@@ -1684,7 +1742,7 @@ document.addEventListener('DOMContentLoaded', function() {
           goalProjectInput.value = defaultProjectId;
         }
       }
-      if (goalProjectInput && goalMemberInput) {
+      if (goalProjectInput && (goalMemberInput || goalMemberChecks)) {
         loadGoalCreateMembers(String(goalProjectInput.value || '').trim());
       }
       refreshGoalDueMin();
@@ -1794,7 +1852,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     if (goalProjectInput) {
       goalProjectInput.addEventListener('change', function() {
-        if (goalMemberInput) {
+        if (goalMemberInput || goalMemberChecks) {
           goalProjectInput.dataset.selectedMemberId = '';
           loadGoalCreateMembers(String(goalProjectInput.value || '').trim());
         }
@@ -1805,12 +1863,12 @@ document.addEventListener('DOMContentLoaded', function() {
       goalMemberInput.addEventListener('change', function() {
         goalProjectInput.dataset.selectedMemberId = String(goalMemberInput.value || '').trim();
       });
-      const initialProjectId = String(goalProjectInput?.value || '').trim();
-      if (initialProjectId) {
-        loadGoalCreateMembers(initialProjectId);
-      } else {
-        renderGoalCreateMembers([]);
-      }
+    }
+    const initialProjectId = String(goalProjectInput?.value || '').trim();
+    if (initialProjectId) {
+      loadGoalCreateMembers(initialProjectId);
+    } else {
+      renderGoalCreateMembers([]);
     }
     if (goalRecurrenceToggle) {
       goalRecurrenceToggle.addEventListener('change', function() {

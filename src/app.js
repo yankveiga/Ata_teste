@@ -882,13 +882,13 @@ function render(res, template, data = {}) {
         ...project,
         can_create_for_others: Boolean(
           req.currentUser?.is_admin
-          || (currentMember?.is_active && database.isProjectCoordinator(project.id, currentMember.id)),
+          || (currentMember?.is_active && database.isProjectMember(project.id, currentMember.id)),
         ),
       }));
     })();
     const canUseAdvancedGoalCreateForm = Boolean(
       req.currentUser?.is_admin
-      || (currentMember?.is_active && coordinatorProjectIds.size > 0),
+      || (currentMember?.is_active && createGoalProjectOptions.length > 0),
     );
     const canCreateGoalsForSelectedMember = Boolean(
       selectedMember && (
@@ -973,6 +973,7 @@ function render(res, template, data = {}) {
       goalFormData: {
         projectId: selectedProjectId || "",
         memberId: String(selectedMember?.id || ""),
+        memberIds: [],
         activity: "",
         description: "",
         dueAt: "",
