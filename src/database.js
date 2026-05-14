@@ -19,8 +19,33 @@ let bridgeState;
 let querySequence = 0;
 // ESTADO GLOBAL: buffer de espera usado no modo sincrono.
 const sleeper = new Int32Array(new SharedArrayBuffer(4));
+const DEFAULT_QUERY_TIMEOUT_MS = Math.max(
+  1000,
+  Number.parseInt(process.env.DB_SYNC_QUERY_TIMEOUT_MS || "15000", 10) || 15000,
+);
 // CONSTANTE DE DOMINIO: timezone oficial usada em datas/horarios do sistema.
 const APP_TIMEZONE = process.env.APP_TIMEZONE || "America/Sao_Paulo";
+
+function disposeBridge() {
+  if (!bridgeState) {
+    return;
+  }
+
+  const current = bridgeState;
+  bridgeState = null;
+
+  try {
+    current.port?.close?.();
+  } catch (_error) {
+    // noop
+  }
+
+  try {
+    current.worker?.terminate?.();
+  } catch (_error) {
+    // noop
+  }
+}
 
 // FUNCAO: normalizeError.
 function normalizeError(payload) {
@@ -93,6 +118,10 @@ function createSyncBridge() {
 
     const client = new Client({
       connectionString: process.env.DATABASE_URL,
+      connectionTimeoutMillis: Math.max(
+        1000,
+        Number.parseInt(process.env.PG_CONNECTION_TIMEOUT_MS || "10000", 10) || 10000,
+      ),
       ssl: process.env.DATABASE_URL.includes("sslmode=")
         ? undefined
         : { rejectUnauthorized: false },
@@ -166,7 +195,33 @@ function createSyncBridge() {
     worker,
     port: port1,
     pending: new Map(),
+    closed: false,
+    lastError: null,
   };
+
+  worker.on("error", (error) => {
+    bridgeState = bridgeState && bridgeState.worker === worker
+      ? {
+          ...bridgeState,
+          closed: true,
+          lastError: error || new Error("Worker do banco encerrou com erro."),
+        }
+      : bridgeState;
+  });
+
+  worker.on("exit", (code) => {
+    if (code === 0) {
+      return;
+    }
+    const exitError = new Error(`Worker do banco finalizou com codigo ${code}.`);
+    bridgeState = bridgeState && bridgeState.worker === worker
+      ? {
+          ...bridgeState,
+          closed: true,
+          lastError: exitError,
+        }
+      : bridgeState;
+  });
 
   return bridgeState;
 }
@@ -175,10 +230,32 @@ function createSyncBridge() {
 function querySync(sql, params = []) {
   const bridge = createSyncBridge();
   const id = ++querySequence;
-  bridge.port.postMessage({ id, sql, params });
+  const startedAt = Date.now();
+  const timeoutMs = DEFAULT_QUERY_TIMEOUT_MS;
+
+  try {
+    bridge.port.postMessage({ id, sql, params });
+  } catch (error) {
+    disposeBridge();
+    throw error;
+  }
 
   // LOOP SINCRONO: aguarda retorno do worker mantendo API simples para chamadas locais.
   while (true) {
+    if (bridge.closed) {
+      const workerError = bridge.lastError || new Error("Worker de banco indisponivel.");
+      disposeBridge();
+      throw workerError;
+    }
+
+    if ((Date.now() - startedAt) > timeoutMs) {
+      const sqlPreview = String(sql || "").replace(/\s+/g, " ").trim().slice(0, 180);
+      disposeBridge();
+      throw new Error(
+        `Timeout na consulta ao banco apos ${timeoutMs}ms. SQL: ${sqlPreview || "[vazio]"}`,
+      );
+    }
+
     const ready = bridge.pending.get(id);
     if (ready) {
       bridge.pending.delete(id);
