@@ -143,7 +143,7 @@
  <section class="planner-create-section planner-create-section-essential">
  <h4>Essenciais</h4>
  <div class="planner-create-grid">
- <div class="form-group">
+ <div class="form-group report-goal-project-group">
  <label class="form-label" for="goal_project_id">Projeto</label>
  <select
  id="goal_project_id"
@@ -172,24 +172,24 @@
  <p class="report-create-inline-error" data-error-for="project_id" hidden></p>
  </div>
 
- {% if canUseAdvancedGoalCreateForm %}
- <div class="form-group">
- <label class="form-label">Membros do projeto</label>
- <div id="goal_member_checks" class="report-goal-member-checks" data-selected-member-ids="{{ goalFormData.memberIds | join(',') if goalFormData.memberIds else (goalFormData.memberId if goalFormData.memberId else selectedMember.id) }}">
- </div>
- <input id="goal_member_id_hidden" type="hidden" name="member_id" value="{{ goalFormData.memberId if goalFormData.memberId else selectedMember.id }}">
+{% if canUseAdvancedGoalCreateForm %}
+<div class="form-group report-goal-member-group">
+<label class="form-label" for="goal_member_id">Membro do projeto</label>
+<select id="goal_member_id" name="member_id" class="form-control">
+<option value="">Selecione</option>
+</select>
  {% if goalFormErrors.memberId %}
  <ul class="errors form-error-list">
  {% for error in goalFormErrors.memberId %}<li>{{ error }}</li>{% endfor %}
  </ul>
  {% endif %}
- <p class="report-create-inline-error" data-error-for="member_ids" hidden></p>
- </div>
- {% else %}
- <div class="form-group">
- <label class="form-label" for="goal_member_name">Membro do projeto</label>
- <input id="goal_member_name" type="text" class="form-control" value="{{ currentMember.name if currentMember else selectedMember.name }}" readonly>
- <input id="goal_member_id_hidden" type="hidden" name="member_id" value="{{ currentMember.id if currentMember else selectedMember.id }}">
+ <p class="report-create-inline-error" data-error-for="member_id" hidden></p>
+</div>
+{% else %}
+<div class="form-group">
+<label class="form-label" for="goal_member_name">Membro do projeto</label>
+<input id="goal_member_name" type="text" class="form-control" value="{{ currentMember.name if currentMember else selectedMember.name }}" readonly>
+<input id="goal_member_id_hidden" type="hidden" name="member_id" value="{{ currentMember.id if currentMember else selectedMember.id }}">
  {% if goalFormErrors.memberId %}
  <ul class="errors form-error-list">
  {% for error in goalFormErrors.memberId %}<li>{{ error }}</li>{% endfor %}
@@ -197,7 +197,7 @@
  {% endif %}
  <p class="report-create-inline-error" data-error-for="member_id" hidden></p>
  </div>
- {% endif %}
+{% endif %}
 
  <div class="form-group">
  <label class="form-label" for="goal_due_at">Data e Horário</label>
@@ -1324,7 +1324,7 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   function clearGoalCreateFieldErrors() {
-    ['project_id', 'member_id', 'activity', 'due_at', 'recurrence_interval_days'].forEach(function(fieldName) {
+    ['project_id', 'member_id', 'member_ids', 'activity', 'due_at', 'recurrence_interval_days'].forEach(function(fieldName) {
       const element = fieldErrorElement(fieldName);
       if (!element) {
         return;
@@ -1337,6 +1337,13 @@ document.addEventListener('DOMContentLoaded', function() {
   function setGoalCreateFieldError(name, message) {
     const element = fieldErrorElement(name);
     if (!element) {
+      if (name === 'member_id' && goalMemberChecks) {
+        const memberIdsElement = fieldErrorElement('member_ids');
+        if (memberIdsElement) {
+          memberIdsElement.textContent = String(message || '').trim();
+          memberIdsElement.hidden = !memberIdsElement.textContent;
+        }
+      }
       return;
     }
     element.textContent = String(message || '').trim();
@@ -1528,10 +1535,16 @@ document.addEventListener('DOMContentLoaded', function() {
         .filter(Boolean);
       const selectedIdSet = new Set(seedIds.length ? seedIds : (selectedMemberId ? [selectedMemberId] : []));
       goalMemberChecks.innerHTML = '';
+      if (!visibleMembers.length) {
+        const empty = document.createElement('p');
+        empty.className = 'report-goal-member-empty';
+        empty.textContent = 'Nenhum membro ativo disponivel neste projeto.';
+        goalMemberChecks.appendChild(empty);
+      }
       visibleMembers.forEach(function(member) {
         const memberId = String(member.id);
         const wrap = document.createElement('label');
-        wrap.className = 'checkbox-inline';
+        wrap.className = 'checkbox-inline report-goal-member-check';
         const input = document.createElement('input');
         input.type = 'checkbox';
         input.name = 'member_ids';
@@ -1543,6 +1556,7 @@ document.addEventListener('DOMContentLoaded', function() {
           input.checked = true;
         }
         const text = document.createElement('span');
+        text.className = 'report-goal-member-name';
         text.textContent = member.name;
         wrap.appendChild(input);
         wrap.appendChild(text);
@@ -1909,7 +1923,7 @@ document.addEventListener('DOMContentLoaded', function() {
             setGoalCreateFieldError('project_id', errorMap.projectId[0]);
           }
           if (errorMap.memberId && errorMap.memberId[0]) {
-            setGoalCreateFieldError('member_id', errorMap.memberId[0]);
+            setGoalCreateFieldError(goalMemberChecks ? 'member_ids' : 'member_id', errorMap.memberId[0]);
           }
           if (errorMap.activity && errorMap.activity[0]) {
             setGoalCreateFieldError('activity', errorMap.activity[0]);
@@ -1920,6 +1934,9 @@ document.addEventListener('DOMContentLoaded', function() {
           if (errorMap.recurrenceIntervalDays && errorMap.recurrenceIntervalDays[0]) {
             setGoalCreateFieldError('recurrence_interval_days', errorMap.recurrenceIntervalDays[0]);
           }
+          if (payload && payload.message && !errorMap.memberId && goalMemberChecks) {
+            setGoalCreateFieldError('member_ids', payload.message);
+          }
           throw new Error((payload && payload.message) || 'Não foi possível criar a tarefa.');
         }
         setGoalCreateOpen(false);
@@ -1929,7 +1946,7 @@ document.addEventListener('DOMContentLoaded', function() {
           window.location.assign(targetUrl);
         }, 640);
       } catch (error) {
-        if (!fieldErrorElement('activity')?.textContent && !fieldErrorElement('project_id')?.textContent && !fieldErrorElement('member_id')?.textContent && !fieldErrorElement('due_at')?.textContent) {
+        if (!fieldErrorElement('activity')?.textContent && !fieldErrorElement('project_id')?.textContent && !fieldErrorElement('member_id')?.textContent && !fieldErrorElement('member_ids')?.textContent && !fieldErrorElement('due_at')?.textContent) {
           setGoalCreateFieldError('activity', (error && error.message) ? error.message : 'Falha ao salvar.');
         }
       } finally {
@@ -2345,6 +2362,4 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 {% endblock %}
-
-
 

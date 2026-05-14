@@ -19,8 +19,38 @@ let bridgeState;
 let querySequence = 0;
 // ESTADO GLOBAL: contador de sinais entre worker e thread principal.
 const bridgeSignal = new Int32Array(new SharedArrayBuffer(4));
+const DEFAULT_QUERY_TIMEOUT_MS = 15000;
 // CONSTANTE DE DOMINIO: timezone oficial usada em datas/horarios do sistema.
 const APP_TIMEZONE = process.env.APP_TIMEZONE || "America/Sao_Paulo";
+
+function notifyBridgeSignal(signal) {
+  if (!signal) {
+    return;
+  }
+  Atomics.add(signal, 0, 1);
+  Atomics.notify(signal, 0, 1);
+}
+
+function disposeBridge() {
+  if (!bridgeState) {
+    return;
+  }
+
+  const state = bridgeState;
+  bridgeState = null;
+
+  try {
+    state.port?.close?.();
+  } catch (_error) {
+    // noop
+  }
+
+  try {
+    state.worker?.terminate?.();
+  } catch (_error) {
+    // noop
+  }
+}
 
 // FUNCAO: normalizeError.
 function normalizeError(payload) {
@@ -102,6 +132,18 @@ function createSyncBridge() {
     let signal = null;
     let connected = false;
 
+    function notifySignal() {
+      if (signal) {
+        Atomics.add(signal, 0, 1);
+        Atomics.notify(signal, 0, 1);
+      }
+    }
+
+    client.on("error", () => {
+      connected = false;
+      notifySignal();
+    });
+
     // FUNCAO INTERNA DO WORKER: conecta no banco uma unica vez.
     async function ensureConnected() {
       if (!connected) {
@@ -126,10 +168,7 @@ function createSyncBridge() {
             command: result.command || "",
           },
         });
-        if (signal) {
-          Atomics.add(signal, 0, 1);
-          Atomics.notify(signal, 0, 1);
-        }
+        notifySignal();
       } catch (error) {
         channel.postMessage({
           id,
@@ -142,10 +181,7 @@ function createSyncBridge() {
             constraint: error.constraint,
           },
         });
-        if (signal) {
-          Atomics.add(signal, 0, 1);
-          Atomics.notify(signal, 0, 1);
-        }
+        notifySignal();
       }
     }
 
@@ -164,16 +200,31 @@ function createSyncBridge() {
 
   const worker = new Worker(workerCode, { eval: true });
   const { port1, port2 } = new MessageChannel();
-  worker.postMessage({ port: port2, signalBuffer: bridgeSignal.buffer }, [port2]);
-  if (typeof worker.unref === "function") {
-    worker.unref();
-  }
-  bridgeState = {
+  const state = {
     worker,
     port: port1,
     pending: new Map(),
     signal: bridgeSignal,
+    closed: false,
+    lastError: null,
   };
+  worker.postMessage({ port: port2, signalBuffer: bridgeSignal.buffer }, [port2]);
+  if (typeof worker.unref === "function") {
+    worker.unref();
+  }
+  worker.on("error", (error) => {
+    state.lastError = error;
+    state.closed = true;
+    notifyBridgeSignal(state.signal);
+  });
+  worker.on("exit", (code) => {
+    if (code !== 0 && !state.lastError) {
+      state.lastError = new Error(`Database worker exited unexpectedly (code ${code}).`);
+    }
+    state.closed = true;
+    notifyBridgeSignal(state.signal);
+  });
+  bridgeState = state;
 
   return bridgeState;
 }
@@ -182,10 +233,28 @@ function createSyncBridge() {
 function querySync(sql, params = []) {
   const bridge = createSyncBridge();
   const id = ++querySequence;
+  const startedAt = Date.now();
+  const timeoutMs = Math.max(
+    1000,
+    Number.parseInt(process.env.DB_SYNC_QUERY_TIMEOUT_MS || `${DEFAULT_QUERY_TIMEOUT_MS}`, 10) || DEFAULT_QUERY_TIMEOUT_MS,
+  );
   bridge.port.postMessage({ id, sql, params });
 
   // LOOP SINCRONO: aguarda retorno do worker mantendo API simples para chamadas locais.
   while (true) {
+    if (bridge.closed || bridge.lastError) {
+      const reason = bridge.lastError
+        ? String(bridge.lastError.message || bridge.lastError)
+        : "Database worker unavailable.";
+      disposeBridge();
+      throw new Error(reason);
+    }
+
+    if (Date.now() - startedAt > timeoutMs) {
+      disposeBridge();
+      throw new Error(`Database query timeout after ${timeoutMs}ms.`);
+    }
+
     const ready = bridge.pending.get(id);
     if (ready) {
       bridge.pending.delete(id);
