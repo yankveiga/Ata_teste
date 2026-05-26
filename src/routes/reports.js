@@ -871,7 +871,7 @@ function registerReportRoutes(ctx) {
       }
       database.markReportFortnightTutorNoteAsSentToChat(note.id, conversation.id);
       req.flash("success", "Avaliação salva e enviada ao chat privado.");
-      return res.redirect(`/mensagens/conversas/${conversation.id}`);
+      return res.redirect(`/relatorios${buildReportsQuery({ memberId })}#report-writing-panel`);
     } catch (error) {
       logError(req, "Erro ao salvar avaliação complementar:", error);
       req.flash("danger", `Erro ao salvar avaliação complementar: ${error.message}`);
@@ -940,7 +940,7 @@ function registerReportRoutes(ctx) {
       }
       database.markReportFortnightTutorNoteAsSentToChat(note.id, conversation.id);
       req.flash("success", "Avaliação enviada ao chat privado com sucesso.");
-      return res.redirect(`/mensagens/conversas/${conversation.id}`);
+      return res.redirect(`/relatorios${buildReportsQuery({ memberId })}#report-writing-panel`);
     } catch (error) {
       logError(req, "Erro ao enviar avaliação complementar ao chat:", error);
       req.flash("danger", `Erro ao enviar ao chat: ${error.message}`);
@@ -1000,4 +1000,3 @@ function registerReportRoutes(ctx) {
 
 
 module.exports = { registerReportRoutes };
-

@@ -729,7 +729,7 @@
 <div class="panel-header">
 <div>
 <h2>Escrita Complementar da Quinzena</h2>
-<p>Avaliação privada do tutor para {{ selectedMember.name }}. Não é incluída no PDF.</p>
+<p>Avaliação privada do tutor para {{ selectedMember.name }}. Ao salvar, também é enviada ao chat privado e você permanece nesta tela.</p>
 </div>
 </div>
 <div class="panel-body">
@@ -745,21 +745,12 @@
 {% endif %}
 </div>
 <div class="form-group report-monthly-export-actions">
-<button type="submit" class="btn-submit" {% if isSelectedFortnightClosed %}disabled{% endif %}>Salvar avaliação</button>
+<button type="submit" class="btn-submit" {% if isSelectedFortnightClosed %}disabled{% endif %}>Salvar e enviar ao chat</button>
 </div>
 </form>
-
-<form action="/relatorios/writing/fortnight/send-chat" method="post" class="portal-form-grid report-monthly-export-form report-monthly-export-form-bottom">
-<input type="hidden" name="csrf_token" value="{{ csrfToken }}">
-<input type="hidden" name="member_id" value="{{ selectedMember.id }}">
-<input type="hidden" name="week_start" value="{{ selectedNoteWeekStart }}">
-<div class="form-group report-monthly-export-actions">
-<button type="submit" class="btn-submit">Enviar avaliação para o chat</button>
-</div>
 {% if tutorFortnightNote and tutorFortnightNote.sent_to_chat_at %}
 <small>Último envio ao chat: {{ tutorFortnightNote.sent_to_chat_at | formatDateTime }}</small>
 {% endif %}
-</form>
 </div>
 </section>
 {% endif %}
