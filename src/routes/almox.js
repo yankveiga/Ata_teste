@@ -478,6 +478,87 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
     },
   );
 
+  app.post(
+    "/almoxarifado/inventory/edit/:id",
+    requireAuth,
+    requireAdminPage,
+    (req, res) => {
+      if (!ensureValidCsrf(req, res)) {
+        return;
+      }
+
+      const activeTab = "manage";
+      const itemId = parseId(req.params.id);
+      if (!itemId) {
+        req.flash("warning", "Material inválido para edição.");
+        return res.redirect(almoxPath(activeTab));
+      }
+
+      const existingItem = database.getInventoryItemById(itemId);
+      if (!existingItem) {
+        req.flash("warning", "Material não encontrado.");
+        return res.redirect(almoxPath(activeTab));
+      }
+
+      const parsed = parseInventoryPayload(req.body);
+      const inventoryEditFormData = {
+        name: parsed.name,
+        itemType: parsed.itemType,
+        categoryId: parsed.categoryId || "",
+        categoryName: parsed.category || "",
+        locationId: parsed.locationId || "",
+        locationName: parsed.location || "",
+        quantity: parsed.quantity,
+        description: parsed.description,
+      };
+      const { errors: inventoryEditErrors, normalized } = validateInventoryPayload(parsed);
+
+      if (Object.keys(inventoryEditErrors).length > 0) {
+        return renderAlmox(res, {
+          activeTab,
+          inventoryEditOpenId: itemId,
+          inventoryEditFormData,
+          inventoryEditErrors,
+        });
+      }
+
+      try {
+        const updatedItem = database.updateInventoryItem(itemId, {
+          name: normalized.name,
+          itemType: normalized.itemType,
+          category: normalized.category,
+          categoryId: normalized.categoryId,
+          location: normalized.location,
+          locationId: normalized.locationId,
+          quantity: normalized.quantity,
+          description: normalized.description,
+        });
+
+        if (!updatedItem) {
+          req.flash("warning", "Material não encontrado.");
+          return res.redirect(almoxPath(activeTab));
+        }
+
+        req.flash(
+          "success",
+          `Material "${updatedItem.name}" atualizado como ${
+            updatedItem.item_type === "patrimony" ? "patrimônio" : "estoque"
+          }.`,
+        );
+        return res.redirect(`${almoxPath(activeTab)}#almox-edit-item-${itemId}`);
+      } catch (error) {
+        logError(req, "Erro ao editar item do almoxarifado:", error);
+        req.flash("danger", `Erro ao editar material: ${error.message}`);
+        return renderAlmox(res, {
+          activeTab,
+          inventoryEditOpenId: itemId,
+          inventoryEditFormData,
+          inventoryEditErrors,
+        });
+      }
+    },
+  );
+
   // DETALHE: Inicio de bloco de rota declarada em multiplas linhas; revisar path e middlewares logo abaixo.
 
   app.post(
@@ -1250,4 +1331,3 @@ app.get("/api/project/:project_id/members", requireAuth, (req, res) => {
 }
 
 module.exports = { registerAlmoxRoutes };
-

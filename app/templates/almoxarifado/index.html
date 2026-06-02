@@ -285,12 +285,15 @@
                                         <td>{{ item.description }}</td>
                                         {% if currentUser.is_admin %}
                                             <td>
-                                                {# FORM: remove item do inventario atual. #}
-                                                <form action="/almoxarifado/inventory/delete/{{ item.id }}" method="post" onsubmit="return confirm('Deseja remover o produto {{ item.name }} do estoque?');">
-                                                    <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
-                                                    <input type="hidden" name="tab" value="stock">
-                                                    <button type="submit" class="danger-button">Excluir</button>
-                                                </form>
+                                                <div class="action-stack action-stack-compact">
+                                                    <a href="{{ urlFor('almox_home') }}?tab=manage#almox-edit-item-{{ item.id }}" class="secondary-button">Editar</a>
+                                                    {# FORM: remove item do inventario atual. #}
+                                                    <form action="/almoxarifado/inventory/delete/{{ item.id }}" method="post" onsubmit="return confirm('Deseja remover o produto {{ item.name }} do estoque?');">
+                                                        <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+                                                        <input type="hidden" name="tab" value="stock">
+                                                        <button type="submit" class="danger-button">Excluir</button>
+                                                    </form>
+                                                </div>
                                             </td>
                                         {% endif %}
                                     </tr>
@@ -426,6 +429,108 @@
                     </ul>
                 </article>
             </div>
+
+            <article class="almox-panel">
+                <div class="almox-panel-header">
+                    <div>
+                        <h2>Materiais cadastrados</h2>
+                        <p>Corrija tipo, quantidade, categoria, local ou descrição depois do cadastro.</p>
+                    </div>
+                </div>
+
+                {% if inventoryItems.length %}
+                    <div class="almox-edit-list">
+                        {% for item in inventoryItems %}
+                            <details id="almox-edit-item-{{ item.id }}" class="almox-edit-item" {% if item.is_edit_open %}open{% endif %}>
+                                <summary>
+                                    <span>
+                                        <strong>{{ item.name }}</strong>
+                                        <small>#{{ item.id }} · {{ item.category }} · {{ item.location if item.location else 'Sem local' }}</small>
+                                    </span>
+                                    <span class="item-type-badge {{ 'item-type-patrimony' if item.item_type == 'patrimony' else 'item-type-stock' }}">
+                                        {{ 'Patrimônio' if item.item_type == 'patrimony' else 'Estoque' }}
+                                    </span>
+                                </summary>
+
+                                {% if currentUser.is_admin %}
+                                    <form action="/almoxarifado/inventory/edit/{{ item.id }}" method="post" class="stacked-form almox-edit-form">
+                                        <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+
+                                        <label>
+                                            <span>Nome do material</span>
+                                            <input type="text" name="name" value="{{ item.edit_form_data.name }}">
+                                            {% if item.edit_errors.name %}<small class="field-error">{{ item.edit_errors.name[0] }}</small>{% endif %}
+                                        </label>
+
+                                        <label>
+                                            <span>Tipo do material</span>
+                                            <select name="item_type">
+                                                <option value="stock" {% if item.edit_form_data.itemType == 'stock' %}selected{% endif %}>Estoque</option>
+                                                <option value="patrimony" {% if item.edit_form_data.itemType == 'patrimony' %}selected{% endif %}>Patrimônio</option>
+                                            </select>
+                                            {% if item.edit_errors.itemType %}<small class="field-error">{{ item.edit_errors.itemType[0] }}</small>{% endif %}
+                                        </label>
+
+                                        <label>
+                                            <span>Categoria existente</span>
+                                            <select name="category_id">
+                                                <option value="">Selecione uma categoria</option>
+                                                {% for category in categories %}
+                                                    <option value="{{ category.id }}" {% if item.edit_form_data.categoryId == category.id or item.edit_form_data.categoryId == (category.id ~ '') %}selected{% endif %}>
+                                                        {{ category.name }}
+                                                    </option>
+                                                {% endfor %}
+                                            </select>
+                                            {% if item.edit_errors.category %}<small class="field-error">{{ item.edit_errors.category[0] }}</small>{% endif %}
+                                        </label>
+
+                                        <label>
+                                            <span>Nova categoria</span>
+                                            <input type="text" name="category_name" value="{{ item.edit_form_data.categoryName }}" placeholder="Preencha apenas para cadastrar outra categoria">
+                                        </label>
+
+                                        <label>
+                                            <span>Local existente</span>
+                                            <select name="location_id">
+                                                <option value="">Selecione um local</option>
+                                                {% for location in locations %}
+                                                    <option value="{{ location.id }}" {% if item.edit_form_data.locationId == location.id or item.edit_form_data.locationId == (location.id ~ '') %}selected{% endif %}>
+                                                        {{ location.name }}
+                                                    </option>
+                                                {% endfor %}
+                                            </select>
+                                            {% if item.edit_errors.location %}<small class="field-error">{{ item.edit_errors.location[0] }}</small>{% endif %}
+                                        </label>
+
+                                        <label>
+                                            <span>Novo local</span>
+                                            <input type="text" name="location_name" value="{{ item.edit_form_data.locationName }}" placeholder="Preencha apenas para cadastrar outro local">
+                                        </label>
+
+                                        <label>
+                                            <span>Quantidade disponível</span>
+                                            <input type="number" name="quantity" min="0" step="1" value="{{ item.edit_form_data.quantity }}">
+                                            {% if item.edit_errors.quantity %}<small class="field-error">{{ item.edit_errors.quantity[0] }}</small>{% endif %}
+                                        </label>
+
+                                        <label>
+                                            <span>Descrição</span>
+                                            <textarea name="description" rows="3">{{ item.edit_form_data.description }}</textarea>
+                                            {% if item.edit_errors.description %}<small class="field-error">{{ item.edit_errors.description[0] }}</small>{% endif %}
+                                        </label>
+
+                                        <button type="submit" class="primary-button">Salvar alterações</button>
+                                    </form>
+                                {% else %}
+                                    <p class="readonly-box">Somente administradores podem editar materiais cadastrados.</p>
+                                {% endif %}
+                            </details>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="empty-state">Nenhum material cadastrado.</p>
+                {% endif %}
+            </article>
 
             {# BLOCO: catalogos auxiliares (categorias e locais) usados nos formularios. #}
             <div class="almox-catalog-grid">

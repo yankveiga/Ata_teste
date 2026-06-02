@@ -40,6 +40,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
   setActiveTab(root.dataset.activeTab || "overview");
 
+  const hashTarget = window.location.hash
+    ? document.querySelector(window.location.hash)
+    : null;
+  if (hashTarget instanceof HTMLDetailsElement) {
+    hashTarget.open = true;
+  }
+
   // SECAO: filtro textual local para tabelas sem requisicao ao servidor.
   document.querySelectorAll("[data-filter-target]").forEach((input) => {
     input.addEventListener("input", () => {

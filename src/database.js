@@ -4271,7 +4271,7 @@ function updateInventoryItem(
     const current = db
       .prepare(
         `
-        SELECT id
+        SELECT id, item_type
         FROM estoque
         WHERE id = ?
       `,
@@ -4280,6 +4280,25 @@ function updateInventoryItem(
 
     if (!current) {
       return null;
+    }
+
+    const normalizedItemType = normalizeInventoryType(itemType);
+    if (current.item_type === "patrimony" && normalizedItemType === "stock") {
+      const activeLoanCount =
+        db.prepare(
+          `
+          SELECT COUNT(*) AS total
+          FROM inventory_loan
+          WHERE item_id = ?
+            AND returned_at IS NULL
+        `,
+        ).get(id)?.total || 0;
+
+      if (Number(activeLoanCount) > 0) {
+        throw new Error(
+          "Este patrimônio possui empréstimo em aberto e não pode ser alterado para estoque.",
+        );
+      }
     }
 
     const resolvedCategory = resolveInventoryCatalogEntry({
@@ -4311,7 +4330,7 @@ function updateInventoryItem(
     `,
     ).run(
       name,
-      normalizeInventoryType(itemType),
+      normalizedItemType,
       resolvedCategory?.name || trimCatalogValue(category),
       resolvedCategory?.id || null,
       resolvedLocation?.name || trimCatalogValue(location),

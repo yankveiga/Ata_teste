@@ -1031,13 +1031,32 @@ function render(res, template, data = {}) {
 
   function renderAlmox(res, data = {}) {
     const activeTab = normalizeAlmoxTab(data.activeTab);
+    const inventoryEditOpenId = parseId(data.inventoryEditOpenId);
+    const inventoryEditFormData = data.inventoryEditFormData || {};
+    const inventoryEditErrors = data.inventoryEditErrors || {};
+    const inventoryItems = database.listInventoryItems().map((item) => ({
+      ...item,
+      edit_form_data: {
+        name: item.name,
+        itemType: item.item_type,
+        categoryId: item.category_id || "",
+        categoryName: "",
+        locationId: item.location_id || "",
+        locationName: "",
+        quantity: String(item.amount),
+        description: item.description,
+        ...(item.id === inventoryEditOpenId ? inventoryEditFormData : {}),
+      },
+      edit_errors: item.id === inventoryEditOpenId ? inventoryEditErrors : {},
+      is_edit_open: item.id === inventoryEditOpenId,
+    }));
 
     return render(res, "almoxarifado/index.html", {
       title: "Almoxarifado",
       activeSection: "almox",
       activeTab,
       dashboard: database.getInventoryDashboardData(),
-      inventoryItems: database.listInventoryItems(),
+      inventoryItems,
       stockItems: database.listInventoryItems({ type: "stock" }),
       patrimonyItems: database.listInventoryItems({ type: "patrimony" }),
       categories: database.listInventoryCategories(),

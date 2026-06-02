@@ -172,6 +172,7 @@ async function main() {
       "/atas/download/:id",
       "/almoxarifado",
       "/almoxarifado/inventory/create",
+      "/almoxarifado/inventory/edit/:id",
       "/almoxarifado/inventory/delete/:id",
       "/almoxarifado/inventory/withdraw",
       "/almoxarifado/inventory/borrow",
