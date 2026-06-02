@@ -843,6 +843,7 @@ app.get("/services", requireAuth, (req, res) => {
     try {
       const completedAt = toSqlDateTime(new Date());
       const completedTask = task.workflow_state === "missed"
+        || Boolean(task.due_at && completedAt && task.due_at < completedAt)
         ? database.markPlannerTaskDoneLate({
           id: task.id,
           actorUserId: req.currentUser.id,
@@ -964,12 +965,18 @@ app.get("/services", requireAuth, (req, res) => {
 
     try {
       if (task.workflow_state === "missed" && nextStatus !== "done") {
-        req.flash("warning", "Tarefa em não feitas: apenas conclusão com atraso ou extensão de prazo.");
+        req.flash("warning", "Tarefa atrasada: apenas conclusão com atraso ou extensão de prazo.");
         return res.redirect(`${urlFor("planner")}${fallbackQuery}`);
       }
       const updatedAt = toSqlDateTime(new Date());
       const wasCompleted = Boolean(task.is_completed);
-      const updatedTask = (task.workflow_state === "missed" && nextStatus === "done")
+      const updatedTask = (
+        nextStatus === "done"
+        && (
+          task.workflow_state === "missed"
+          || Boolean(task.due_at && updatedAt && task.due_at < updatedAt)
+        )
+      )
         ? database.markPlannerTaskDoneLate({
           id: task.id,
           actorUserId: req.currentUser.id,

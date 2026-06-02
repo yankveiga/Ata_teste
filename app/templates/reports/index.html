@@ -330,8 +330,8 @@
  {% if overduePendingGoals.length %}
  <ul class="report-goal-list">
  {% for goal in overduePendingGoals %}
- <li class="report-goal-item is-overdue" data-goal-id="{{ goal.id }}" style="--goal-project-color: {{ goal.project.primary_color }};">
- {% if goal.can_manage %}
+ <li class="report-goal-item{% if goal.task_state == 'missed' %} report-goal-item-missed{% else %} is-overdue{% endif %}" data-goal-id="{{ goal.id }}" style="--goal-project-color: {{ goal.project.primary_color }};">
+ {% if goal.can_manage and goal.task_state != 'missed' %}
  <form action="/relatorios/goals/{{ goal.id }}/update#report-goals-panel" method="post" class="report-goal-row report-goal-row-kanban js-goal-auto-save-form" novalidate data-goal-id="{{ goal.id }}" data-can-delete-from-checkbox="{{ '1' if goal.can_delete_from_execution else '0' }}">
  <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
  <input type="hidden" name="return_project_id" value="{{ selectedProjectId if selectedProjectId else '' }}">
@@ -370,6 +370,19 @@
  <div class="report-goal-description-col">
  <p>Entrega: {{ goal.due_at | formatDateTime if goal.due_at else 'Sem prazo' }}</p>
  <p>{{ goal.description if goal.description else 'Sem descrição registrada.' }}</p>
+ {% if goal.can_manage and goal.task_state == 'missed' %}
+ <button
+ type="button"
+ class="btn-submit btn-submit-small js-missed-open"
+ data-goal-id="{{ goal.id }}"
+ data-goal-activity="{{ goal.activity | escape }}"
+ data-goal-description="{{ goal.description | escape }}"
+ data-goal-due-at="{{ goal.due_at | dateTimeLocal }}"
+ data-goal-project="{{ goal.project.name | escape }}"
+ >
+ Resolver atraso
+ </button>
+ {% endif %}
  </div>
  </div>
  {% endif %}
@@ -515,10 +528,6 @@
  <ion-icon name="checkmark-done-outline" aria-hidden="true"></ion-icon>
  Executadas
  </button>
- <button type="button" class="report-more-action-item" data-report-panel-target="report_panel_missed">
- <ion-icon name="alert-circle-outline" aria-hidden="true"></ion-icon>
- Não feitas
- </button>
  <button type="button" class="report-more-action-item" data-report-panel-target="report_panel_deletions">
  <ion-icon name="trash-outline" aria-hidden="true"></ion-icon>
  Histórico de exclusões
@@ -533,48 +542,6 @@
  </button>
  </div>
  <div class="report-more-actions-content" id="report_more_actions_content">
-
- <section id="report_panel_missed" class="report-extra-panel" hidden>
- <header class="report-extra-panel-head">
- <h4>Não feitas (48h) ({{ missedGoals.length }})</h4>
- </header>
- {% if missedGoals.length %}
- <ul class="report-goal-list report-goal-list-completed">
- {% for goal in missedGoals %}
- <li class="report-goal-item report-goal-item-missed" style="--goal-project-color: {{ goal.project.primary_color }};">
- <div class="report-goal-row report-goal-row-kanban">
- <div class="report-goal-activity-col">
- <strong>{{ goal.activity }}</strong>
- <small>
- <span class="report-goal-project-tag"><span class="report-goal-project-dot" aria-hidden="true"></span>{{ goal.project.name }}</span>
- <span>Entrega {{ goal.due_at | formatDateTime if goal.due_at else 'não informada' }}</span>
- <span class="report-goal-flag">Não feita</span>
- </small>
- </div>
- <div class="report-goal-description-col">
- <p>{{ goal.description if goal.description else 'Sem descrição registrada.' }}</p>
- {% if goal.can_manage %}
- <button
- type="button"
- class="btn-submit btn-submit-small js-missed-open"
- data-goal-id="{{ goal.id }}"
- data-goal-activity="{{ goal.activity | escape }}"
- data-goal-description="{{ goal.description | escape }}"
- data-goal-due-at="{{ goal.due_at | dateTimeLocal }}"
- data-goal-project="{{ goal.project.name | escape }}"
- >
- Resolver
- </button>
- {% endif %}
- </div>
- </div>
- </li>
- {% endfor %}
- </ul>
- {% else %}
- <p class="ui-empty-state">Nenhuma tarefa em não feitas.</p>
- {% endif %}
- </section>
 
  <section id="report_panel_completed" class="report-extra-panel" hidden>
  <header class="report-extra-panel-head">
@@ -673,7 +640,7 @@
  {% elif log.event_type == 'task_done_late' or log.event_type == 'done_with_delay' %}Concluída com atraso
  {% elif log.event_type == 'task_reopened' %}Tarefa reaberta
  {% elif log.event_type == 'deadline_extended' %}Prazo estendido
- {% elif log.event_type == 'task_marked_missed' %}Movida para não feitas
+ {% elif log.event_type == 'task_marked_missed' or log.event_type == 'auto_missed' %}Movida para atrasadas
  {% elif log.event_type == 'task_deleted' %}Tarefa excluída{% if log.task_title %}: {{ log.task_title }}{% endif %}
  {% elif log.event_type == 'status_changed' %}Status alterado
  {% else %}Evento: {{ log.event_type }}{% endif %}
@@ -790,7 +757,7 @@
  <button type="button" class="report-missed-modal-backdrop js-missed-close" aria-label="Fechar"></button>
  <div class="report-missed-modal-card" role="dialog" aria-modal="true" aria-labelledby="report_missed_modal_title">
  <header class="report-missed-modal-head">
- <h3 id="report_missed_modal_title">Resolver tarefa não feita</h3>
+ <h3 id="report_missed_modal_title">Resolver tarefa atrasada</h3>
  <button type="button" class="report-missed-modal-close js-missed-close" aria-label="Fechar">×</button>
  </header>
  <p id="report_missed_modal_subtitle" class="report-missed-modal-subtitle"></p>
@@ -1019,7 +986,6 @@ document.addEventListener('DOMContentLoaded', function() {
     : [];
   const reportActionPanels = {
     report_panel_completed: document.getElementById('report_panel_completed'),
-    report_panel_missed: document.getElementById('report_panel_missed'),
     report_panel_deletions: document.getElementById('report_panel_deletions'),
     report_panel_tasks: document.getElementById('report_panel_tasks'),
     report_panel_pdf: document.getElementById('report_panel_pdf'),

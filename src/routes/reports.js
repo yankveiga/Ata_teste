@@ -497,15 +497,24 @@ function registerReportRoutes(ctx) {
       if (linkedTask.workflow_state === "missed" && goalAction === "save") {
         return sendGoalUpdateError(
           409,
-          "Tarefa em histórico de não feitas. Use 'Feito com atraso' ou 'Estender prazo'.",
+          "Tarefa em histórico de atrasadas. Use 'Feito com atraso' ou 'Estender prazo'.",
         );
       }
 
       let updatedTask = null;
-      if (goalAction === "done_late") {
+      const completedAfterDeadline = Boolean(
+        isCompleted
+        && linkedTask.due_at
+        && nowSql
+        && linkedTask.due_at < nowSql,
+      );
+      if (goalAction === "done_late" || completedAfterDeadline) {
         updatedTask = database.markPlannerTaskDoneLate({
           id: linkedTask.id,
           actorUserId: req.currentUser.id,
+          title: activity || linkedTask.title,
+          description,
+          dueAt: dueAt || linkedTask.due_at,
         });
       } else if (goalAction === "extend_deadline") {
         updatedTask = database.extendPlannerTaskDeadline({

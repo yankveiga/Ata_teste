@@ -3125,11 +3125,11 @@ function listReportWeekGoalsForMember(
       const mapped = mapReportWeekGoal(row);
       const byDueDate = Boolean(mapped.due_at && referenceNow && mapped.due_at < referenceNow);
       const byFortnight = !mapped.due_at && mapped.week_start < overdueReferenceWeek;
+      const isMissed = mapped.task_state === "missed";
       return {
         ...mapped,
         is_overdue: !mapped.is_completed
-          && mapped.task_state !== "missed"
-          && (byDueDate || byFortnight),
+          && (isMissed || byDueDate || byFortnight),
       };
     });
 }
@@ -3945,7 +3945,14 @@ function updatePlannerTaskDetails({
 }
 
 // FUNCAO: markPlannerTaskDoneLate.
-function markPlannerTaskDoneLate({ id, actorUserId = null, completedAt = null }) {
+function markPlannerTaskDoneLate({
+  id,
+  actorUserId = null,
+  completedAt = null,
+  title = null,
+  description = null,
+  dueAt = null,
+}) {
   const before = getPlannerTaskById(id);
   if (!before) {
     return null;
@@ -3957,6 +3964,9 @@ function markPlannerTaskDoneLate({ id, actorUserId = null, completedAt = null })
       `
       UPDATE planner_task
       SET
+        title = COALESCE(?, title),
+        description = COALESCE(?, description),
+        due_at = COALESCE(?, due_at),
         is_completed = 1,
         status = 'done',
         workflow_state = 'active',
@@ -3966,7 +3976,7 @@ function markPlannerTaskDoneLate({ id, actorUserId = null, completedAt = null })
       WHERE id = ?
     `,
     )
-    .run(doneAt, doneAt, id);
+    .run(title, description, dueAt, doneAt, doneAt, id);
 
   if (!Number(result.changes || 0)) {
     return null;

@@ -868,14 +868,13 @@ function render(res, template, data = {}) {
       : [];
     const pendingGoals = reportGoals.filter((goal) => !goal.is_completed);
     const completedGoals = reportGoals.filter((goal) => goal.is_completed);
-    const activePendingGoals = pendingGoals.filter((goal) => goal.task_state !== "missed");
-    const missedGoals = pendingGoals.filter((goal) => goal.task_state === "missed");
-    const overduePendingGoals = activePendingGoals
+    const overduePendingGoals = pendingGoals
       .filter((goal) => goal.is_overdue)
       .sort((left, right) => (
         String(left.due_at || left.week_start).localeCompare(String(right.due_at || right.week_start))
         || left.id - right.id
       ));
+    const activePendingGoals = pendingGoals.filter((goal) => !goal.is_overdue);
     const inProgressGoals = activePendingGoals
       .filter((goal) => !goal.is_overdue && goal.week_start === currentWeekStart)
       .sort((left, right) => left.id - right.id);
@@ -964,7 +963,6 @@ function render(res, template, data = {}) {
       reportGoals,
       pendingGoals,
       completedGoals,
-      missedGoals,
       deletionLogs,
       taskAuditLogs,
       canUseWritingSpace: Boolean(req.currentUser?.is_admin || req.currentUser?.role === "tutor"),
