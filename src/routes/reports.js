@@ -513,7 +513,7 @@ function registerReportRoutes(ctx) {
           id: linkedTask.id,
           actorUserId: req.currentUser.id,
           title: activity || linkedTask.title,
-          description,
+          description: description || linkedTask.description || goal.description || null,
           dueAt: dueAt || linkedTask.due_at,
         });
       } else if (goalAction === "extend_deadline") {

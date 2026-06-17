@@ -3357,6 +3357,22 @@ body.theme-dark.section-projects .project-logo-preview img {
   padding: 0 16px 14px;
 }
 
+.report-missed-description-field {
+  display: grid;
+  gap: 6px;
+}
+
+.report-missed-description-field span {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #334155;
+}
+
+.report-missed-description-field textarea {
+  min-height: 104px;
+  resize: vertical;
+}
+
 @media (max-width: 880px) {
   .report-completed-filters {
     grid-template-columns: 1fr;
@@ -3648,6 +3664,10 @@ body.theme-dark.section-reports .report-missed-modal-head h3 {
 
 body.theme-dark.section-reports .report-missed-modal-subtitle {
   color: #a9bada;
+}
+
+body.theme-dark.section-reports .report-missed-description-field span {
+  color: #cbd7f1;
 }
 
 body.theme-dark.section-reports .report-missed-modal-close {

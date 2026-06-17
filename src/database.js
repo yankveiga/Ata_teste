@@ -1904,6 +1904,24 @@ function resolveInventoryCatalogEntry({
   const normalizedName = trimCatalogValue(name);
   const numericId = Number.isInteger(Number(id)) ? Number(id) : null;
 
+  if (normalizedName) {
+    const existing = db
+      .prepare(`SELECT id, name FROM ${table} WHERE LOWER(name) = LOWER(?)`)
+      .get(normalizedName);
+    if (existing) {
+      return mapInventoryCatalog(existing);
+    }
+
+    const result = db
+      .prepare(`INSERT INTO ${table} (name) VALUES (?) RETURNING id`)
+      .run(normalizedName);
+
+    return mapInventoryCatalog({
+      id: Number(result.lastInsertRowid),
+      name: normalizedName,
+    });
+  }
+
   if (numericId) {
     const row = db
       .prepare(`SELECT id, name FROM ${table} WHERE id = ?`)
@@ -1914,25 +1932,7 @@ function resolveInventoryCatalogEntry({
     }
   }
 
-  if (!normalizedName) {
-    return null;
-  }
-
-  const existing = db
-    .prepare(`SELECT id, name FROM ${table} WHERE LOWER(name) = LOWER(?)`)
-    .get(normalizedName);
-  if (existing) {
-    return mapInventoryCatalog(existing);
-  }
-
-  const result = db
-    .prepare(`INSERT INTO ${table} (name) VALUES (?) RETURNING id`)
-    .run(normalizedName);
-
-  return mapInventoryCatalog({
-    id: Number(result.lastInsertRowid),
-    name: normalizedName,
-  });
+  return null;
 }
 
 // FUNCAO: trimCatalogValue.
