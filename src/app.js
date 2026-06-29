@@ -343,6 +343,12 @@ app.use(
     req.currentUser = req.session?.userId
       ? database.getUserById(req.session.userId)
       : null;
+    if (req.currentUser && !req.currentUser.is_active) {
+      req.session.userId = null;
+      req.session.authExpiresAt = null;
+      req.currentUser = null;
+      req.flash("info", "Sua conta foi desativada. Faça login com outro usuário.");
+    }
 
     res.locals.currentUser = req.currentUser;
     res.locals.isAdmin = Boolean(req.currentUser?.is_admin);

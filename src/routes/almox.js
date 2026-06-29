@@ -352,7 +352,7 @@ app.get("/almoxarifado", requireAuth, (req, res) => {
           return res.redirect(userMaintenancePath());
         }
 
-        req.flash("success", `Usuário @${result.user.username} excluído com sucesso.`);
+        req.flash("success", `Usuário @${result.user.username} desativado com sucesso.`);
       } catch (error) {
         logError(req, "Erro ao excluir usuário:", error);
         req.flash("danger", `Erro ao excluir usuário: ${error.message}`);

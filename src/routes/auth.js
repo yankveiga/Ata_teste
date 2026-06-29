@@ -253,7 +253,7 @@ app.get("/login", (req, res) => {
 
     const user = database.getUserByUsername(formData.username);
 
-    if (!user || !bcrypt.compareSync(password, user.password_hash)) {
+    if (!user || !user.is_active || !bcrypt.compareSync(password, user.password_hash)) {
       req.flash("danger", "Usuário ou senha inválidos.");
       const nextQuery = formData.next
         ? `?next=${encodeURIComponent(formData.next)}`

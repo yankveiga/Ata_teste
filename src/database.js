@@ -484,6 +484,8 @@ function ensureSchema() {
       name TEXT,
       role TEXT NOT NULL DEFAULT 'admin',
       member_id INTEGER,
+      is_active INTEGER NOT NULL DEFAULT 1,
+      deactivated_at TEXT,
       FOREIGN KEY (member_id) REFERENCES member(id)
     );
 
@@ -857,6 +859,8 @@ function ensureSchema() {
   ensureColumn("ata", "location_details", "TEXT");
   ensureColumn("user", "name", "TEXT");
   ensureColumn("user", "email", "TEXT");
+  ensureColumn("user", "is_active", "INTEGER NOT NULL DEFAULT 1");
+  ensureColumn("user", "deactivated_at", "TEXT");
   ensureColumn("user", "role", "TEXT NOT NULL DEFAULT 'admin'");
   ensureColumn("user", "member_id", "INTEGER");
   ensureColumn("member", "photo", "TEXT");
@@ -1109,6 +1113,8 @@ function mapUser(row) {
     email: row.email || null,
     member_id: row.member_id || null,
     member_name: row.member_name || null,
+    is_active: row.is_active === undefined ? true : Boolean(row.is_active),
+    deactivated_at: row.deactivated_at || null,
     role,
     is_admin: role === "admin" || role === "tutor",
   };
@@ -1507,6 +1513,8 @@ function getUserById(id) {
         u.email,
         u.role,
         u.member_id,
+        u.is_active,
+        u.deactivated_at,
         m.name AS member_name
       FROM user u
       LEFT JOIN member m ON m.id = u.member_id
@@ -1531,6 +1539,8 @@ function getUserByUsername(username) {
         u.email,
         u.role,
         u.member_id,
+        u.is_active,
+        u.deactivated_at,
         m.name AS member_name
       FROM user u
       LEFT JOIN member m ON m.id = u.member_id
@@ -1554,9 +1564,12 @@ function listUsers() {
         u.email,
         u.role,
         u.member_id,
+        u.is_active,
+        u.deactivated_at,
         m.name AS member_name
       FROM user u
       LEFT JOIN member m ON m.id = u.member_id
+      WHERE u.is_active = 1
       ORDER BY LOWER(COALESCE(u.name, u.username)), LOWER(u.username)
     `,
     )
@@ -1643,42 +1656,23 @@ function deleteUser(userId) {
       return { deleted: false, reason: "not_found" };
     }
 
-    const requestCount = Number(
-      db.prepare("SELECT COUNT(*) AS total FROM pedido WHERE usuario_id = ?").get(userId)
-        ?.total || 0,
-    );
-    const loanCount = Number(
-      db.prepare("SELECT COUNT(*) AS total FROM inventory_loan WHERE user_id = ?").get(userId)
-        ?.total || 0,
-    );
-
-    if (requestCount > 0 || loanCount > 0) {
-      return {
-        deleted: false,
-        reason: "has_history",
-        requestCount,
-        loanCount,
-      };
+    if (!current.is_active) {
+      return { deleted: true, user: current, deactivated: true };
     }
 
     db.prepare(
-      "UPDATE report_entry SET created_by_user_id = NULL WHERE created_by_user_id = ?",
+      `
+      UPDATE user
+      SET
+        is_active = 0,
+        deactivated_at = CURRENT_TIMESTAMP,
+        member_id = NULL,
+        email = NULL
+      WHERE id = ?
+    `,
     ).run(userId);
-    db.prepare(
-      "UPDATE report_week_goal SET created_by_user_id = NULL WHERE created_by_user_id = ?",
-    ).run(userId);
-    db.prepare(
-      "UPDATE inventory_loan SET extended_by_user_id = NULL WHERE extended_by_user_id = ?",
-    ).run(userId);
-    db.prepare(
-      "UPDATE inventory_loan SET returned_by_user_id = NULL WHERE returned_by_user_id = ?",
-    ).run(userId);
-    db.prepare(
-      "DELETE FROM report_week_goal_deletion_log WHERE deleted_by_user_id = ?",
-    ).run(userId);
-    db.prepare("DELETE FROM user WHERE id = ?").run(userId);
 
-    return { deleted: true, user: current };
+    return { deleted: true, user: current, deactivated: true };
   });
 }
 
@@ -2612,6 +2606,7 @@ function listReportMembersSummary() {
         MAX(r.created_at) AS last_created_at
       FROM member m
       LEFT JOIN report_entry r ON r.member_id = m.id
+      WHERE m.is_active = 1
       GROUP BY m.id, m.name, m.photo, m.is_active
       ORDER BY
         CASE WHEN COUNT(r.id) > 0 THEN 0 ELSE 1 END,
@@ -4736,7 +4731,7 @@ function getInventoryDashboardData() {
   const db = getDb();
   const summary = {
     user_count:
-      db.prepare("SELECT COUNT(*) AS total FROM user").get()?.total || 0,
+      db.prepare("SELECT COUNT(*) AS total FROM user WHERE is_active = 1").get()?.total || 0,
     item_count:
       db.prepare("SELECT COUNT(*) AS total FROM estoque").get()?.total || 0,
     stock_item_count:
@@ -4779,8 +4774,9 @@ function getInventoryDashboardData() {
     recent_users: db
       .prepare(
         `
-        SELECT id, username, name, role
+        SELECT id, username, name, role, is_active, deactivated_at
         FROM user
+        WHERE is_active = 1
         ORDER BY id DESC
         LIMIT 6
       `,
@@ -5636,6 +5632,7 @@ function listUsersForFortnightReportDeadlineReminder() {
       FROM "user" u
       INNER JOIN member m ON m.id = u.member_id
       WHERE m.is_active = 1
+        AND u.is_active = 1
         AND u.role = 'common'
         AND u.email IS NOT NULL
         AND LENGTH(TRIM(u.email)) > 0
