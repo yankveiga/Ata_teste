@@ -107,6 +107,14 @@ function formatYmd(year, month, day) {
   return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
+function addMonths(year, month, delta) {
+  const date = new Date(Date.UTC(year, month - 1 + delta, 1));
+  return {
+    year: date.getUTCFullYear(),
+    month: date.getUTCMonth() + 1,
+  };
+}
+
 // SECAO: helpers de normalizacao de entrada (query/form).
 // Mantem valores padrao quando entrada vier ausente ou invalida.
 
@@ -135,7 +143,11 @@ function normalizeProjectColor(value, fallback = DEFAULT_PROJECT_COLOR) {
 function getCurrentWeekStartDate() {
   const now = new Date();
   const parts = getDatePartsInTimeZone(now, REPORTS_TIMEZONE);
-  const fortnightStartDay = parts.day <= 15 ? 1 : 16;
+  if (parts.day <= 2) {
+    const previousMonth = addMonths(parts.year, parts.month, -1);
+    return formatYmd(previousMonth.year, previousMonth.month, 16);
+  }
+  const fortnightStartDay = parts.day <= 17 ? 1 : 16;
   return formatYmd(parts.year, parts.month, fortnightStartDay);
 }
 
@@ -792,7 +804,7 @@ function render(res, template, data = {}) {
     const currentWeekStart = getCurrentWeekStartDate();
     const selectedNoteWeekStart = normalizeWeekStartDate(req.query.note_week_start) || currentWeekStart;
     const nowSql = toSqlDateTime(new Date());
-    database.refreshPlannerTaskLifecycle({ graceHours: 48 });
+    database.refreshPlannerTaskLifecycle({ graceDays: 2 });
     const membersSummary = database.listReportMembersSummary();
     const requestedMemberId = parseId(data.selectedMemberId || req.query.member_id);
     const selectedMemberId =

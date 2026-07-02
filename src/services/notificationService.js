@@ -54,8 +54,7 @@ function nextDayParts(now, timeZone) {
 }
 
 function isFortnightDeadlineDay(parts) {
-  const lastDayOfMonth = new Date(Date.UTC(parts.year, parts.month, 0)).getUTCDate();
-  return parts.day === 15 || parts.day === lastDayOfMonth;
+  return parts.day === 2 || parts.day === 17;
 }
 
 function formatUserLabel(user) {

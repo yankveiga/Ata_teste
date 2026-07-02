@@ -415,6 +415,31 @@ function fromSqlDateTime(value) {
   return parsed;
 }
 
+function addDaysToDateKey(dateKey, days) {
+  const match = String(dateKey || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) {
+    return null;
+  }
+
+  const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+  date.setUTCDate(date.getUTCDate() + Number(days || 0));
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`;
+}
+
+function reportDueGraceDeadlineSql(dueAt, graceDays = 2) {
+  const dateKey = String(dueAt || "").slice(0, 10);
+  const deadlineDateKey = addDaysToDateKey(dateKey, graceDays);
+  return deadlineDateKey ? `${deadlineDateKey} 23:59:59` : null;
+}
+
+function isReportDueOverdue(dueAt, nowSql, graceDays = 2) {
+  const deadlineSql = reportDueGraceDeadlineSql(dueAt, graceDays);
+  return Boolean(deadlineSql && nowSql && deadlineSql < nowSql);
+}
+
 // FUNCAO: resolveFortnightStartFromSqlDateTime.
 function resolveFortnightStartFromSqlDateTime(value) {
   const text = String(value || "").trim();
@@ -3118,9 +3143,10 @@ function listReportWeekGoalsForMember(
     .all(...params, limit)
     .map((row) => {
       const mapped = mapReportWeekGoal(row);
-      const byDueDate = Boolean(mapped.due_at && referenceNow && mapped.due_at < referenceNow);
+      const byDueDate = Boolean(mapped.due_at && isReportDueOverdue(mapped.due_at, referenceNow));
       const byFortnight = !mapped.due_at && mapped.week_start < overdueReferenceWeek;
-      const isMissed = mapped.task_state === "missed";
+      const isMissed = mapped.task_state === "missed"
+        && (!mapped.due_at || isReportDueOverdue(mapped.due_at, referenceNow));
       return {
         ...mapped,
         is_overdue: !mapped.is_completed
@@ -3375,16 +3401,10 @@ function listTaskAuditLogsForMember(memberId, { projectId = null, limit = 120 } 
 }
 
 // FUNCAO: refreshPlannerTaskLifecycle.
-function refreshPlannerTaskLifecycle({ now = null, graceHours = 48 } = {}) {
+function refreshPlannerTaskLifecycle({ now = null, graceDays = 2 } = {}) {
   const nowSql = toSqlDateTime(now || new Date());
   const nowDate = fromSqlDateTime(nowSql);
   if (!nowDate || !nowSql) {
-    return { updatedCount: 0, taskIds: [] };
-  }
-
-  const threshold = new Date(nowDate.getTime() - (Number(graceHours || 48) * 60 * 60 * 1000));
-  const thresholdSql = toSqlDateTime(threshold);
-  if (!thresholdSql) {
     return { updatedCount: 0, taskIds: [] };
   }
 
@@ -3400,7 +3420,8 @@ function refreshPlannerTaskLifecycle({ now = null, graceHours = 48 } = {}) {
         ORDER BY CAST(due_at AS timestamp) ASC, id ASC
       `,
       )
-      .all(thresholdSql);
+      .all(nowSql)
+      .filter((task) => isReportDueOverdue(task.due_at, nowSql, graceDays));
 
     staleTasks.forEach((task) => {
       db.prepare(
@@ -3434,7 +3455,8 @@ function refreshPlannerTaskLifecycle({ now = null, graceHours = 48 } = {}) {
         actorUserId: null,
         payload: {
           due_at: task.due_at,
-          grace_hours: Number(graceHours || 48),
+          grace_days: Number(graceDays || 2),
+          grace_until: reportDueGraceDeadlineSql(task.due_at, graceDays),
         },
         createdAt: nowSql,
       });
@@ -5708,6 +5730,7 @@ module.exports = {
   getInventoryItemById,
   getInventoryLoanById,
   getInventoryLocationById,
+  isReportDueOverdue,
   getMemberById,
   getMemberByName,
   getProjectById,

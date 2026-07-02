@@ -494,7 +494,9 @@ function registerReportRoutes(ctx) {
         throw new Error("Falha ao localizar tarefa vinculada no Planner.");
       }
 
-      if (linkedTask.workflow_state === "missed" && goalAction === "save") {
+      const linkedTaskIsMissed = linkedTask.workflow_state === "missed"
+        && database.isReportDueOverdue(linkedTask.due_at, nowSql);
+      if (linkedTaskIsMissed && goalAction === "save") {
         return sendGoalUpdateError(
           409,
           "Tarefa em histórico de atrasadas. Use 'Feito com atraso' ou 'Estender prazo'.",
@@ -506,7 +508,7 @@ function registerReportRoutes(ctx) {
         isCompleted
         && linkedTask.due_at
         && nowSql
-        && linkedTask.due_at < nowSql,
+        && database.isReportDueOverdue(linkedTask.due_at, nowSql),
       );
       if (goalAction === "done_late" || completedAfterDeadline) {
         updatedTask = database.markPlannerTaskDoneLate({

@@ -386,7 +386,7 @@ app.get("/services", requireAuth, (req, res) => {
       .filter((task) => !task.is_completed)
       .map((task) => ({
       ...task,
-      is_overdue: !task.is_completed && Boolean(task.due_at && nowIso && task.due_at < nowIso),
+      is_overdue: !task.is_completed && database.isReportDueOverdue(task.due_at, nowIso),
       }));
     const nowDate = new Date();
     const currentMonthKey = new Intl.DateTimeFormat("en-CA", {
@@ -842,8 +842,10 @@ app.get("/services", requireAuth, (req, res) => {
 
     try {
       const completedAt = toSqlDateTime(new Date());
-      const completedTask = task.workflow_state === "missed"
-        || Boolean(task.due_at && completedAt && task.due_at < completedAt)
+      const taskIsMissed = task.workflow_state === "missed"
+        && database.isReportDueOverdue(task.due_at, completedAt);
+      const completedTask = taskIsMissed
+        || database.isReportDueOverdue(task.due_at, completedAt)
         ? database.markPlannerTaskDoneLate({
           id: task.id,
           actorUserId: req.currentUser.id,
@@ -964,7 +966,9 @@ app.get("/services", requireAuth, (req, res) => {
     }
 
     try {
-      if (task.workflow_state === "missed" && nextStatus !== "done") {
+      const taskIsMissed = task.workflow_state === "missed"
+        && database.isReportDueOverdue(task.due_at, updatedAt);
+      if (taskIsMissed && nextStatus !== "done") {
         req.flash("warning", "Tarefa atrasada: apenas conclusão com atraso ou extensão de prazo.");
         return res.redirect(`${urlFor("planner")}${fallbackQuery}`);
       }
@@ -973,8 +977,8 @@ app.get("/services", requireAuth, (req, res) => {
       const updatedTask = (
         nextStatus === "done"
         && (
-          task.workflow_state === "missed"
-          || Boolean(task.due_at && updatedAt && task.due_at < updatedAt)
+          taskIsMissed
+          || database.isReportDueOverdue(task.due_at, updatedAt)
         )
       )
         ? database.markPlannerTaskDoneLate({
