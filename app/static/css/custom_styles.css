@@ -392,6 +392,285 @@ body.section-presenca .form-control:focus {
   box-shadow: 0 0 0 4px rgba(196, 181, 253, 0.45);
 }
 
+.presence-admin-page {
+  display: grid;
+  gap: 18px;
+}
+
+.presence-toolbar-grid {
+  display: grid;
+  grid-template-columns: minmax(260px, 420px) 1fr;
+  gap: 18px;
+  align-items: end;
+}
+
+.presence-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.presence-summary span {
+  display: grid;
+  gap: 4px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(124, 58, 237, 0.18);
+  color: #4c1d95;
+}
+
+.presence-summary strong {
+  font-size: 1.65rem;
+  color: #6d28d9;
+}
+
+.presence-scan-form {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto;
+  gap: 12px;
+}
+
+.presence-scan-input {
+  min-height: 58px;
+  font-size: 1.12rem;
+  font-weight: 800;
+}
+
+.presence-admin-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.presence-add-row {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 0.8fr 0.8fr auto;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.presence-search-form {
+  min-width: min(340px, 100%);
+}
+
+.presence-table-wrap {
+  overflow-x: auto;
+  border-radius: 18px;
+  border: 1px solid var(--ui-border);
+}
+
+.presence-table {
+  min-width: 1120px;
+}
+
+.presence-list-panel .panel-header {
+  align-items: end;
+}
+
+.presence-list-panel .table-input {
+  min-width: 130px;
+}
+
+.presence-link-button {
+  gap: 6px;
+  padding-inline: 12px;
+}
+
+.presence-entry-panel .panel-body,
+.presence-import-panel .panel-body {
+  padding-top: 4px;
+}
+
+.presence-compact-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.presence-compact-form .presence-submit {
+  grid-column: 1 / -1;
+  margin-top: 2px;
+}
+
+.presence-field {
+  display: grid;
+  gap: 6px;
+}
+
+.presence-import-form {
+  display: grid;
+  gap: 12px;
+}
+
+.presence-import-drop {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px;
+  align-items: center;
+  padding: 14px;
+  border: 1px dashed rgba(124, 58, 237, 0.34);
+  border-radius: 12px;
+  background: rgba(245, 243, 255, 0.68);
+}
+
+.presence-import-drop ion-icon {
+  font-size: 1.5rem;
+  color: #6d28d9;
+}
+
+.presence-import-note {
+  margin: 0;
+  color: var(--ui-muted);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.global-loading {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  background: rgba(248, 251, 255, 0.58);
+  backdrop-filter: blur(3px);
+  transition: opacity 160ms ease, visibility 160ms ease;
+}
+
+.global-loading.is-visible {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.global-loading-card {
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+  min-width: 150px;
+  padding: 20px 24px;
+  border: 1px solid rgba(31, 91, 230, 0.2);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #003366;
+  box-shadow: 0 22px 60px rgba(0, 51, 102, 0.18);
+}
+
+.global-loading-spinner {
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  border: 4px solid rgba(31, 91, 230, 0.16);
+  border-top-color: #1f5be6;
+  box-shadow: 0 0 20px rgba(31, 91, 230, 0.22);
+  animation: globalLoadingSpin 850ms linear infinite;
+}
+
+button.is-loading,
+input[type="submit"].is-loading {
+  cursor: wait;
+  opacity: 0.72;
+}
+
+@keyframes globalLoadingSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+body.theme-dark .global-loading {
+  background: rgba(6, 13, 28, 0.62);
+}
+
+body.theme-dark .global-loading-card {
+  background: rgba(10, 18, 36, 0.92);
+  border-color: rgba(154, 180, 255, 0.26);
+  color: #dbe8ff;
+  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.38);
+}
+
+.presence-table tbody tr.is-present {
+  background: rgba(220, 252, 231, 0.45);
+}
+
+.presence-table td small {
+  display: block;
+  margin-top: 6px;
+  color: var(--ui-muted);
+  white-space: nowrap;
+}
+
+.presence-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.32rem 0.62rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #6b3b12;
+  background: rgba(254, 243, 199, 0.85);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.presence-chip-ok {
+  color: #166534;
+  background: rgba(220, 252, 231, 0.9);
+  border-color: rgba(34, 197, 94, 0.22);
+}
+
+.table-input {
+  width: 100%;
+  min-width: 130px;
+  border: 1px solid rgba(124, 58, 237, 0.2);
+  border-radius: 10px;
+  padding: 0.55rem 0.65rem;
+  background: rgba(255, 255, 255, 0.74);
+  color: #2d174a;
+}
+
+.table-input:focus {
+  outline: 3px solid rgba(196, 181, 253, 0.55);
+  border-color: rgba(109, 40, 217, 0.74);
+}
+
+.presence-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.danger-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0.72rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid rgba(239, 68, 68, 0.18);
+  background: rgba(254, 226, 226, 0.92);
+  color: #991b1b;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.presence-import-result {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(220, 252, 231, 0.72);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+  color: #166534;
+}
+
+.presence-import-result ul {
+  margin: 8px 0 0 18px;
+}
+
 /* SECAO: tema especifico do modulo Relatorios.
    Estes overrides so valem quando o body estiver com classe section-reports. */
 
@@ -1556,6 +1835,306 @@ body.theme-dark.section-presenca .panel-header h2 {
 
 body.theme-dark.section-presenca .panel-header p {
   color: #b9a4e8;
+}
+
+/* SECAO: layout de tres telas do modulo Presenca (Eventos, Ouvintes, Check-in). */
+
+.presence-page {
+  display: grid;
+  gap: 22px;
+}
+
+.presence-flow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.presence-flow-step {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 12px;
+  row-gap: 2px;
+  align-items: center;
+  padding: 14px 16px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.presence-flow-step span {
+  grid-row: span 2;
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  background: rgba(124, 58, 237, 0.12);
+  color: #6d28d9;
+  font-weight: 800;
+}
+
+.presence-flow-step strong {
+  color: var(--ui-text);
+}
+
+.presence-flow-step small {
+  color: var(--ui-muted);
+  font-weight: 650;
+}
+
+.presence-flow-step.is-active {
+  border-color: rgba(124, 58, 237, 0.34);
+  background: rgba(245, 243, 255, 0.9);
+}
+
+.presence-flow-step.is-active span {
+  background: #6d28d9;
+  color: #fff;
+}
+
+/* --- tela Eventos --- */
+
+.presence-event-list {
+  display: grid;
+  gap: 14px;
+}
+
+.presence-event-card {
+  border-radius: 20px;
+  border: 1px solid rgba(124, 58, 237, 0.14);
+  background: rgba(255, 255, 255, 0.82);
+  padding: 18px 20px;
+  display: grid;
+  gap: 10px;
+  transition: box-shadow 180ms ease, border-color 180ms ease;
+}
+
+.presence-event-card:hover {
+  border-color: rgba(124, 58, 237, 0.28);
+  box-shadow: 0 8px 24px rgba(109, 40, 217, 0.1);
+}
+
+.presence-event-edit-form {
+  display: grid;
+  gap: 8px;
+}
+
+.presence-event-edit-form .form-control {
+  background: rgba(245, 241, 255, 0.78);
+}
+
+.presence-event-form {
+  display: grid;
+  gap: 12px;
+}
+
+.presence-event-delete-form {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.presence-event-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 6px;
+}
+
+.presence-card-stats {
+  display: flex;
+  gap: 16px;
+  font-size: 0.88rem;
+  color: #6d28d9;
+  font-weight: 700;
+  padding-top: 10px;
+  border-top: 1px solid rgba(124, 58, 237, 0.12);
+}
+
+.presence-card-stats strong {
+  font-size: 1.1rem;
+  color: #4c1d95;
+}
+
+/* --- tela Ouvintes (toolbar, import, list) --- */
+
+.presence-toolbar {
+  padding: 16px 20px;
+}
+
+.presence-import-panel .panel-body {
+  gap: 14px;
+}
+
+.presence-list-panel {
+  overflow: hidden;
+}
+
+.presence-preview-panel {
+  overflow: hidden;
+}
+
+.presence-preview-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: flex-end;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--ui-border);
+}
+
+.presence-confirm-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.presence-confirm-form .form-control {
+  min-width: 220px;
+}
+
+/* --- chip de erro no preview --- */
+
+.presence-chip-error {
+  color: #991b1b;
+  background: rgba(254, 226, 226, 0.9);
+  border-color: rgba(239, 68, 68, 0.24);
+}
+
+/* --- tela Check-in --- */
+
+.presence-checkin-panel {
+  max-width: 720px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.presence-event-picker {
+  margin-bottom: 20px;
+}
+
+/* --- resultado animado do check-in --- */
+
+.presence-result {
+  animation: presenceResultFade 200ms ease;
+}
+
+@keyframes presenceResultFade {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0);  }
+}
+
+/* --- dark mode overrides para as tres telas --- */
+
+body.theme-dark.section-presenca .presence-event-card {
+  background: rgba(40, 24, 72, 0.78);
+  border-color: rgba(139, 92, 246, 0.28);
+}
+
+body.theme-dark.section-presenca .presence-event-card:hover {
+  border-color: rgba(167, 139, 250, 0.5);
+}
+
+body.theme-dark.section-presenca .presence-event-edit-form .form-control {
+  background: rgba(55, 30, 95, 0.72);
+  color: #e9d5ff;
+}
+
+body.theme-dark.section-presenca .presence-card-stats {
+  color: #c4b5fd;
+  border-top-color: rgba(139, 92, 246, 0.22);
+}
+
+body.theme-dark.section-presenca .presence-card-stats strong {
+  color: #ddd6fe;
+}
+
+body.theme-dark.section-presenca .table-input {
+  background: rgba(55, 30, 95, 0.72);
+  border-color: rgba(139, 92, 246, 0.3);
+  color: #e9d5ff;
+}
+
+body.theme-dark.section-presenca .table-input:focus {
+  border-color: rgba(167, 139, 250, 0.7);
+  outline-color: rgba(167, 139, 250, 0.3);
+}
+
+body.theme-dark.section-presenca .presence-table tbody tr.is-present {
+  background: rgba(6, 78, 59, 0.25);
+}
+
+body.theme-dark.section-presenca .presence-import-result {
+  background: rgba(6, 78, 59, 0.3);
+  border-color: rgba(34, 197, 94, 0.28);
+  color: #bbf7d0;
+}
+
+body.theme-dark.section-presenca .presence-preview-actions {
+  border-bottom-color: rgba(139, 92, 246, 0.28);
+}
+
+body.theme-dark.section-presenca .presence-result {
+  background: rgba(40, 24, 72, 0.72);
+  border-color: rgba(139, 92, 246, 0.28);
+  color: #ddd6fe;
+}
+
+body.theme-dark.section-presenca .presence-result-success {
+  background: rgba(6, 78, 59, 0.42);
+  border-color: rgba(34, 197, 94, 0.34);
+  color: #bbf7d0;
+}
+
+body.theme-dark.section-presenca .presence-result-error {
+  background: rgba(127, 29, 29, 0.42);
+  border-color: rgba(239, 68, 68, 0.36);
+  color: #fecaca;
+}
+
+body.theme-dark.section-presenca .presence-result-info {
+  background: rgba(45, 24, 84, 0.68);
+  border-color: rgba(139, 92, 246, 0.42);
+  color: #ddd6fe;
+}
+
+/* --- responsividade do modulo Presenca --- */
+
+@media (max-width: 980px) {
+  .presence-admin-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .presence-toolbar-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .presence-summary {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .presence-event-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .presence-confirm-form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .presence-confirm-form .form-control {
+    min-width: 0;
+  }
+
+  .presence-card-stats {
+    gap: 12px;
+  }
 }
 
 body.theme-dark.section-almox .form-control {

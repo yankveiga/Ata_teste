@@ -1,4 +1,4 @@
-/*
+﻿/*
  * ARQUIVO: src/routes/auth.js
  * FUNCAO: registra rotas de autenticacao, navegacao inicial e presenca.
  * IMPACTO DE MUDANCAS:
@@ -60,15 +60,12 @@ function registerAuthRoutes(ctx) {
     listAccessibleProjects,
     ensureValidCsrf,
     ensureCsrfToken,
-    verifyCsrf,
     safeRedirectPath,
     parseId,
     getCurrentWeekStartDate,
     toSqlDateTime,
     trimToNull,
-    registerPresenceInWorkbook,
     logError,
-    sendApiError,
     syncReportWeekGoalFromPlannerTask,
   } = ctx;
   const loginDefaultPath = "/relatorios";
@@ -322,15 +319,6 @@ app.get("/services", requireAuth, (req, res) => {
       activeSection: "atas",
       activeAtaTab: tab,
       recentAtas,
-    });
-  });
-
-  // DETALHE: Rota GET /presenca: consulta dados necessarios e monta resposta (HTML/JSON) para a tela solicitada.
-
-  app.get("/presenca", requireAuth, (req, res) => {
-    return render(res, "presenca/index.html", {
-      title: "Controle de Presença",
-      activeSection: "presenca",
     });
   });
 
@@ -966,13 +954,13 @@ app.get("/services", requireAuth, (req, res) => {
     }
 
     try {
+      const updatedAt = toSqlDateTime(new Date());
       const taskIsMissed = task.workflow_state === "missed"
         && database.isReportDueOverdue(task.due_at, updatedAt);
       if (taskIsMissed && nextStatus !== "done") {
         req.flash("warning", "Tarefa atrasada: apenas conclusão com atraso ou extensão de prazo.");
         return res.redirect(`${urlFor("planner")}${fallbackQuery}`);
       }
-      const updatedAt = toSqlDateTime(new Date());
       const wasCompleted = Boolean(task.is_completed);
       const updatedTask = (
         nextStatus === "done"
@@ -1082,28 +1070,9 @@ app.get("/services", requireAuth, (req, res) => {
     return res.redirect(`${urlFor("planner")}${fallbackQuery}`);
   });
 
-  // DETALHE: Rota POST /presenca/registrar: processa envio de formulario/acao, valida entrada, persiste dados e redireciona.
 
-  app.post("/presenca/registrar", requireAuth, (req, res) => {
-    if (!verifyCsrf(req)) {
-      const nextToken = ensureCsrfToken(req);
-      return sendApiError(
-        req,
-        res,
-        403,
-        "CSRF token inválido ou expirado.",
-        { csrfToken: nextToken },
-      );
-    }
 
-    try {
-      const result = registerPresenceInWorkbook(req.body.cracha, req.body.evento);
-      return res.json(result);
-    } catch (error) {
-      logError(req, "Erro ao registrar presença:", error);
-      return sendApiError(req, res, 500, "Erro interno ao registrar presença.");
-    }
-  });
 }
 
 module.exports = { registerAuthRoutes };
+

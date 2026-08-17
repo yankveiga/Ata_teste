@@ -11,7 +11,6 @@ const fs = require("node:fs");
 // SECAO: resolucao do diretorio-base para montar caminhos absolutos do projeto.
 
 const baseDir = path.resolve(__dirname, "..");
-const defaultWorkbookPath = path.join(baseDir, "planilha_presenca.xlsx");
 const defaultEnvPath = path.join(baseDir, ".env");
 
 function unquoteEnvValue(value) {
@@ -55,12 +54,11 @@ function loadEnvFile(envPath) {
 
 loadEnvFile(defaultEnvPath);
 
-function resolveFromBase(value, fallback) {
-  const raw = String(value || "").trim();
-  if (!raw) {
-    return fallback;
-  }
-  return path.isAbsolute(raw) ? raw : path.join(baseDir, raw);
+const nodeEnv = String(process.env.NODE_ENV || "development").trim();
+const sessionSecret = String(process.env.SECRET_KEY || "").trim();
+
+if (nodeEnv === "production" && !sessionSecret) {
+  throw new Error("SECRET_KEY deve ser definido em producao.");
 }
 
 // SECAO: configuracoes centrais (porta, segredo, paths de estaticos/templates/uploads).
@@ -68,7 +66,7 @@ function resolveFromBase(value, fallback) {
 const config = {
   appName: "Gestor de Atas",
   baseDir,
-  nodeEnv: process.env.NODE_ENV || "development",
+  nodeEnv,
   port: Number(
     process.env.PORT
     || (String(process.env.NODE_ENV || "").trim() === "production" ? 10000 : 3000),
@@ -77,17 +75,13 @@ const config = {
   appTimeZone: String(process.env.APP_TIMEZONE || "America/Sao_Paulo").trim(),
   reportsTimeZone: String(process.env.REPORTS_TIMEZONE || process.env.APP_TIMEZONE || "America/Sao_Paulo").trim(),
   sessionSecret:
-    process.env.SECRET_KEY ||
+    sessionSecret ||
     "uma-chave-secreta-muito-dificil-de-adivinhar",
   sessionMaxAgeHours: Math.max(
     1,
     Number.parseInt(process.env.SESSION_MAX_AGE_HOURS || "1", 10) || 1,
   ),
   sessionIdleMaxAgeMs: 0,
-  presenceWorkbookPath: resolveFromBase(
-    process.env.PRESENCE_WORKBOOK_PATH,
-    defaultWorkbookPath,
-  ),
   bootstrapAdmin: {
     enabled: String(process.env.BOOTSTRAP_ADMIN || "").trim() === "true",
     username: String(process.env.BOOTSTRAP_ADMIN_USERNAME || "").trim(),

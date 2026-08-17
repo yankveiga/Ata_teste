@@ -1,4 +1,4 @@
-{#
+﻿{#
   TEMPLATE: base.html
   FUNCAO: estrutura principal das paginas autenticadas (head, assets globais, sidebar, area de conteudo e scripts).
   IMPACTO DE MUDANCAS:
@@ -43,7 +43,12 @@
 
 <body class="{% if currentUser %}portal-shell section-{{ activeSection or 'reports' }}{% if embeddedLayout %} embedded-shell{% endif %}{% else %}guest-shell{% endif %}">
     <a href="#main-content" class="skip-link">Pular para o conteúdo principal</a>
-    {% if currentUser and not embeddedLayout %}
+    <div id="global-loading" class="global-loading" role="status" aria-live="polite" aria-hidden="true">
+        <div class="global-loading-card">
+            <div class="global-loading-spinner" aria-hidden="true"></div>
+            <strong>Carregando</strong>
+        </div>
+    </div>    {% if currentUser and not embeddedLayout %}
     <div class="container">
         {# SECAO: navegacao lateral com atalhos por modulo e controle de perfil. #}
 
@@ -294,12 +299,51 @@
             scheduleNext();
         })();
     </script>
-    {% endif %}
+    {% endif %}    <script>
+        (function() {
+            var overlay = document.getElementById('global-loading');
+            if (!overlay) { return; }
+            var showTimer = null;
+            function showLoading(delay) {
+                window.clearTimeout(showTimer);
+                showTimer = window.setTimeout(function() {
+                    overlay.classList.add('is-visible');
+                    overlay.setAttribute('aria-hidden', 'false');
+                }, delay == null ? 180 : delay);
+            }
+            function hideLoading() {
+                window.clearTimeout(showTimer);
+                overlay.classList.remove('is-visible');
+                overlay.setAttribute('aria-hidden', 'true');
+            }
+            document.addEventListener('submit', function(event) {
+                var form = event.target;
+                if (!form || form.dataset.noGlobalLoading === 'true') { return; }
+                var submitter = event.submitter || form.querySelector('button[type="submit"], input[type="submit"]');
+                if (submitter) {
+                    submitter.disabled = true;
+                    submitter.classList.add('is-loading');
+                }
+                showLoading(220);
+            }, true);
+            document.addEventListener('click', function(event) {
+                var link = event.target.closest && event.target.closest('a[href]');
+                if (!link || link.dataset.noGlobalLoading === 'true') { return; }
+                var href = link.getAttribute('href') || '';
+                if (!href || href[0] === '#' || href.startsWith('javascript:') || link.target === '_blank') { return; }
+                showLoading(href.indexOf('exportar') >= 0 || href.endsWith('.xlsx') || href.endsWith('.csv') ? 80 : 260);
+            }, true);
+            window.addEventListener('pageshow', hideLoading);
+            window.addEventListener('focus', function() { window.setTimeout(hideLoading, 600); });
+        })();
+    </script>
+
 
     {# SECAO: scripts de infraestrutura e scripts especificos injetados por pagina. #}
 
     {% block scripts %}{% endblock %}
 </body>
 </html>
+
 
 

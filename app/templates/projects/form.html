@@ -21,7 +21,7 @@
 
     {# SECAO: formulario de projeto com nome, cor, logo e associacao de membros. #}
 
-    <form action="?csrf_token={{ csrfToken }}" method="post" novalidate enctype="multipart/form-data" class="content-panel portal-form-card portal-form-grid">
+    <form method="post" novalidate enctype="multipart/form-data" class="content-panel portal-form-card portal-form-grid">
         <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
 
         <div class="form-group">

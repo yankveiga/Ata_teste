@@ -1,4 +1,4 @@
-/*
+﻿/*
  * ARQUIVO: src/app.js
  * FUNCAO: composicao principal da aplicacao (middlewares, autenticacao, validacoes e rotas HTTP).
  * IMPACTO DE MUDANCAS:
@@ -14,7 +14,6 @@ const cookieSession = require("cookie-session");
 const express = require("express");
 const multer = require("multer");
 const nunjucks = require("nunjucks");
-const XLSX = require("xlsx");
 
 const { config } = require("./config");
 const database = require("./database");
@@ -24,6 +23,7 @@ const { registerReportRoutes } = require("./routes/reports");
 const { registerMemberRoutes } = require("./routes/members");
 const { registerProjectRoutes } = require("./routes/projects");
 const { registerAtaRoutes } = require("./routes/atas");
+const { registerPresenceRoutes } = require("./routes/presenca");
 const { registerAlmoxRoutes } = require("./routes/almox");
 const { registerWritingRoutes } = require("./routes/writing");
 const { registerChatRoutes } = require("./routes/chat");
@@ -81,6 +81,13 @@ const INVENTORY_ITEM_TYPES = new Set(["stock", "patrimony"]);
 const DEFAULT_PROJECT_COLOR = "#0b6bcb";
 const REPORTS_TIMEZONE = "America/Sao_Paulo";
 const ENABLE_REQUEST_LOGS = String(process.env.REQUEST_LOGS || "").trim() === "1";
+const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
+const ALLOWED_IMAGE_MIME_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+]);
 
 function getDatePartsInTimeZone(date, timeZone) {
   const formatter = new Intl.DateTimeFormat("en-CA", {
@@ -210,70 +217,6 @@ function normalizeMonthKey(value) {
   return /^\d{4}-\d{2}$/.test(text) ? text : null;
 }
 
-// SECAO: integracao com planilha de presenca (leitura/escrita de arquivo XLSX).
-
-// DETALHE: Executa leitura, validacao e gravacao da presenca diretamente na planilha XLSX.
-
-function registerPresenceInWorkbook(cracha, evento) {
-  const crachaValue = String(cracha || "").trim();
-  const eventoValue = String(evento || "").trim();
-
-  if (!crachaValue) {
-    return { success: false, message: "Informe o número do crachá." };
-  }
-
-  if (!fs.existsSync(config.presenceWorkbookPath)) {
-    return {
-      success: false,
-      message: "Planilha de presença não encontrada no servidor.",
-    };
-  }
-
-  const workbook = XLSX.readFile(config.presenceWorkbookPath);
-  const sheetName = workbook.SheetNames[0];
-  const sheet = workbook.Sheets[sheetName];
-  const rawData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-  const header = rawData[0];
-  const data = rawData.slice(1).map((row) => {
-    const obj = {};
-    header.forEach((col, i) => {
-      obj[col] = row[i] || "";
-    });
-    return obj;
-  });
-
-  const row = data.find((currentRow) => String(currentRow.CRACHA || "").trim() === crachaValue);
-  if (!row) {
-    return { success: false, message: "Crachá não encontrado." };
-  }
-
-  const nome = row.NOME || "Participante";
-  const eventoCol = String(eventoValue || "").toUpperCase();
-  if (!header.includes(eventoCol)) {
-    return { success: false, message: "Evento inválido." };
-  }
-
-  const eventLabel = eventoValue.replace(/evento_/i, "Evento ").replace(/_/g, " ");
-  if (row[eventoCol]) {
-    return {
-      success: false,
-      message: `${nome} já foi registrado para ${eventLabel}.`,
-    };
-  }
-
-  row[eventoCol] = "X";
-
-  const updatedRaw = [header, ...data.map((obj) => header.map((col) => obj[col] || ""))];
-  const newSheet = XLSX.utils.aoa_to_sheet(updatedRaw);
-  workbook.Sheets[sheetName] = newSheet;
-  XLSX.writeFile(workbook, config.presenceWorkbookPath);
-
-  return {
-    success: true,
-    message: `${nome} foi registrado para ${eventLabel}.`,
-  };
-}
-
 // SECAO: fabrica principal da aplicacao Express (middlewares, rotas e tratamento de erro).
 
 // DETALHE: Ponto central de composicao: configura Express, middlewares, regras de acesso e rotas.
@@ -384,8 +327,15 @@ const upload = multer({
         callback(null, sanitizeFilename(file.originalname));
       },
     }),
+    limits: {
+      fileSize: MAX_UPLOAD_BYTES,
+      files: 1,
+      fields: 60,
+      fieldSize: 64 * 1024,
+    },
     fileFilter: (req, file, callback) => {
-      if (!isAllowedImage(file.originalname)) {
+      const mimeType = String(file.mimetype || "").toLowerCase();
+      if (!isAllowedImage(file.originalname) || !ALLOWED_IMAGE_MIME_TYPES.has(mimeType)) {
         // DETALHE: Rejeita arquivo invalido sem abortar parsing do multipart,
         // preservando campos de formulario (incluindo csrf_token) em req.body.
         req.uploadError = "Apenas imagens (jpg, jpeg, png, gif, webp, jfif) são permitidas!";
@@ -1222,7 +1172,6 @@ function render(res, template, data = {}) {
     ensureCsrfToken,
     verifyCsrf,
     safeRedirectPath,
-    registerPresenceInWorkbook,
     logError,
     sendApiError,
     mapInventoryApiItem,
@@ -1265,6 +1214,7 @@ function render(res, template, data = {}) {
   registerMemberRoutes(sharedRouteContext);
   registerProjectRoutes(sharedRouteContext);
   registerAtaRoutes(sharedRouteContext);
+  registerPresenceRoutes(sharedRouteContext);
   registerWritingRoutes(sharedRouteContext);
   registerChatRoutes(sharedRouteContext);
 
@@ -1300,3 +1250,4 @@ app.use((req, res) => {
 }
 
 module.exports = { createApp };
+

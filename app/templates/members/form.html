@@ -18,7 +18,7 @@
 
     {# SECAO: formulario de criacao/edicao de membro com validacao de nome. #}
 
-    <form action="?csrf_token={{ csrfToken }}" method="post" enctype="multipart/form-data" novalidate class="content-panel portal-form-card portal-form-grid">
+    <form method="post" enctype="multipart/form-data" novalidate class="content-panel portal-form-card portal-form-grid">
         <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
 
         <div class="form-group">

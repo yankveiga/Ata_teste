@@ -26,7 +26,19 @@ const ROUTES = Object.freeze({
   message_conversation: "/mensagens/conversas/:id",
   planner: "/planner",
   presenca: "/presenca",
+  presenca_eventos: "/presenca/eventos",
+  presenca_ouvintes: "/presenca/ouvintes",
+  presenca_checkin: "/presenca/check-in",
   registrar_presenca: "/presenca/registrar",
+  presenca_event_create: "/presenca/eventos/criar",
+  presenca_event_update: "/presenca/eventos/:id/editar",
+  presenca_event_delete: "/presenca/eventos/:id/excluir",
+  presenca_attendee_create: "/presenca/ouvintes/criar",
+  presenca_attendee_update: "/presenca/ouvintes/:id/editar",
+  presenca_attendee_delete: "/presenca/ouvintes/:id/excluir",
+  presenca_import_preview: "/presenca/ouvintes/importar/preview",
+  presenca_import_confirm: "/presenca/ouvintes/importar/confirmar",
+  presenca_export_csv: "/presenca/eventos/:id/exportar.csv",
   relatorios: "/relatorios",
   create_report: "/relatorios/create",
   edit_report: "/relatorios/edit/:id",
@@ -156,8 +168,7 @@ function verifyCsrf(req) {
   const token =
     req.body?.csrf_token ||
     req.body?._csrf ||
-    req.headers["x-csrf-token"] ||
-    req.query?.csrf_token;
+    req.headers["x-csrf-token"];
 
   return Boolean(token && req.session && token === req.session.csrfToken);
 }

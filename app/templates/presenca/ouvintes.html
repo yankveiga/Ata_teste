@@ -1,0 +1,316 @@
+﻿{% extends "base.html" %}
+
+{% block content %}
+<div class="presence-page">
+    {% include "partials/presenca_tabs.html" %}
+
+    <header class="page-header page-header-split">
+        <div>
+            <h1>Ouvintes</h1>
+            <p class="lead">Cadastre a lista geral de ouvintes e vincule às atividades depois.</p>
+        </div>
+        {% if selectedEvent %}
+        <a class="btn-secondary-action" href="{{ urlFor('presenca_export_csv', { id: selectedEvent.id }) }}" style="text-decoration:none;white-space:nowrap">
+            <ion-icon name="download-outline"></ion-icon>
+            Exportar CSV
+        </a>
+        {% endif %}
+    </header>
+
+    <section class="presence-flow">
+        <div class="presence-flow-step is-active">
+            <span>1</span>
+            <strong>Lista geral</strong>
+            <small>Crachá, nome, CPF e email</small>
+        </div>
+        <div class="presence-flow-step {{ 'is-active' if selectedEvent else '' }}">
+            <span>2</span>
+            <strong>Atividade</strong>
+            <small>Selecione para vincular</small>
+        </div>
+        <div class="presence-flow-step {{ 'is-active' if selectedEvent and selectedEvent.attendee_count else '' }}">
+            <span>3</span>
+            <strong>Presença</strong>
+            <small>Check-in por crachá</small>
+        </div>
+    </section>
+    <section class="content-panel presence-toolbar">
+        <div class="presence-toolbar-grid">
+            <form method="get" action="{{ urlFor('presenca_ouvintes') }}" class="stacked-form">
+                <label class="form-label" for="event_id">Atividade</label>
+                <select id="event_id" name="event_id" class="form-control" onchange="this.form.submit()">
+                    <option value="">Lista geral, sem atividade</option>
+                    {% if not events.length %}<option value="">Nenhum atividade cadastrado</option>{% endif %}
+                    {% for event in events %}
+                    <option value="{{ event.id }}" {% if selectedEvent and selectedEvent.id == event.id %}selected{% endif %}>
+                        {{ event.name }}{% if event.event_date %} - {{ event.event_date | formatDate }}{% endif %}
+                    </option>
+                    {% endfor %}
+                </select>
+            </form>
+                                {% if selectedEvent %}
+            <div class="presence-summary">
+                <span><strong>{{ attendees.length }}</strong> ouvintes cadastrados</span>
+                <span><strong>{{ selectedEvent.attendee_count }}</strong> vinculados à atividade</span>
+                <span><strong>{{ selectedEvent.present_count }}</strong> presentes</span>
+            </div>
+            {% else %}
+            <div class="presence-summary presence-summary-single">
+                <span><strong>{{ attendees.length }}</strong> ouvintes cadastrados</span>
+                <span><strong>0</strong> atividade selecionada</span>
+                <span><strong>CSV</strong> pronto para importar</span>
+            </div>
+            {% endif %}
+        </div>
+    </section>
+
+    {% if importSummary %}
+    <section class="presence-import-result" role="status" aria-live="polite">
+        <strong>Importação concluída:</strong>
+        <strong>{{ importSummary.total }}</strong> lidos,
+        <strong>{{ importSummary.imported }}</strong> importados,
+        <strong>{{ importSummary.updated }}</strong> atualizados,
+        <strong>{{ importSummary.skipped }}</strong> ignorados,
+        <strong>{{ importSummary.errors }}</strong> com erro.
+    </section>
+    {% endif %}
+
+    {% if isAdmin %}
+    <section class="presence-admin-grid">
+        <article class="content-panel presence-entry-panel">
+            <div class="panel-header">
+                <div>
+                    <h2>Adicionar manualmente</h2>
+                    <p>Para poucos ouvintes ou correções rápidas.</p>
+                </div>
+            </div>
+            <div class="panel-body">
+                <form method="post" action="{{ urlFor('presenca_attendee_create') }}" class="presence-compact-form">
+                    <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+                    <input type="hidden" name="event_id" value="{{ selectedEvent.id if selectedEvent else '' }}">
+
+                    <div class="presence-field">
+                        <label class="form-label" for="att_badge">Crachá</label>
+                        <input id="att_badge" class="form-control{% if attendeeErrors.badgeCode %} is-invalid{% endif %}" name="badge_code" value="{{ attendeeFormData.badge_code }}" placeholder="Ex.: A001" required autocomplete="off">
+                    </div>
+                    <div class="presence-field">
+                        <label class="form-label" for="att_name">Nome</label>
+                        <input id="att_name" class="form-control{% if attendeeErrors.name %} is-invalid{% endif %}" name="name" value="{{ attendeeFormData.name }}" placeholder="Nome completo" required autocomplete="off">
+                    </div>
+                    <div class="presence-field">
+                        <label class="form-label" for="att_cpf">CPF</label>
+                        <input id="att_cpf" class="form-control" name="cpf" value="{{ attendeeFormData.cpf }}" placeholder="000.000.000-00" autocomplete="off">
+                    </div>
+                    <div class="presence-field">
+                        <label class="form-label" for="att_email">E-mail</label>
+                        <input id="att_email" class="form-control" name="email" type="email" value="{{ attendeeFormData.email }}" placeholder="email@exemplo.com">
+                    </div>
+
+                    <button class="btn-primary-action presence-submit" type="submit">
+                        <ion-icon name="person-add-outline"></ion-icon>
+                        Salvar ouvinte
+                    </button>
+                </form>
+            </div>
+        </article>
+
+        <article class="content-panel presence-import-panel" style="grid-column: span 2">
+            <div class="panel-header">
+                <div>
+                    <h2>Importar lista</h2>
+                    <p>Use quando já tiver uma planilha com todos os ouvintes.</p>
+                </div>
+            </div>
+            <div class="panel-body">
+                <form method="post" action="{{ urlFor('presenca_import_preview') }}" enctype="multipart/form-data" class="presence-import-form">
+                    <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+                    <input type="hidden" name="event_id" value="{{ selectedEvent.id if selectedEvent else '' }}">
+                    <div class="presence-import-drop">
+                        <ion-icon name="document-attach-outline"></ion-icon>
+                        <div>
+                            <label class="form-label" for="csv_file">Enviar CSV</label>
+                            <input type="file" id="csv_file" name="csv_file" class="form-control-file" accept=".csv,text/csv,.txt">
+                        </div>
+                    </div>
+                    <div class="presence-field">
+                        <label class="form-label" for="csv_text">Ou colar dados</label>
+                        <textarea id="csv_text" name="csv_text" class="form-control" rows="5" placeholder="cracha,nome,cpf,email&#10;A001,João Silva,000.000.000-00,joao@ex.com"></textarea>
+                    </div>
+                    <p class="presence-import-note">Colunas esperadas: <code>cracha,nome,cpf,email</code>. {% if selectedEvent %}Como há atividade selecionada, a importação também vincula à atividade.{% else %}Sem atividade selecionada, importa apenas para a lista geral.{% endif %}</p>
+                    <button class="btn-secondary-action" type="submit">
+                        <ion-icon name="eye-outline"></ion-icon>
+                        Pré-visualizar
+                    </button>
+                </form>
+            </div>
+        </article>
+    </section>
+    {% endif %}
+
+    {% if importPreview %}
+    <section class="content-panel presence-preview-panel">
+        <div class="panel-header">
+            <div>
+                <h2>Pré-visualização da importação</h2>
+                <p>
+                    {{ importPreview.summary.total }} linhas lidas -
+                    <span style="color:#166534">{{ importPreview.summary.new }} novas</span>,
+                    <span style="color:#92400e">{{ importPreview.summary.duplicate }} duplicadas</span>,
+                    <span style="color:#991b1b">{{ importPreview.summary.error }} com erro</span>.
+                </p>
+            </div>
+        </div>
+        <div class="panel-body">
+            <div class="presence-preview-actions">
+                <form method="post" action="{{ urlFor('presenca_import_confirm') }}" class="presence-confirm-form">
+                    <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+                    <input type="hidden" name="event_id" value="{{ selectedEvent.id if selectedEvent else '' }}">
+                    <textarea name="import_payload_json" hidden>{{ importPreview.payloadJson }}</textarea>
+                    <div>
+                        <label class="form-label" for="duplicate_mode">Registros duplicados</label>
+                        <select id="duplicate_mode" name="duplicate_mode" class="form-control">
+                            <option value="ignore">Ignorar repetidos</option>
+                            <option value="update">Atualizar existentes</option>
+                        </select>
+                    </div>
+                    <button class="btn-primary-action presence-submit" type="submit" style="margin-top:0">
+                        <ion-icon name="cloud-upload-outline"></ion-icon>
+                        Confirmar importação
+                    </button>
+                </form>
+                <a class="btn-secondary-action" href="{{ urlFor('presenca_ouvintes') }}{% if selectedEvent %}?event_id={{ selectedEvent.id }}{% endif %}" style="text-decoration:none;align-self:flex-end">
+                    <ion-icon name="close-outline"></ion-icon>
+                    Cancelar
+                </a>
+            </div>
+
+            <div class="presence-table-wrap">
+                <table class="styled-table presence-table">
+                    <thead>
+                        <tr>
+                            <th>Linha</th>
+                            <th>Status</th>
+                            <th>CRACHÁ</th>
+                            <th>NOME</th>
+                            <th>CPF</th>
+                            <th>EMAIL</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in importPreview.rows %}
+                        <tr>
+                            <td style="color:var(--ui-muted);font-size:0.82rem">{{ row.line }}</td>
+                            <td>
+                                {% if row.status == 'new' %}
+                                <span class="presence-chip presence-chip-ok">Novo</span>
+                                {% elif row.status == 'duplicate' %}
+                                <span class="presence-chip">Duplicado</span>
+                                {% else %}
+                                <span class="presence-chip presence-chip-error">{{ row.errors | join(', ') }}</span>
+                                {% endif %}
+                            </td>
+                            <td><code style="font-size:0.84rem">{{ row.attendee.badgeCode }}</code></td>
+                            <td>{{ row.attendee.name }}</td>
+                            <td style="font-size:0.88rem">{{ row.attendee.cpf }}</td>
+                            <td style="color:var(--ui-muted);font-size:0.88rem">{{ row.attendee.email }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+    {% endif %}
+
+    <section class="content-panel presence-list-panel">
+        <div class="panel-header">
+            <div>
+                <h2>Lista de ouvintes</h2>
+                <p>{% if selectedEvent %}Use o botão de vínculo para colocar ouvintes nesta atividade.{% else %}Base geral de ouvintes: quem pagou/foi cadastrado aparece aqui antes da presença.{% endif %}</p>
+            </div>
+            <form method="get" action="{{ urlFor('presenca_ouvintes') }}" class="presence-search-form" role="search">
+                <input type="hidden" name="event_id" value="{{ selectedEvent.id if selectedEvent else '' }}">
+                <input class="form-control" name="q" value="{{ searchQuery }}" placeholder="Buscar por crachá, nome, CPF ou email..." aria-label="Buscar ouvinte">
+            </form>
+        </div>
+        <div class="panel-body">
+            <div class="presence-table-wrap">
+                <table class="styled-table presence-table">
+                    <thead>
+                        <tr>
+                            <th>Atividades</th>
+                            <th>CRACHÁ</th>
+                            <th>NOME</th>
+                            <th>CPF</th>
+                            <th>EMAIL</th>
+                            {% if isAdmin %}<th>Ações</th>{% endif %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for attendee in attendees %}
+                        <tr id="attendee-{{ attendee.id }}" class="{{ 'is-present' if attendee.is_present else '' }}">
+                            <td style="white-space:nowrap">
+                                <span class="presence-chip">{{ attendee.event_count }} atividade(s)</span>
+                            </td>
+
+                            {% if isAdmin %}
+                            <form id="attendee-edit-{{ attendee.id }}" method="post" action="{{ urlFor('presenca_attendee_update', { id: attendee.id }) }}" class="inline-action-form">
+                                <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+                            </form>
+                            <td><input class="table-input" name="badge_code" value="{{ attendee.badge_code }}" required form="attendee-edit-{{ attendee.id }}"></td>
+                            <td><input class="table-input" name="name" value="{{ attendee.name }}" required form="attendee-edit-{{ attendee.id }}"></td>
+                            <td><input class="table-input" name="cpf" value="{{ attendee.cpf }}" form="attendee-edit-{{ attendee.id }}"></td>
+                            <td><input class="table-input" name="email" value="{{ attendee.email }}" form="attendee-edit-{{ attendee.id }}"></td>
+                            <td class="presence-actions">
+                                <button class="btn-secondary-action" type="submit" form="attendee-edit-{{ attendee.id }}" title="Salvar alterações">
+                                    <ion-icon name="save-outline"></ion-icon>
+                                </button>
+                                <form method="post" action="{{ urlFor('presenca_attendee_delete', { id: attendee.id }) }}" class="inline-action-form" onsubmit="return confirm('Excluir {{ attendee.name }}?')">
+                                    <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+                                    <button class="danger-button" type="submit" title="Excluir ouvinte">
+                                        <ion-icon name="trash-outline"></ion-icon>
+                                    </button>
+                                </form>
+                                {% if selectedEvent %}
+                                <form method="post" action="/presenca/ouvintes/{{ attendee.id }}/vincular" class="inline-action-form">
+                                    <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+                                    <input type="hidden" name="event_id" value="{{ selectedEvent.id }}">
+                                    <button class="btn-secondary-action presence-link-button" type="submit" title="Vincular à atividade selecionada">
+                                        <ion-icon name="link-outline"></ion-icon>
+                                        Vincular
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </td>
+                            {% else %}
+                            <td><span class="presence-chip">{{ attendee.event_count }} atividade(s)</span></td>
+                            <td><code style="font-size:0.84rem">{{ attendee.badge_code }}</code></td>
+                            <td>{{ attendee.name }}</td>
+                            <td style="font-size:0.88rem">{{ attendee.cpf }}</td>
+                            <td style="font-size:0.88rem;color:var(--ui-muted)">{{ attendee.email }}</td>
+                            {% endif %}
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="{{ '6' if isAdmin else '5' }}" class="ui-empty-state" style="text-align:center;padding:28px">
+                                {% if searchQuery %}
+                                Nenhum ouvinte encontrado para "<strong>{{ searchQuery }}</strong>".
+                                {% else %}
+                                Nenhum ouvinte cadastrado ainda.
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+</div>
+{% endblock %}
+
+
+
+
+
+

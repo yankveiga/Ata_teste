@@ -1,0 +1,16 @@
+﻿<nav class="module-tab-nav presence-tab-nav" aria-label="Navegação de presença">
+    <a href="{{ urlFor('presenca_checkin') }}" class="module-tab-link {{ 'is-active' if activePresenceTab == 'checkin' else '' }}">
+        <ion-icon name="barcode-outline"></ion-icon>
+        Check-in
+    </a>
+    <a href="{{ urlFor('presenca_eventos') }}" class="module-tab-link {{ 'is-active' if activePresenceTab == 'eventos' else '' }}">
+        <ion-icon name="calendar-outline"></ion-icon>
+        Atividades
+    </a>
+    <a href="{{ urlFor('presenca_ouvintes') }}" class="module-tab-link {{ 'is-active' if activePresenceTab == 'ouvintes' else '' }}">
+        <ion-icon name="people-outline"></ion-icon>
+        Ouvintes
+    </a>
+</nav>
+
+

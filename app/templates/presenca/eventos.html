@@ -1,0 +1,137 @@
+﻿{% extends "base.html" %}
+
+{% block content %}
+<div class="presence-page">
+    {% include "partials/presenca_tabs.html" %}
+
+    <header class="page-header page-header-split">
+        <div>
+            <h1>Atividades</h1>
+            <p class="lead">Cadastre palestras e minicursos para registrar presença individual.</p>
+        </div>        <a class="btn-secondary-action" href="/presenca/exportar-geral.xlsx" style="text-decoration:none;white-space:nowrap">
+            <ion-icon name="grid-outline"></ion-icon>
+            Planilha geral XLSX
+        </a>    </header>
+
+    {% if isAdmin %}
+    <section class="content-panel">
+        <div class="panel-header">
+            <div>
+                <h2>Nova atividade</h2>
+                <p>Use apenas nome e data para manter o cadastro simples.</p>
+            </div>
+        </div>
+        <div class="panel-body">
+            <form method="post" action="{{ urlFor('presenca_event_create') }}" class="presence-event-form stacked-form">
+                <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+                <div>
+                    <label class="form-label" for="new_event_name">Nome da atividade</label>
+                    <input id="new_event_name" name="name" class="form-control{% if eventErrors.name %} is-invalid{% endif %}" value="{{ eventFormData.name }}" placeholder="Ex: Palestra de Abertura" required autocomplete="off">
+                    {% if eventErrors.name %}<p class="form-hint" style="color:#991b1b">{{ eventErrors.name | join(', ') }}</p>{% endif %}
+                </div>
+                <div>
+                    <label class="form-label" for="new_event_date">Data</label>
+                    <input id="new_event_date" name="event_date" type="date" class="form-control" value="{{ eventFormData.event_date }}">
+                </div>
+                <div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap">
+                    <label class="checkbox-inline" for="new_event_active">
+                        <input type="checkbox" id="new_event_active" name="is_active" value="1" checked>
+                        Atividade ativa
+                    </label>
+                    <button class="btn-primary-action presence-submit" type="submit" style="margin-top:0">
+                        <ion-icon name="add-circle-outline"></ion-icon>
+                        Criar atividade
+                    </button>
+                </div>
+            </form>
+        </div>
+    </section>
+    {% endif %}
+
+    <section class="content-panel">
+        <div class="panel-header">
+            <div>
+                <h2>Atividades cadastradas</h2>
+                <p>Os totais mostram inscritos vinculados e presenças confirmadas.</p>
+            </div>
+        </div>
+        <div class="panel-body">
+            <div class="presence-event-list">
+                {% for event in events %}
+                <article class="presence-event-card" id="event-{{ event.id }}">
+                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                        <span class="presence-chip{% if event.is_active %} presence-chip-ok{% endif %}" style="font-size:0.72rem">
+                            {% if event.is_active %}Ativo{% else %}Inativo{% endif %}
+                        </span>
+                        <span style="font-weight:800;font-size:1.05rem;color:#4c1d95">{{ event.name }}</span>
+                        {% if event.event_date %}<span style="font-size:0.84rem;color:#6d28d9">{{ event.event_date | formatDate }}</span>{% endif %}
+                    </div>
+
+                    {% if isAdmin %}
+                    <details style="margin-top:4px">
+                        <summary style="cursor:pointer;font-size:0.84rem;color:#6d28d9;font-weight:700;list-style:none;display:flex;align-items:center;gap:6px">
+                            <ion-icon name="create-outline"></ion-icon>
+                            Editar atividade
+                        </summary>
+                        <div style="margin-top:12px">
+                            <form method="post" action="{{ urlFor('presenca_event_update', { id: event.id }) }}" class="presence-event-edit-form stacked-form">
+                                <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+                                <input class="form-control" name="name" value="{{ event.name }}" placeholder="Nome" required>
+                                <input class="form-control" name="event_date" type="date" value="{{ event.event_date }}">
+                                <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+                                    <label class="checkbox-inline" for="active_{{ event.id }}">
+                                        <input type="checkbox" id="active_{{ event.id }}" name="is_active" value="1" {% if event.is_active %}checked{% endif %}>
+                                        Ativo
+                                    </label>
+                                    <button class="btn-primary-action" type="submit" style="margin:0;padding:0.56rem 1rem">
+                                        <ion-icon name="save-outline"></ion-icon>
+                                        Salvar
+                                    </button>
+                                </div>
+                            </form>
+                            <form method="post" action="{{ urlFor('presenca_event_delete', { id: event.id }) }}" class="presence-event-delete-form" style="margin-top:10px" onsubmit="return confirm('Excluir atividade {{ event.name }} e todos os seus ouvintes? Essa ação não pode ser desfeita.')">
+                                <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+                                <button class="danger-button" type="submit">
+                                    <ion-icon name="trash-outline"></ion-icon>
+                                    Excluir atividade
+                                </button>
+                            </form>
+                        </div>
+                    </details>
+                    {% endif %}
+
+                    <div class="presence-event-actions">
+                        <a class="btn-primary-action" href="{{ urlFor('presenca_checkin') }}?event_id={{ event.id }}" style="background:linear-gradient(135deg,#6d28d9,#a855f7);color:#fff;text-decoration:none">
+                            <ion-icon name="barcode-outline"></ion-icon>
+                            Abrir check-in
+                        </a>
+                        <a class="btn-secondary-action" href="{{ urlFor('presenca_ouvintes') }}?event_id={{ event.id }}" style="text-decoration:none">
+                            <ion-icon name="people-outline"></ion-icon>
+                            Vincular ouvintes
+                        </a>
+                        <a class="btn-secondary-action" href="{{ urlFor('presenca_export_csv', { id: event.id }) }}" style="text-decoration:none">
+                            <ion-icon name="download-outline"></ion-icon>
+                            Exportar CSV
+                        </a>
+                    </div>
+
+                    <div class="presence-card-stats">
+                        <span><strong>{{ event.attendee_count }}</strong> ouvintes</span>
+                        <span><strong>{{ event.present_count }}</strong> presentes</span>
+                        <span><strong>{{ event.attendee_count - event.present_count }}</strong> pendentes</span>
+                    </div>
+                </article>
+                {% else %}
+                <div class="ui-empty-state" style="text-align:center;padding:32px 20px">
+                    <ion-icon name="calendar-outline" style="font-size:2.4rem;opacity:0.4;display:block;margin:0 auto 10px"></ion-icon>
+                    Nenhuma atividade cadastrada ainda.
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+</div>
+{% endblock %}
+
+
+

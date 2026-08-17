@@ -1,0 +1,179 @@
+﻿{% extends "base.html" %}
+
+{% block content %}
+<div class="presence-page">
+    {% include "partials/presenca_tabs.html" %}
+
+    <header class="page-header">
+        <h1>Check-in</h1>
+        <p class="lead">Selecione a atividade e registre a presença pelo código do crachá.</p>
+    </header>
+
+    <section class="content-panel presence-checkin-panel">
+        <div class="panel-header">
+            <div>
+                <h2>Registro rápido</h2>
+                <p>Escaneie ou digite o código do crachá. O campo volta ao foco após cada bip.</p>
+            </div>
+            {% if selectedEvent %}
+            <span class="page-badge">
+                <ion-icon name="people-outline" style="margin-right:5px"></ion-icon>
+                {{ selectedEvent.present_count }} / {{ selectedEvent.attendee_count }} presentes
+            </span>
+            {% endif %}
+        </div>
+
+        <div class="panel-body" style="display:grid;gap:20px">
+            <form method="get" action="{{ urlFor('presenca_checkin') }}" class="presence-event-picker stacked-form" id="form-event-picker">
+                <label class="form-label" for="event_id">Atividade</label>
+                <select id="event_id" name="event_id" class="form-control" onchange="this.form.submit()" required>
+                    {% if not events.length %}
+                    <option value="">Nenhuma atividade cadastrada</option>
+                    {% endif %}
+                    {% for event in events %}
+                    <option value="{{ event.id }}" {% if selectedEvent and selectedEvent.id == event.id %}selected{% endif %}>
+                        {{ event.name }}{% if event.event_date %} - {{ event.event_date | formatDate }}{% endif %}
+                    </option>
+                    {% endfor %}
+                </select>
+            </form>
+
+            {% if selectedEvent %}
+            <form id="presenca-form" class="presence-scan-form" method="post" action="{{ urlFor('registrar_presenca') }}" data-no-global-loading="true">
+                <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+                <input type="hidden" name="event_id" value="{{ selectedEvent.id }}">
+                <label class="sr-only" for="badge_code">Código do crachá</label>
+                <input
+                    type="text"
+                    id="badge_code"
+                    name="badge_code"
+                    class="form-control presence-scan-input"
+                    placeholder="Escaneie ou digite o código do crachá..."
+                    required
+                    autofocus
+                    autocomplete="off"
+                    autocorrect="off"
+                    autocapitalize="off"
+                    spellcheck="false"
+                >
+                <button type="submit" class="btn-primary-action presence-submit">
+                    <ion-icon name="checkmark-done-outline"></ion-icon>
+                    Registrar
+                </button>
+            </form>
+
+            <div id="resultado" class="presence-result" role="status" aria-live="polite" aria-atomic="true" style="display:none"></div>
+
+            <div id="checkin-feed" style="display:none">
+                <p style="font-size:0.82rem;font-weight:700;color:var(--ui-muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.06em">Últimos registros</p>
+                <ul id="checkin-feed-list" style="list-style:none;padding:0;margin:0;display:grid;gap:6px"></ul>
+            </div>
+            {% else %}
+            <div class="ui-empty-state" style="text-align:center;padding:32px">
+                <ion-icon name="calendar-outline" style="font-size:2.4rem;opacity:0.4;display:block;margin:0 auto 10px"></ion-icon>
+                Crie uma atividade antes de iniciar o check-in.
+                {% if isAdmin %}
+                <br>
+                <a href="{{ urlFor('presenca_eventos') }}" style="color:#6d28d9;font-weight:700;text-decoration:none;font-size:0.9rem">
+                    Ir para Atividades ->
+                </a>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    'use strict';
+
+    var form = document.getElementById('presenca-form');
+    if (!form) { return; }
+
+    var input = document.getElementById('badge_code');
+    var csrfInput = form.querySelector('input[name="csrf_token"]');
+    var resultado = document.getElementById('resultado');
+    var feed = document.getElementById('checkin-feed');
+    var feedList = document.getElementById('checkin-feed-list');
+    var feedItems = [];
+
+    function renderResultado(message, kind) {
+        resultado.style.display = '';
+        resultado.className = 'presence-result';
+        if (kind) {
+            resultado.classList.add('presence-result-' + kind);
+        }
+        resultado.innerHTML = '<span style="font-weight:700">' + escapeHtml(message) + '</span>';
+    }
+
+    function escapeHtml(text) {
+        return String(text)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+
+    function addFeedEntry(message, kind, code) {
+        var item = document.createElement('li');
+        item.style.cssText = 'display:flex;align-items:center;gap:8px;font-size:0.86rem;padding:6px 10px;border-radius:10px;background:rgba(0,0,0,0.03);border:1px solid rgba(0,0,0,0.05)';
+        var now = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        var color = kind === 'success' ? '#166534' : (kind === 'error' ? '#991b1b' : '#5b21b6');
+        item.innerHTML =
+            '<span style="color:' + color + ';font-weight:800;min-width:52px">' + escapeHtml(code) + '</span>' +
+            '<span style="flex:1">' + escapeHtml(message) + '</span>' +
+            '<span style="color:var(--ui-muted);font-size:0.78rem;white-space:nowrap">' + now + '</span>';
+        feedItems.unshift(item);
+        if (feedItems.length > 10) {
+            var removed = feedItems.pop();
+            if (removed.parentNode === feedList) {
+                feedList.removeChild(removed);
+            }
+        }
+        feedList.insertBefore(item, feedList.firstChild);
+        feed.style.display = '';
+    }
+
+    form.addEventListener('submit', async function(event) {
+        event.preventDefault();
+        var code = input.value.trim();
+        renderResultado('Registrando...', 'info');
+        try {
+            var formData = new URLSearchParams(new FormData(form));
+            var response = await fetch(form.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'x-csrf-token': csrfInput ? csrfInput.value : '',
+                    'Accept': 'application/json',
+                },
+                credentials: 'same-origin',
+            });
+            var result = await response.json();
+            if (!response.ok) {
+                if (response.status === 403 && result.csrfToken && csrfInput) {
+                    csrfInput.value = result.csrfToken;
+                }
+                throw new Error(result.error || result.message || 'Erro ao registrar presença.');
+            }
+            var kind = result.success ? 'success' : 'error';
+            var msg = result.message || (result.success ? 'Presença registrada.' : 'Crachá não encontrado.');
+            renderResultado(msg, kind);
+            addFeedEntry(msg, kind, code);
+        } catch (error) {
+            renderResultado(error.message, 'error');
+            addFeedEntry(error.message, 'error', code);
+        } finally {
+            input.value = '';
+            input.focus();
+        }
+    });
+})();
+</script>
+{% endblock %}
+
+

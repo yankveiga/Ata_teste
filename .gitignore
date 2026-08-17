@@ -46,3 +46,11 @@ dist/
 build/
 *.egg-info/
 node_modules/
+
+# Dados locais/sensiveis que nao devem ir em pacotes enviados
+planilha_presenca.xlsx
+data/examples/*.xlsx
+!data/examples/.gitkeep
+*.bak
+*.dump
+app/static/uploads/*
