@@ -2019,7 +2019,10 @@ document.addEventListener('DOMContentLoaded', function() {
     if (!goalItem) {
       return;
     }
+    removeGoalItemFromCurrentColumn(goalItem);
+  }
 
+  function removeGoalItemFromCurrentColumn(goalItem) {
     const column = goalItem.closest('.report-kanban-column');
     const list = goalItem.closest('.report-goal-list');
     const countEl = column ? column.querySelector('.report-kanban-column-header span') : null;
@@ -2036,6 +2039,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (list && list.querySelectorAll('.report-goal-item').length === 0 && emptyEl) {
       emptyEl.hidden = false;
+    }
+  }
+
+  function removeGoalItemById(goalId) {
+    const normalizedGoalId = String(goalId || '');
+    const escapedGoalId = window.CSS && CSS.escape
+      ? CSS.escape(normalizedGoalId)
+      : normalizedGoalId.replace(/"/g, '\\"');
+    const goalItem = document.querySelector('.report-goal-item[data-goal-id="' + escapedGoalId + '"]');
+    if (goalItem) {
+      removeGoalItemFromCurrentColumn(goalItem);
     }
   }
 
@@ -2269,6 +2283,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const deleteReason = document.getElementById('report_missed_delete_reason');
     const openButtons = Array.from(document.querySelectorAll('.js-missed-open'));
     const closeButtons = Array.from(document.querySelectorAll('.js-missed-close'));
+    let activeMissedGoalId = '';
 
     function closeMissedModal() {
       missedModal.classList.remove('is-open');
@@ -2285,6 +2300,7 @@ document.addEventListener('DOMContentLoaded', function() {
       if (!goalId) {
         return;
       }
+      activeMissedGoalId = goalId;
       const activity = String(button.dataset.goalActivity || '').trim();
       const description = String(button.dataset.goalDescription || '').trim();
       const dueAt = String(button.dataset.goalDueAt || '').trim();
@@ -2320,6 +2336,63 @@ document.addEventListener('DOMContentLoaded', function() {
       });
     }
 
+    async function submitMissedModalForm(form, options) {
+      if (!form || form.dataset.saving === '1') {
+        return;
+      }
+      if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+      }
+
+      const submitButton = form.querySelector('button[type="submit"]');
+      form.dataset.saving = '1';
+      if (submitButton) {
+        submitButton.disabled = true;
+      }
+
+      try {
+        const formData = new URLSearchParams(new FormData(form));
+        const response = await fetch(form.action, {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+          body: formData.toString(),
+        });
+        let payload = null;
+        try {
+          payload = await response.json();
+        } catch (_error) {
+          payload = null;
+        }
+        if (!response.ok || !payload || !payload.ok) {
+          throw new Error((payload && payload.message) || 'Não foi possível resolver a tarefa atrasada.');
+        }
+
+        const resolvedGoalId = payload.goalId || payload.goal_id || activeMissedGoalId;
+        closeMissedModal();
+        removeGoalItemById(resolvedGoalId);
+        showGoalCreateToast(payload.message || 'Tarefa atualizada.');
+        if (!options || options.reload !== false) {
+          window.setTimeout(() => {
+            window.location.hash = 'report-goals-panel';
+            window.location.reload();
+          }, 700);
+        }
+      } catch (error) {
+        showGoalCreateToast(error && error.message ? error.message : 'Falha ao salvar.');
+      } finally {
+        form.dataset.saving = '0';
+        if (submitButton) {
+          submitButton.disabled = false;
+        }
+      }
+    }
+
     openButtons.forEach((button) => {
       button.addEventListener('click', function() {
         openMissedModal(button);
@@ -2329,6 +2402,13 @@ document.addEventListener('DOMContentLoaded', function() {
     closeButtons.forEach((button) => {
       button.addEventListener('click', function() {
         closeMissedModal();
+      });
+    });
+
+    [doneForm, extendForm, deleteForm].filter(Boolean).forEach((form) => {
+      form.addEventListener('submit', function(event) {
+        event.preventDefault();
+        submitMissedModalForm(form);
       });
     });
 

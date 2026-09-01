@@ -588,9 +588,25 @@ function registerReportRoutes(ctx) {
     const goal = goalId ? database.getReportWeekGoalById(goalId) : null;
     const returnProjectId = parseId(req.body.return_project_id);
     const deletionReason = String(req.body.deletion_reason || "").trim();
+    const wantsJson = wantsJsonResponse(req);
+
+    function buildDeleteReturnUrl() {
+      return `/relatorios${buildReportsQuery({
+        memberId: goal?.member_id || null,
+        projectId: returnProjectId || goal?.project_id || null,
+      })}#report-goals-panel`;
+    }
+
+    function sendGoalDeleteError(status, message) {
+      if (wantsJson) {
+        return res.status(status).json({ ok: false, message });
+      }
+      req.flash("warning", message);
+      return res.redirect(goal ? buildDeleteReturnUrl() : "/relatorios");
+    }
+
     if (!goal) {
-      req.flash("warning", "Meta quinzenal não encontrada.");
-      return res.redirect("/relatorios");
+      return sendGoalDeleteError(404, "Meta quinzenal não encontrada.");
     }
 
     const canDeleteFromCompleted = canDeleteCompletedGoalFromOthers(req, goal);
@@ -598,26 +614,11 @@ function registerReportRoutes(ctx) {
     const isMissedGoal = goal.task_state === "missed";
 
     if (!canDeleteFromCompleted && !canDeleteFromExecution) {
-      req.flash(
-        "warning",
-        "Sem permissão para apagar esta meta neste projeto.",
-      );
-      return res.redirect(
-        `/relatorios${buildReportsQuery({
-          memberId: goal.member_id,
-          projectId: returnProjectId || goal.project_id,
-        })}#report-goals-panel`,
-      );
+      return sendGoalDeleteError(403, "Sem permissão para apagar esta meta neste projeto.");
     }
 
     if (isMissedGoal && deletionReason.length < 5) {
-      req.flash("warning", "Informe uma justificativa para excluir a tarefa atrasada.");
-      return res.redirect(
-        `/relatorios${buildReportsQuery({
-          memberId: goal.member_id,
-          projectId: returnProjectId || goal.project_id,
-        })}#report-goals-panel`,
-      );
+      return sendGoalDeleteError(422, "Informe uma justificativa para excluir a tarefa atrasada.");
     }
 
     try {
@@ -631,18 +632,26 @@ function registerReportRoutes(ctx) {
         }
       }
       database.deleteReportWeekGoalWithAudit(goal.id, req.currentUser.id, deletionReason);
+      if (wantsJson) {
+        return res.json({
+          ok: true,
+          message: "Atividade removida com sucesso.",
+          goalId: goal.id,
+        });
+      }
       req.flash("success", "Atividade removida com sucesso.");
     } catch (error) {
       logError(req, "Erro ao apagar meta concluída:", error);
+      if (wantsJson) {
+        return res.status(500).json({
+          ok: false,
+          message: `Erro ao apagar atividade concluída: ${error.message}`,
+        });
+      }
       req.flash("danger", `Erro ao apagar atividade concluída: ${error.message}`);
     }
 
-    return res.redirect(
-      `/relatorios${buildReportsQuery({
-        memberId: goal.member_id,
-        projectId: returnProjectId || goal.project_id,
-      })}#report-goals-panel`,
-    );
+    return res.redirect(buildDeleteReturnUrl());
   });
 
   app.post("/relatorios/writing/geral/create", requireAuth, (req, res) => {
