@@ -504,13 +504,22 @@ function registerReportRoutes(ctx) {
       }
 
       let updatedTask = null;
+      const isPastEffectiveDeadline = database.isReportDueOverdue(linkedTask.due_at, nowSql);
       const completedAfterDeadline = Boolean(
         isCompleted
         && linkedTask.due_at
         && nowSql
-        && database.isReportDueOverdue(linkedTask.due_at, nowSql),
+        && isPastEffectiveDeadline,
       );
-      if (goalAction === "done_late" || completedAfterDeadline) {
+      if (goalAction === "done_late" && !isPastEffectiveDeadline) {
+        updatedTask = database.updatePlannerTaskCompletion({
+          id: linkedTask.id,
+          isCompleted: true,
+          completedAt: nowSql,
+          updatedAt: nowSql,
+          actorUserId: req.currentUser.id,
+        });
+      } else if (goalAction === "done_late" || completedAfterDeadline) {
         updatedTask = database.markPlannerTaskDoneLate({
           id: linkedTask.id,
           actorUserId: req.currentUser.id,

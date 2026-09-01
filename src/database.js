@@ -1200,6 +1200,8 @@ function ensureSchema() {
   ).run();
 
   repairFortnightOnTimeCompletions(db);
+  repairSubmittedFortnightTasksMarkedMissedEarly(db);
+  repairPendingFortnightTasksMarkedMissedEarly(db);
 }
 
 function repairFortnightOnTimeCompletions(db = getDb()) {
@@ -1282,6 +1284,113 @@ function repairFortnightOnTimeCompletions(db = getDb()) {
   return {
     plannerTasks: taskIdsToRepair.length,
     reportGoals: goalIdsToRepair.length,
+  };
+}
+
+function repairPendingFortnightTasksMarkedMissedEarly(db = getDb(), nowSql = toSqlDateTime(new Date())) {
+  const missedTasks = db
+    .prepare(
+      `
+      SELECT id, due_at
+      FROM planner_task
+      WHERE is_completed = 0
+        AND workflow_state = 'missed'
+        AND due_at IS NOT NULL
+    `,
+    )
+    .all();
+
+  const taskIdsToRepair = missedTasks
+    .filter((task) => !isReportDueOverdue(task.due_at, nowSql))
+    .map((task) => task.id);
+
+  if (taskIdsToRepair.length) {
+    const placeholders = taskIdsToRepair.map(() => "?").join(", ");
+    db.prepare(
+      `
+      UPDATE planner_task
+      SET
+        workflow_state = 'active',
+        missed_at = NULL
+      WHERE id IN (${placeholders})
+    `,
+    ).run(...taskIdsToRepair);
+
+    db.prepare(
+      `
+      UPDATE report_week_goal
+      SET task_state = 'active'
+      WHERE planner_task_id IN (${placeholders})
+    `,
+    ).run(...taskIdsToRepair);
+  }
+
+  return { plannerTasks: taskIdsToRepair.length };
+}
+
+function repairSubmittedFortnightTasksMarkedMissedEarly(db = getDb()) {
+  const submittedGoals = db
+    .prepare(
+      `
+      SELECT
+        g.id,
+        g.planner_task_id,
+        g.due_at,
+        g.description,
+        g.updated_at
+      FROM report_week_goal g
+      WHERE g.is_completed = 0
+        AND g.task_state = 'missed'
+        AND g.due_at IS NOT NULL
+        AND g.updated_at IS NOT NULL
+        AND LENGTH(TRIM(g.description)) >= 10
+    `,
+    )
+    .all();
+
+  const goalsToRepair = submittedGoals.filter((goal) => {
+    const effectiveDeadline = reportDueGraceDeadlineSql(goal.due_at);
+    return Boolean(effectiveDeadline && goal.updated_at <= effectiveDeadline);
+  });
+
+  if (!goalsToRepair.length) {
+    return { reportGoals: 0, plannerTasks: 0 };
+  }
+
+  goalsToRepair.forEach((goal) => {
+    const completedAt = String(goal.updated_at).replace(/(\.\d+)?[-+]\d{2}(?::?\d{2})?$/, "");
+    db.prepare(
+      `
+      UPDATE report_week_goal
+      SET
+        is_completed = 1,
+        completed_at = ?,
+        completed_late = 0,
+        task_state = 'active'
+      WHERE id = ?
+    `,
+    ).run(completedAt, goal.id);
+
+    if (goal.planner_task_id) {
+      db.prepare(
+        `
+        UPDATE planner_task
+        SET
+          is_completed = 1,
+          status = 'done',
+          workflow_state = 'active',
+          completed_at = ?,
+          completed_late = 0,
+          missed_at = NULL
+        WHERE id = ?
+      `,
+      ).run(completedAt, goal.planner_task_id);
+    }
+  });
+
+  return {
+    reportGoals: goalsToRepair.length,
+    plannerTasks: goalsToRepair.filter((goal) => goal.planner_task_id).length,
   };
 }
 
