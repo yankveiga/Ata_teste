@@ -100,6 +100,13 @@
     var feedList = document.getElementById('checkin-feed-list');
     var feedItems = [];
 
+    function keepScannerFocus() {
+        if (document.activeElement !== input) {
+            input.focus();
+            input.select();
+        }
+    }
+
     function renderResultado(message, kind) {
         resultado.style.display = '';
         resultado.className = 'presence-result';
@@ -172,6 +179,32 @@
             input.focus();
         }
     });
+
+    document.addEventListener('keydown', function(event) {
+        var active = document.activeElement;
+        var isTypingInBadge = active === input;
+        var isBrowserDownloadShortcut = event.ctrlKey && !event.shiftKey && !event.altKey && String(event.key || '').toLowerCase() === 'j';
+
+        if (isBrowserDownloadShortcut) {
+            event.preventDefault();
+            event.stopPropagation();
+            keepScannerFocus();
+            return;
+        }
+
+        if (event.key === 'Enter' && !isTypingInBadge && form) {
+            event.preventDefault();
+            event.stopPropagation();
+            keepScannerFocus();
+        }
+    }, true);
+
+    document.addEventListener('click', function() {
+        window.setTimeout(keepScannerFocus, 0);
+    });
+
+    window.addEventListener('focus', keepScannerFocus);
+    window.setTimeout(keepScannerFocus, 120);
 })();
 </script>
 {% endblock %}

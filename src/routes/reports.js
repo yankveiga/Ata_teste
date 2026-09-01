@@ -578,6 +578,7 @@ function registerReportRoutes(ctx) {
     const goalId = parseId(req.params.id);
     const goal = goalId ? database.getReportWeekGoalById(goalId) : null;
     const returnProjectId = parseId(req.body.return_project_id);
+    const deletionReason = String(req.body.deletion_reason || "").trim();
     if (!goal) {
       req.flash("warning", "Meta quinzenal não encontrada.");
       return res.redirect("/relatorios");
@@ -585,12 +586,23 @@ function registerReportRoutes(ctx) {
 
     const canDeleteFromCompleted = canDeleteCompletedGoalFromOthers(req, goal);
     const canDeleteFromExecution = canDeleteGoalFromExecution(req, goal);
+    const isMissedGoal = goal.task_state === "missed";
 
     if (!canDeleteFromCompleted && !canDeleteFromExecution) {
       req.flash(
         "warning",
         "Sem permissão para apagar esta meta neste projeto.",
       );
+      return res.redirect(
+        `/relatorios${buildReportsQuery({
+          memberId: goal.member_id,
+          projectId: returnProjectId || goal.project_id,
+        })}#report-goals-panel`,
+      );
+    }
+
+    if (isMissedGoal && deletionReason.length < 5) {
+      req.flash("warning", "Informe uma justificativa para excluir a tarefa atrasada.");
       return res.redirect(
         `/relatorios${buildReportsQuery({
           memberId: goal.member_id,
@@ -609,7 +621,7 @@ function registerReportRoutes(ctx) {
           });
         }
       }
-      database.deleteReportWeekGoalWithAudit(goal.id, req.currentUser.id);
+      database.deleteReportWeekGoalWithAudit(goal.id, req.currentUser.id, deletionReason);
       req.flash("success", "Atividade removida com sucesso.");
     } catch (error) {
       logError(req, "Erro ao apagar meta concluída:", error);

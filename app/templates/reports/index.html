@@ -616,6 +616,7 @@
  {{ log.project_name }} Quinzena {{ log.week_start | formatDate }} 
  apagada por {{ log.deleted_by_name if log.deleted_by_name else ('@' ~ log.deleted_by_username) }}
  em {{ log.deleted_at | formatDateTime }}
+ {% if log.deletion_reason %}<br>Justificativa: {{ log.deletion_reason }}{% endif %}
  </small>
  </li>
  {% endfor %}
@@ -781,6 +782,15 @@
  <input id="report_missed_extend_due_input" type="datetime-local" name="due_at" class="form-control" required>
  <input type="text" name="extension_reason" class="form-control" placeholder="Motivo da extensão (opcional)">
  <button type="submit" name="goal_action" value="extend_deadline" class="btn-submit btn-submit-small">Estender prazo</button>
+ </form>
+ <form id="report_missed_delete_form" method="post" class="report-missed-modal-form">
+ <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+ <input type="hidden" name="return_project_id" value="{{ selectedProjectId if selectedProjectId else '' }}">
+ <label class="report-missed-description-field" for="report_missed_delete_reason">
+ <span>Justificativa da exclusão</span>
+ <textarea id="report_missed_delete_reason" name="deletion_reason" rows="3" class="form-control" minlength="5" maxlength="500" required placeholder="Explique por que esta tarefa atrasada deve ser excluída."></textarea>
+ </label>
+ <button type="submit" class="btn-submit btn-submit-small report-missed-delete-button">Excluir atraso</button>
  </form>
  </div>
  </div>
@@ -2249,12 +2259,14 @@ document.addEventListener('DOMContentLoaded', function() {
     const subtitle = document.getElementById('report_missed_modal_subtitle');
     const doneForm = document.getElementById('report_missed_done_form');
     const extendForm = document.getElementById('report_missed_extend_form');
+    const deleteForm = document.getElementById('report_missed_delete_form');
     const doneActivity = document.getElementById('report_missed_done_activity');
     const doneDescription = document.getElementById('report_missed_done_description');
     const doneDueAt = document.getElementById('report_missed_done_due_at');
     const extendActivity = document.getElementById('report_missed_extend_activity');
     const extendDescription = document.getElementById('report_missed_extend_description');
     const extendDueInput = document.getElementById('report_missed_extend_due_input');
+    const deleteReason = document.getElementById('report_missed_delete_reason');
     const openButtons = Array.from(document.querySelectorAll('.js-missed-open'));
     const closeButtons = Array.from(document.querySelectorAll('.js-missed-close'));
 
@@ -2278,15 +2290,22 @@ document.addEventListener('DOMContentLoaded', function() {
       const dueAt = String(button.dataset.goalDueAt || '').trim();
       const project = String(button.dataset.goalProject || '').trim();
       const updateAction = '/relatorios/goals/' + goalId + '/update#report-goals-panel';
+      const deleteAction = '/relatorios/goals/' + goalId + '/delete#report-goals-panel';
 
       doneForm.action = updateAction;
       extendForm.action = updateAction;
+      if (deleteForm) {
+        deleteForm.action = deleteAction;
+      }
       doneActivity.value = activity;
       doneDescription.value = description;
       doneDueAt.value = dueAt;
       extendActivity.value = activity;
       extendDescription.value = description;
       extendDueInput.value = dueAt;
+      if (deleteReason) {
+        deleteReason.value = '';
+      }
 
       if (subtitle) {
         subtitle.textContent = project ? (activity + ' • ' + project) : activity;

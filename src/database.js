@@ -432,7 +432,12 @@ function addDaysToDateKey(dateKey, days) {
 function reportDueGraceDeadlineSql(dueAt, graceDays = 2) {
   const dateKey = String(dueAt || "").slice(0, 10);
   const deadlineDateKey = addDaysToDateKey(dateKey, graceDays);
-  return deadlineDateKey ? `${deadlineDateKey} 23:59:59` : null;
+  const fortnightEndDateKey = resolveFortnightEndFromDateKey(dateKey);
+  const effectiveDateKey = [deadlineDateKey, fortnightEndDateKey]
+    .filter(Boolean)
+    .sort()
+    .pop();
+  return effectiveDateKey ? `${effectiveDateKey} 23:59:59` : null;
 }
 
 function isReportDueOverdue(dueAt, nowSql, graceDays = 2) {
@@ -451,6 +456,28 @@ function resolveFortnightStartFromSqlDateTime(value) {
   const day = Number(match[3]);
   const fortnightStart = day <= 15 ? "01" : "16";
   return `${match[1]}-${match[2]}-${fortnightStart}`;
+}
+
+function resolveFortnightEndFromDateKey(value) {
+  const text = String(value || "").trim();
+  const match = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) {
+    return null;
+  }
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (!year || month < 1 || month > 12 || day < 1 || day > 31) {
+    return null;
+  }
+
+  if (day <= 15) {
+    return `${match[1]}-${match[2]}-15`;
+  }
+
+  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  return `${match[1]}-${match[2]}-${String(lastDay).padStart(2, "0")}`;
 }
 
 // FUNCAO: addDaysToNow.
@@ -605,6 +632,7 @@ function ensureSchema() {
       activity TEXT NOT NULL,
       description TEXT NOT NULL DEFAULT '',
       completed_at TEXT,
+      deletion_reason TEXT,
       deleted_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (member_id) REFERENCES member(id),
       FOREIGN KEY (project_id) REFERENCES project(id),
@@ -980,6 +1008,7 @@ function ensureSchema() {
   ensureColumn("report_week_goal", "due_at", "TEXT");
   ensureColumn("report_week_goal", "task_state", "TEXT NOT NULL DEFAULT 'active'");
   ensureColumn("report_week_goal", "completed_late", "INTEGER NOT NULL DEFAULT 0");
+  ensureColumn("report_week_goal_deletion_log", "deletion_reason", "TEXT");
   ensureColumn("planner_task", "completed_late", "INTEGER NOT NULL DEFAULT 0");
   ensureColumn("chat_conversation_participant", "last_read_at", "TEXT");
   ensureColumn("event_attendee", "cpf", "TEXT");
@@ -1169,6 +1198,91 @@ function ensureSchema() {
     END
   `,
   ).run();
+
+  repairFortnightOnTimeCompletions(db);
+}
+
+function repairFortnightOnTimeCompletions(db = getDb()) {
+  const completedLateTasks = db
+    .prepare(
+      `
+      SELECT id, due_at, completed_at
+      FROM planner_task
+      WHERE completed_late = 1
+        AND completed_at IS NOT NULL
+        AND due_at IS NOT NULL
+    `,
+    )
+    .all();
+
+  const taskIdsToRepair = completedLateTasks
+    .filter((task) => {
+      const effectiveDeadline = reportDueGraceDeadlineSql(task.due_at);
+      return Boolean(effectiveDeadline && task.completed_at <= effectiveDeadline);
+    })
+    .map((task) => task.id);
+
+  if (taskIdsToRepair.length) {
+    const placeholders = taskIdsToRepair.map(() => "?").join(", ");
+    db.prepare(
+      `
+      UPDATE planner_task
+      SET
+        completed_late = 0,
+        workflow_state = 'active',
+        missed_at = NULL
+      WHERE id IN (${placeholders})
+    `,
+    ).run(...taskIdsToRepair);
+
+    db.prepare(
+      `
+      UPDATE report_week_goal
+      SET
+        completed_late = 0,
+        task_state = 'active'
+      WHERE planner_task_id IN (${placeholders})
+    `,
+    ).run(...taskIdsToRepair);
+  }
+
+  const completedLateGoals = db
+    .prepare(
+      `
+      SELECT id, due_at, completed_at
+      FROM report_week_goal
+      WHERE completed_late = 1
+        AND completed_at IS NOT NULL
+        AND due_at IS NOT NULL
+        AND planner_task_id IS NULL
+    `,
+    )
+    .all();
+
+  const goalIdsToRepair = completedLateGoals
+    .filter((goal) => {
+      const effectiveDeadline = reportDueGraceDeadlineSql(goal.due_at);
+      return Boolean(effectiveDeadline && goal.completed_at <= effectiveDeadline);
+    })
+    .map((goal) => goal.id);
+
+  if (goalIdsToRepair.length) {
+    const placeholders = goalIdsToRepair.map(() => "?").join(", ");
+    db.prepare(
+      `
+      UPDATE report_week_goal
+      SET
+        completed_late = 0,
+        task_state = 'active'
+      WHERE id IN (${placeholders})
+    `,
+    ).run(...goalIdsToRepair);
+  }
+
+  return {
+    plannerTasks: taskIdsToRepair.length,
+    reportGoals: goalIdsToRepair.length,
+  };
 }
 
 // SECAO: transacoes e mapeadores de linhas (SQL -> objetos de dominio).
@@ -1530,6 +1644,7 @@ function mapReportWeekGoalDeletionLog(row) {
     description: row.description || "",
     completed_at: row.completed_at || null,
     deleted_at: row.deleted_at || null,
+    deletion_reason: row.deletion_reason || "",
     member_name: row.member_name || null,
     project_name: row.project_name || null,
     deleted_by_name: row.deleted_by_name || row.deleted_by_username || null,
@@ -3089,7 +3204,7 @@ function deleteReportWeekGoal(id) {
 }
 
 // FUNCAO: deleteReportWeekGoalWithAudit.
-function deleteReportWeekGoalWithAudit(id, deletedByUserId) {
+function deleteReportWeekGoalWithAudit(id, deletedByUserId, deletionReason = null) {
   return withTransaction((db) => {
     const existing = getReportWeekGoalById(id);
     if (!existing) {
@@ -3106,9 +3221,10 @@ function deleteReportWeekGoalWithAudit(id, deletedByUserId) {
         week_start,
         activity,
         description,
-        completed_at
+        completed_at,
+        deletion_reason
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
     ).run(
       existing.id,
@@ -3119,6 +3235,7 @@ function deleteReportWeekGoalWithAudit(id, deletedByUserId) {
       existing.activity,
       existing.description || "",
       existing.completed_at,
+      String(deletionReason || "").trim() || null,
     );
 
     db.prepare("DELETE FROM report_week_goal WHERE id = ?").run(id);
@@ -3152,6 +3269,7 @@ function listReportWeekGoalDeletionLogsForMember(
         l.activity,
         l.description,
         l.completed_at,
+        l.deletion_reason,
         l.deleted_at,
         m.name AS member_name,
         p.name AS project_name,
@@ -4072,6 +4190,7 @@ function markPlannerTaskDoneLate({
         workflow_state = 'active',
         completed_at = ?,
         completed_late = 1,
+        missed_at = NULL,
         updated_at = ?
       WHERE id = ?
     `,
