@@ -2352,7 +2352,14 @@ document.addEventListener('DOMContentLoaded', function() {
       }
 
       try {
-        const formData = new URLSearchParams(new FormData(form));
+        let rawFormData = new FormData(form);
+        const submitter = options && options.submitter && options.submitter.form === form
+          ? options.submitter
+          : null;
+        if (submitter && submitter.name && !rawFormData.has(submitter.name)) {
+          rawFormData.append(submitter.name, submitter.value || '');
+        }
+        const formData = new URLSearchParams(rawFormData);
         const response = await fetch(form.action, {
           method: 'POST',
           credentials: 'same-origin',
@@ -2408,7 +2415,9 @@ document.addEventListener('DOMContentLoaded', function() {
     [doneForm, extendForm, deleteForm].filter(Boolean).forEach((form) => {
       form.addEventListener('submit', function(event) {
         event.preventDefault();
-        submitMissedModalForm(form);
+        submitMissedModalForm(form, {
+          submitter: event.submitter || document.activeElement,
+        });
       });
     });
 

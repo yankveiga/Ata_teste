@@ -835,7 +835,14 @@ function render(res, template, data = {}) {
         }))
       : [];
     const pendingGoals = reportGoals.filter((goal) => !goal.is_completed);
-    const completedGoals = reportGoals.filter((goal) => goal.is_completed);
+    const completedGoals = reportGoals
+      .filter((goal) => goal.is_completed)
+      .sort((left, right) => (
+        String(right.completed_at || right.updated_at || right.due_at || "").localeCompare(
+          String(left.completed_at || left.updated_at || left.due_at || ""),
+        )
+        || right.id - left.id
+      ));
     const overduePendingGoals = pendingGoals
       .filter((goal) => goal.is_overdue)
       .sort((left, right) => (
