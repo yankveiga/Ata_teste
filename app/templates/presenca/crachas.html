@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% set title = "Gerador de Crachás" %}
+
+{% block content %}
+{% include "partials/presenca_tabs.html" %}
+
+<section class="content-panel presence-panel">
+    <div class="panel-header">
+        <h2>Gerador de Crachás</h2>
+        <p>Monte um PDF com crachás numerados em Code39 a partir de uma imagem modelo.</p>
+    </div>
+
+    <div class="panel-body">
+        <form method="post" action="{{ urlFor('presenca_crachas_generate') }}" enctype="multipart/form-data" class="stacked-form">
+            <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+
+            <div class="form-group">
+                <label for="base_image">Imagem modelo do crachá</label>
+                <input id="base_image" type="file" name="base_image" class="form-control" accept="image/png,image/jpeg" required>
+                {% if badgeErrors.baseImage %}
+                <small class="field-error">{{ badgeErrors.baseImage[0] }}</small>
+                {% endif %}
+            </div>
+
+            <div class="form-grid-two">
+                <div class="form-group">
+                    <label for="first_code">Primeiro código</label>
+                    <input id="first_code" type="number" name="first_code" class="form-control" min="1" step="1" value="{{ badgeFormData.first_code }}" required>
+                    {% if badgeErrors.firstCode %}
+                    <small class="field-error">{{ badgeErrors.firstCode[0] }}</small>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label for="last_code">Último código</label>
+                    <input id="last_code" type="number" name="last_code" class="form-control" min="1" step="1" value="{{ badgeFormData.last_code }}">
+                    {% if badgeErrors.lastCode %}
+                    <small class="field-error">{{ badgeErrors.lastCode[0] }}</small>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="total_badges">Quantidade, caso prefira ignorar o último código</label>
+                <input id="total_badges" type="number" name="total_badges" class="form-control" min="1" max="1000" step="1" value="{{ badgeFormData.total_badges }}">
+                {% if badgeErrors.totalBadges %}
+                <small class="field-error">{{ badgeErrors.totalBadges[0] }}</small>
+                {% endif %}
+            </div>
+
+            <div class="form-grid-two">
+                <div class="form-group">
+                    <label for="badge_width_cm">Largura do crachá (cm)</label>
+                    <input id="badge_width_cm" type="text" name="badge_width_cm" class="form-control" inputmode="decimal" value="{{ badgeFormData.badge_width_cm }}" required>
+                    {% if badgeErrors.badgeWidthCm %}
+                    <small class="field-error">{{ badgeErrors.badgeWidthCm[0] }}</small>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label for="badge_height_cm">Altura do crachá (cm)</label>
+                    <input id="badge_height_cm" type="text" name="badge_height_cm" class="form-control" inputmode="decimal" value="{{ badgeFormData.badge_height_cm }}" required>
+                    {% if badgeErrors.badgeHeightCm %}
+                    <small class="field-error">{{ badgeErrors.badgeHeightCm[0] }}</small>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="form-grid-two">
+                <div class="form-group">
+                    <label for="barcode_width_cm">Largura do código de barras (cm)</label>
+                    <input id="barcode_width_cm" type="text" name="barcode_width_cm" class="form-control" inputmode="decimal" value="{{ badgeFormData.barcode_width_cm }}" required>
+                    {% if badgeErrors.barcodeWidthCm %}
+                    <small class="field-error">{{ badgeErrors.barcodeWidthCm[0] }}</small>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label for="barcode_height_cm">Altura do código de barras (cm)</label>
+                    <input id="barcode_height_cm" type="text" name="barcode_height_cm" class="form-control" inputmode="decimal" value="{{ badgeFormData.barcode_height_cm }}" required>
+                    {% if badgeErrors.barcodeHeightCm %}
+                    <small class="field-error">{{ badgeErrors.barcodeHeightCm[0] }}</small>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="form-grid-two">
+                <div class="form-group">
+                    <label for="barcode_x_cm">Posição X do código (cm)</label>
+                    <input id="barcode_x_cm" type="text" name="barcode_x_cm" class="form-control" inputmode="decimal" value="{{ badgeFormData.barcode_x_cm }}" required>
+                    {% if badgeErrors.barcodeXCm %}
+                    <small class="field-error">{{ badgeErrors.barcodeXCm[0] }}</small>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label for="barcode_y_cm">Posição Y do código (cm)</label>
+                    <input id="barcode_y_cm" type="text" name="barcode_y_cm" class="form-control" inputmode="decimal" value="{{ badgeFormData.barcode_y_cm }}" required>
+                    {% if badgeErrors.barcodeYCm %}
+                    <small class="field-error">{{ badgeErrors.barcodeYCm[0] }}</small>
+                    {% endif %}
+                </div>
+            </div>
+
+            <button type="submit" class="btn-primary-action">
+                <ion-icon name="download-outline"></ion-icon>
+                Gerar PDF
+            </button>
+        </form>
+    </div>
+</section>
+{% endblock %}

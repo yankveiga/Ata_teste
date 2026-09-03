@@ -1,6 +1,11 @@
 ﻿const fs = require("node:fs");
 const multer = require("multer");
 const ExcelJS = require("exceljs");
+const {
+  generateBadgesPdf,
+  normalizeBadgeForm,
+  validateBadgeForm,
+} = require("../badges");
 
 function normalizeHeader(value) {
   return String(value || "")
@@ -227,6 +232,28 @@ function registerPresenceRoutes(ctx) {
     },
   });
 
+  const badgeImageUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: {
+      fileSize: 12 * 1024 * 1024,
+      files: 1,
+      fields: 20,
+    },
+    fileFilter: (req, file, callback) => {
+      const filename = String(file.originalname || "").toLowerCase();
+      const mime = String(file.mimetype || "").toLowerCase();
+      if (
+        /\.(png|jpg|jpeg)$/i.test(filename) &&
+        ["image/png", "image/jpeg"].includes(mime)
+      ) {
+        callback(null, true);
+        return;
+      }
+      req.uploadError = "Envie uma imagem PNG ou JPG valida.";
+      callback(null, false);
+    },
+  });
+
   function renderEvents(req, res, data = {}) {
     return render(res, "presenca/eventos.html", {
       title: "Eventos",
@@ -279,10 +306,73 @@ function registerPresenceRoutes(ctx) {
     });
   }
 
+  function renderBadgeGenerator(req, res, data = {}) {
+    return render(res, "presenca/crachas.html", {
+      title: "Gerador de Crachas",
+      activeSection: "presenca",
+      activePresenceTab: "crachas",
+      badgeFormData: data.badgeFormData || {
+        first_code: "100001",
+        last_code: "100150",
+        total_badges: "",
+        badge_width_cm: "11",
+        badge_height_cm: "13",
+        barcode_width_cm: "5.32",
+        barcode_height_cm: "1.94",
+        barcode_x_cm: "2.84",
+        barcode_y_cm: "8.73",
+      },
+      badgeErrors: data.badgeErrors || {},
+    });
+  }
+
   app.get("/presenca", requireAuth, (req, res) => res.redirect(urlFor("presenca_checkin")));
   app.get("/presenca/eventos", requireAuth, renderEvents);
   app.get("/presenca/ouvintes", requireAuth, renderAttendees);
   app.get("/presenca/check-in", requireAuth, renderCheckin);
+  app.get("/presenca/crachas", requireAuth, requireAdminPage, renderBadgeGenerator);
+
+  app.post(
+    "/presenca/crachas/gerar",
+    requireAuth,
+    requireAdminPage,
+    badgeImageUpload.single("base_image"),
+    async (req, res) => {
+      if (!ensureValidCsrf(req, res)) {
+        return;
+      }
+
+      const formData = normalizeBadgeForm(req.body);
+      const errors = validateBadgeForm(formData, req.file);
+      if (req.uploadError) {
+        errors.baseImage = [req.uploadError];
+      }
+      if (Object.keys(errors).length) {
+        return renderBadgeGenerator(req, res, {
+          badgeFormData: req.body,
+          badgeErrors: errors,
+        });
+      }
+
+      try {
+        const pdfBuffer = await generateBadgesPdf({
+          baseImageBuffer: req.file.buffer,
+          formData,
+        });
+        const lastCode = formData.lastCode || (formData.firstCode + formData.totalBadges - 1);
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename="crachas_${formData.firstCode}_${lastCode}.pdf"`,
+        );
+        return res.send(pdfBuffer);
+      } catch (error) {
+        logError(req, "Erro ao gerar PDF de crachas:", error);
+        req.flash("danger", error.message || "Erro ao gerar PDF de crachas.");
+        return renderBadgeGenerator(req, res, { badgeFormData: req.body });
+      }
+    },
+  );
 
   app.post("/presenca/eventos/criar", requireAuth, requireAdminPage, (req, res) => {
     if (!ensureValidCsrf(req, res)) {

@@ -29,6 +29,8 @@ const ROUTES = Object.freeze({
   presenca_eventos: "/presenca/eventos",
   presenca_ouvintes: "/presenca/ouvintes",
   presenca_checkin: "/presenca/check-in",
+  presenca_crachas: "/presenca/crachas",
+  presenca_crachas_generate: "/presenca/crachas/gerar",
   registrar_presenca: "/presenca/registrar",
   presenca_event_create: "/presenca/eventos/criar",
   presenca_event_update: "/presenca/eventos/:id/editar",
