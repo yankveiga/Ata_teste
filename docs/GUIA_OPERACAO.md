@@ -1,6 +1,6 @@
 # Guia de Operacao
 
-Ultima revisao: 15/08/2026
+Ultima revisao: 05/09/2026
 
 Se precisar operar deploy, incidente, backup, restore ou check-in de evento, use este guia.
 
@@ -48,6 +48,22 @@ Recomendacao para PostgreSQL: usar `sslmode=verify-full` na `DATABASE_URL` quand
 6. Mensagens: criar conversa e enviar mensagem
 7. Projetos: criar/editar
 8. Presenca: criar evento, importar CSV, registrar um check-in e exportar CSV
+
+## Monitoramento de lentidao
+
+Quando usuarios relatarem lentidao:
+
+1. Conferir se o servico no Render estava frio ou reiniciando.
+2. Conferir status e latencia do Neon/PostgreSQL.
+3. Habilitar temporariamente `REQUEST_LOGS=1` e observar nos logs quais rotas passam de alguns segundos.
+4. Testar paginas historicamente mais pesadas: `/relatorios`, `/planner`, `/projects`, `/almoxarifado` e `/mensagens`.
+5. Desabilitar `REQUEST_LOGS` depois da investigacao para reduzir ruido de log.
+
+Observacoes tecnicas:
+
+- O schema e garantido no startup e nao deve repetir o pacote completo de migracoes durante o uso normal do app.
+- Algumas consultas repetidas dentro da mesma requisicao usam cache local da propria requisicao.
+- O contador de mensagens nao lidas usa cache curto e e atualizado quando conversas sao lidas ou novas mensagens sao enviadas.
 
 ## Presenca em evento
 
@@ -104,6 +120,7 @@ pg_restore -d "$DATABASE_URL" --clean --if-exists backup_YYYY-MM-DD.dump
 
 - App cai apos login: validar logs, `DATABASE_URL` e schema no startup.
 - Conexao DB instavel: validar Neon e timeouts (`PG_CONNECTION_TIMEOUT_MS`, `DB_SYNC_QUERY_TIMEOUT_MS`).
+- Paginas lentas: habilitar `REQUEST_LOGS=1`, identificar rota lenta e conferir se o Neon esta respondendo com alta latencia.
 - Upload falhando: revisar `CLOUDINARY_*` ou escrita local.
 - Presenca falhando: verificar Render, Neon, internet local e usar contingencia CSV.
 - Email falhando: validar `BREVO_API_KEY`, `EMAIL_FROM`, `APP_BASE_URL`.

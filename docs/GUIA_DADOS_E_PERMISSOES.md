@@ -1,6 +1,6 @@
 ﻿# Guia de Dados e Permissoes
 
-Ultima revisao: 15/08/2026
+Ultima revisao: 05/09/2026
 
 Se precisar entender modelagem e acesso, use este guia.
 
@@ -19,6 +19,8 @@ Se precisar entender modelagem e acesso, use este guia.
 Fonte de verdade atual: `src/database.js`.
 
 Observacao de manutencao: este arquivo ainda concentra schema e consultas. Se for dividido futuramente, preservar os nomes das funcoes exportadas ou atualizar todas as rotas impactadas.
+
+Observacao de performance: como as rotas usam uma API sincrona de persistencia, reduza idas ao banco em telas grandes. Prefira consultas em lote para montar estruturas agregadas, como projetos com membros, e evite consultas em loop quando uma query com join resolver.
 
 ## Relacoes centrais
 
@@ -55,11 +57,18 @@ Regras:
 ## Regras de schema
 
 - Toda alteracao deve ser idempotente
+- `ensureSchema()` pode ser chamado por scripts e pelo servidor, mas deve executar o trabalho completo apenas uma vez por processo.
 - Se adicionar coluna/tabela:
   1. incluir em `CREATE TABLE IF NOT EXISTS` quando aplicavel
   2. reforcar com `ensureColumn`
   3. atualizar mapeadores `map*`
   4. validar rotas impactadas
+
+## Caches e consistencia
+
+- Cache por requisicao em `src/app.js`: usado para leituras repetidas de usuario, membro, projeto, lista de projetos por membro e permissoes projeto-membro. Nao atravessa requisicoes.
+- Cache curto de mensagens nao lidas: fica em memoria por poucos segundos e e invalidado quando uma conversa e marcada como lida ou quando nova mensagem e criada.
+- Nao guardar em cache global regras de permissao, membros de projeto ou dados administrativos sem TTL e invalidacao clara.
 
 ## Permissoes
 

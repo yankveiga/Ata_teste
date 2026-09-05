@@ -1,6 +1,6 @@
 # Guia de Desenvolvimento
 
-Ultima revisao: 15/08/2026
+Ultima revisao: 05/09/2026
 
 Se precisar entender arquitetura e alterar codigo com seguranca, este e o guia principal.
 
@@ -15,6 +15,19 @@ Camadas:
 5. Validadores: `src/validators/*`
 6. Persistencia/schema: `src/database.js`
 7. UI: `app/templates/*` e `app/static/*`
+
+## Persistencia e performance
+
+O banco PostgreSQL/Neon e acessado por `src/database.js`. O modulo expoe funcoes sincronas para as rotas, mas internamente usa um worker para executar as consultas no Postgres.
+
+Cuidados importantes:
+
+- `ensureSchema()` deve continuar idempotente e barato apos a primeira execucao; ele marca o schema como garantido somente ao terminar todas as criacoes, migracoes e reparos.
+- Evite chamadas repetidas ao banco dentro da mesma renderizacao. Quando estiver em `src/app.js`, prefira helpers com cache por requisicao para usuario, membro, projeto e permissoes.
+- Evite padrao N+1. Listagens como projetos com membros devem buscar os dados em lote e montar a estrutura em memoria.
+- Caches globais precisam de TTL curto ou invalidacao explicita. O contador de mensagens nao lidas usa cache curto e e invalidado em `src/routes/chat.js`.
+- Antes de adicionar uma consulta em middleware global, lembre que ela roda em praticamente todas as paginas autenticadas.
+- Para diagnosticar lentidao, use `REQUEST_LOGS=1` e compare tempo de rota com latencia do Neon.
 
 ## Organizacao de diretorios
 
@@ -86,10 +99,11 @@ As tabelas antigas podem manter colunas extras para compatibilidade, mas a inter
 2. Atualizar validacao.
 3. Atualizar autorizacao.
 4. Atualizar persistencia.
-5. Atualizar interface.
-6. Rodar verificacao automatica.
-7. Fazer smoke test manual.
-8. Atualizar docs.
+5. Revisar impacto de performance, especialmente consultas repetidas ou em middleware global.
+6. Atualizar interface.
+7. Rodar verificacao automatica.
+8. Fazer smoke test manual.
+9. Atualizar docs.
 
 ## Comandos uteis
 
@@ -98,6 +112,12 @@ npm run dev
 npm run verify
 npm run notify:run-once
 node -e "const { createApp } = require('./src/app'); createApp(); console.log('app-ok');"
+```
+
+Para logs simples de tempo por rota:
+
+```bash
+REQUEST_LOGS=1 npm run dev
 ```
 
 ## Regras de evolucao
@@ -114,3 +134,4 @@ node -e "const { createApp } = require('./src/app'); createApp(); console.log('a
 - Mover helpers grandes de `src/app.js` para modulos menores.
 - Dividir templates grandes, especialmente `reports/index.html`, em partials.
 - Adicionar lint/format e testes focados em validators/services.
+- Criar medicoes automatizadas simples para rotas pesadas, como relatorios, planner, projetos e almoxarifado.

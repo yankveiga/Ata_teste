@@ -225,6 +225,70 @@ function createApp() {
   database.ensureSchema();
   fs.mkdirSync(config.uploadDir, { recursive: true });
   const notificationService = createNotificationService({ database, config });
+  const unreadConversationCache = new Map();
+  const unreadConversationCacheTtlMs = 5000;
+
+  function getCachedRequestValue(req, namespace, key, loader) {
+    if (!req.localCache) {
+      req.localCache = new Map();
+    }
+    const cacheKey = `${namespace}:${key}`;
+    if (req.localCache.has(cacheKey)) {
+      return req.localCache.get(cacheKey);
+    }
+    const value = loader();
+    req.localCache.set(cacheKey, value);
+    return value;
+  }
+
+  function getRequestUserById(req, id) {
+    return getCachedRequestValue(req, "userById", id, () => database.getUserById(id));
+  }
+
+  function getRequestMemberById(req, id) {
+    return getCachedRequestValue(req, "memberById", id, () => database.getMemberById(id));
+  }
+
+  function getRequestMemberByName(req, name) {
+    return getCachedRequestValue(req, "memberByName", name, () => database.getMemberByName(name));
+  }
+
+  function getRequestProjectById(req, id) {
+    return getCachedRequestValue(req, "projectById", id, () => database.getProjectById(id));
+  }
+
+  function listRequestProjectsForMember(req, memberId) {
+    return getCachedRequestValue(req, "projectsForMember", memberId, () => database.listProjectsForMember(memberId));
+  }
+
+  function isRequestProjectMember(req, projectId, memberId) {
+    return getCachedRequestValue(req, "projectMember", `${projectId}:${memberId}`, () => database.isProjectMember(projectId, memberId));
+  }
+
+  function isRequestProjectCoordinator(req, projectId, memberId) {
+    return getCachedRequestValue(req, "projectCoordinator", `${projectId}:${memberId}`, () => database.isProjectCoordinator(projectId, memberId));
+  }
+
+  function countUnreadChatConversationsCached(userId) {
+    const cacheKey = String(userId);
+    const now = Date.now();
+    const cached = unreadConversationCache.get(cacheKey);
+    if (cached && now - cached.createdAt < unreadConversationCacheTtlMs) {
+      return cached.value;
+    }
+    if (unreadConversationCache.size > 1000) {
+      unreadConversationCache.clear();
+    }
+    const value = database.countUnreadChatConversationsForUser(userId);
+    unreadConversationCache.set(cacheKey, { value, createdAt: now });
+    return value;
+  }
+
+  function invalidateUnreadChatConversationCache(userId) {
+    if (userId) {
+      unreadConversationCache.delete(String(userId));
+    }
+  }
 
   const app = express();
   app.set("trust proxy", 1);
@@ -296,7 +360,7 @@ app.use(
       req.flash("info", "Sua sessão expirou. Faça login novamente.");
     }
     req.currentUser = req.session?.userId
-      ? database.getUserById(req.session.userId)
+      ? getRequestUserById(req, req.session.userId)
       : null;
     if (req.currentUser && !req.currentUser.is_active) {
       req.session.userId = null;
@@ -308,7 +372,7 @@ app.use(
     res.locals.currentUser = req.currentUser;
     res.locals.isAdmin = Boolean(req.currentUser?.is_admin);
     res.locals.unreadMessageConversations = req.currentUser
-      ? database.countUnreadChatConversationsForUser(req.currentUser.id)
+      ? countUnreadChatConversationsCached(req.currentUser.id)
       : 0;
     res.locals.currentMember = null;
     res.locals.flashMessages = consumeFlashes(req);
@@ -479,7 +543,7 @@ function requireAuth(req, res, next) {
     }
 
     if (req.currentUser.member_id) {
-      const linkedMember = database.getMemberById(req.currentUser.member_id);
+      const linkedMember = getRequestMemberById(req, req.currentUser.member_id);
       if (linkedMember) {
         req.currentMember = linkedMember;
         if (req.res?.locals) {
@@ -489,8 +553,8 @@ function requireAuth(req, res, next) {
       }
     }
 
-    const fromName = database.getMemberByName(req.currentUser.name);
-    const fromUsername = database.getMemberByName(req.currentUser.username);
+    const fromName = getRequestMemberByName(req, req.currentUser.name);
+    const fromUsername = getRequestMemberByName(req, req.currentUser.username);
     req.currentMember = fromName || fromUsername || null;
     if (req.res?.locals) {
       req.res.locals.currentMember = req.currentMember;
@@ -510,7 +574,7 @@ function requireAuth(req, res, next) {
       return [];
     }
 
-    return database.listProjectsForMember(currentMember.id);
+    return listRequestProjectsForMember(req, currentMember.id);
   }
 
   // DETALHE: Regra de autorizacao para criacao de ata em projeto especifico.
@@ -529,7 +593,7 @@ function requireAuth(req, res, next) {
       return false;
     }
 
-    return database.isProjectMember(project.id, currentMember.id);
+    return isRequestProjectMember(req, project.id, currentMember.id);
   }
 
   // DETALHE: Regra de autorizacao para manutencao de projeto (coordenador/admin).
@@ -548,7 +612,7 @@ function requireAuth(req, res, next) {
       return false;
     }
 
-    return database.isProjectCoordinator(project.id, currentMember.id);
+    return isRequestProjectCoordinator(req, project.id, currentMember.id);
   }
 
   // DETALHE: Regra de autorizacao para editar/excluir entradas de relatorio.
@@ -578,12 +642,12 @@ function requireAuth(req, res, next) {
 
     if (
       currentMember.id === memberId &&
-      database.isProjectMember(projectId, currentMember.id)
+      isRequestProjectMember(req, projectId, currentMember.id)
     ) {
       return true;
     }
 
-    return database.isProjectCoordinator(projectId, currentMember.id);
+    return isRequestProjectCoordinator(req, projectId, currentMember.id);
   }
 
   function canDeleteCompletedGoalFromOthers(req, goal) {
@@ -604,7 +668,7 @@ function requireAuth(req, res, next) {
       return false;
     }
 
-    return database.isProjectCoordinator(goal.project_id, currentMember.id);
+    return isRequestProjectCoordinator(req, goal.project_id, currentMember.id);
   }
 
   function canDeleteGoalFromExecution(req, goal) {
@@ -621,7 +685,7 @@ function requireAuth(req, res, next) {
       return false;
     }
 
-    return database.isProjectCoordinator(goal.project_id, currentMember.id);
+    return isRequestProjectCoordinator(req, goal.project_id, currentMember.id);
   }
 
   // DETALHE: Valida token CSRF para formularios e interrompe fluxo quando invalido.
@@ -726,7 +790,7 @@ function render(res, template, data = {}) {
     const availableProjectIds = new Set(availableProjects.map((project) => project.id));
     const selectedProjectId = parseId(data.formData.projectId);
     const selectedProject = selectedProjectId && availableProjectIds.has(selectedProjectId)
-      ? database.getProjectById(selectedProjectId)
+      ? getRequestProjectById(req, selectedProjectId)
       : null;
     const selectedProjectMembers = selectedProject
       ? selectedProject.active_members
@@ -766,7 +830,7 @@ function render(res, template, data = {}) {
 
     const selectedMember =
       selectedMemberId && membersSummary.some((member) => member.id === selectedMemberId)
-        ? database.getMemberById(selectedMemberId)
+        ? getRequestMemberById(req, selectedMemberId)
         : null;
     const tutorFortnightNote = (req.currentUser?.role === "tutor" && selectedMember)
       ? database.getReportFortnightTutorNote({
@@ -795,17 +859,17 @@ function render(res, template, data = {}) {
     ));
     const requestedProjectId = parseId(data.selectedProjectId || req.query.project_id);
     const currentMemberProjectList = currentMember?.is_active
-      ? database.listProjectsForMember(currentMember.id)
+      ? listRequestProjectsForMember(req, currentMember.id)
       : [];
     const coordinatorProjectIds = currentMember?.is_active
       ? new Set(
           currentMemberProjectList
-            .filter((project) => database.isProjectCoordinator(project.id, currentMember.id))
+            .filter((project) => isRequestProjectCoordinator(req, project.id, currentMember.id))
             .map((project) => project.id),
         )
       : new Set();
     const reportProjectOptions = selectedMember
-      ? database.listProjectsForMember(selectedMember.id).map((project) => ({
+      ? listRequestProjectsForMember(req, selectedMember.id).map((project) => ({
           ...project,
           can_create_for_others: Boolean(
             req.currentUser?.is_admin
@@ -873,7 +937,7 @@ function render(res, template, data = {}) {
         ...project,
         can_create_for_others: Boolean(
           req.currentUser?.is_admin
-          || (currentMember?.is_active && database.isProjectMember(project.id, currentMember.id)),
+          || (currentMember?.is_active && isRequestProjectMember(req, project.id, currentMember.id)),
         ),
       }));
     })();
@@ -1009,7 +1073,8 @@ function render(res, template, data = {}) {
     const inventoryEditOpenId = parseId(data.inventoryEditOpenId);
     const inventoryEditFormData = data.inventoryEditFormData || {};
     const inventoryEditErrors = data.inventoryEditErrors || {};
-    const inventoryItems = database.listInventoryItems().map((item) => ({
+    const rawInventoryItems = database.listInventoryItems();
+    const inventoryItems = rawInventoryItems.map((item) => ({
       ...item,
       edit_form_data: {
         name: item.name,
@@ -1032,8 +1097,8 @@ function render(res, template, data = {}) {
       activeTab,
       dashboard: database.getInventoryDashboardData(),
       inventoryItems,
-      stockItems: database.listInventoryItems({ type: "stock" }),
-      patrimonyItems: database.listInventoryItems({ type: "patrimony" }),
+      stockItems: rawInventoryItems.filter((item) => item.item_type === "stock"),
+      patrimonyItems: rawInventoryItems.filter((item) => item.item_type === "patrimony"),
       categories: database.listInventoryCategories(),
       locations: database.listInventoryLocations(),
       requests: database.listInventoryRequests(),
@@ -1187,6 +1252,7 @@ function render(res, template, data = {}) {
     buildMonthlyPdfFilename,
     syncReportWeekGoalFromPlannerTask: database.syncReportWeekGoalFromPlannerTask,
     notificationService,
+    invalidateUnreadChatConversationCache,
     canManageProject,
     canCreateAtaForProject,
     canManageReportGoal,

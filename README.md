@@ -2,7 +2,7 @@
 
 Aplicacao interna em Node.js + Express + Nunjucks para operacao do PET C3.
 
-Ultima revisao: 15/08/2026
+Ultima revisao: 05/09/2026
 
 ## O que o sistema faz
 
@@ -43,6 +43,23 @@ Observacao: o modulo PETrello nao faz parte da versao atual.
 - PDF: PDFKit
 - Importacao/exportacao: CSV
 - Deploy alvo: Render
+
+## Performance e comportamento atual
+
+- A aplicacao usa PostgreSQL/Neon como fonte de verdade e a camada `src/database.js` mantem uma API sincrona sobre um worker interno.
+- O schema e as migracoes idempotentes sao garantidos uma vez por processo no startup.
+- Dados consultados repetidamente na mesma requisicao, como usuario, membro, projeto e permissao projeto-membro, usam cache por requisicao.
+- O contador de mensagens nao lidas usa cache curto em memoria e e invalidado quando conversas sao lidas ou novas mensagens sao enviadas.
+- Listagens de projetos com membros evitam consultas N+1.
+- A tela do almoxarifado reutiliza a lista de itens carregada para separar estoque e patrimonio.
+
+Para investigar lentidao em producao, habilite temporariamente:
+
+```env
+REQUEST_LOGS=1
+```
+
+Depois revise os tempos das rotas nos logs do Render e confira tambem latencia/conectividade do Neon.
 
 ## Requisitos
 

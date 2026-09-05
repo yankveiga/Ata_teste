@@ -13,6 +13,7 @@ function registerChatRoutes(ctx) {
     urlFor,
     notificationService,
     logError,
+    invalidateUnreadChatConversationCache,
   } = ctx;
 
   function renderInbox(req, res, data = {}) {
@@ -22,6 +23,7 @@ function registerChatRoutes(ctx) {
       && database.isChatConversationParticipant(selectedConversationId, req.currentUser.id)
     ) {
       database.markChatConversationAsRead(selectedConversationId, req.currentUser.id);
+      invalidateUnreadChatConversationCache?.(req.currentUser.id);
     }
 
     const conversations = database.listChatConversationsForUser(req.currentUser.id);
@@ -96,6 +98,7 @@ function registerChatRoutes(ctx) {
       && database.isChatConversationParticipant(openConversationId, req.currentUser.id)
     ) {
       database.markChatConversationAsRead(openConversationId, req.currentUser.id);
+      invalidateUnreadChatConversationCache?.(req.currentUser.id);
     }
 
     const unreadTotal = database.countUnreadChatConversationsForUser(req.currentUser.id);
@@ -183,6 +186,9 @@ function registerChatRoutes(ctx) {
         conversationId,
         authorUserId: req.currentUser.id,
         text: messageFormData.text,
+      });
+      database.listChatConversationParticipants(conversationId).forEach((participant) => {
+        invalidateUnreadChatConversationCache?.(participant.id);
       });
       if (notificationService) {
         notificationService.sendChatNewMessageNotification({

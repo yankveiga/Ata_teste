@@ -13,6 +13,7 @@ const { firstNamesSummary } = require("./utils");
 
 // ESTADO GLOBAL: instancia unica do adaptador de banco para a aplicacao.
 let database;
+let schemaEnsured = false;
 // ESTADO GLOBAL: ponte ativa entre thread principal e worker do Postgres.
 let bridgeState;
 // ESTADO GLOBAL: sequencia crescente para correlacao de mensagens SQL.
@@ -519,6 +520,10 @@ function ensureColumn(tableName, columnName, definition) {
 
 // FUNCAO: ensureSchema.
 function ensureSchema() {
+  if (schemaEnsured) {
+    return;
+  }
+
   const db = getDb();
 
   db.exec(`
@@ -1202,6 +1207,7 @@ function ensureSchema() {
   repairFortnightOnTimeCompletions(db);
   repairSubmittedFortnightTasksMarkedMissedEarly(db);
   repairPendingFortnightTasksMarkedMissedEarly(db);
+  schemaEnsured = true;
 }
 
 function repairFortnightOnTimeCompletions(db = getDb()) {
@@ -2395,7 +2401,66 @@ function getProjectById(id) {
 
 // FUNCAO: listProjectsWithMembers.
 function listProjectsWithMembers() {
-  return listProjectsBasic().map((project) => getProjectById(project.id));
+  const rows = getDb()
+    .prepare(
+      `
+      SELECT
+        p.id AS project_id,
+        p.name AS project_name,
+        p.logo AS project_logo,
+        p.primary_color AS project_primary_color,
+        m.id AS member_id,
+        m.name AS member_name,
+        m.photo AS member_photo,
+        m.is_active AS member_is_active,
+        pm.is_coordinator
+      FROM project p
+      LEFT JOIN project_members pm ON pm.project_id = p.id
+      LEFT JOIN member m ON m.id = pm.member_id
+      ORDER BY LOWER(p.name), LOWER(m.name), m.id
+    `,
+    )
+    .all();
+
+  const projectsById = new Map();
+  rows.forEach((row) => {
+    if (!projectsById.has(row.project_id)) {
+      projectsById.set(row.project_id, {
+        ...mapProject({
+          id: row.project_id,
+          name: row.project_name,
+          logo: row.project_logo,
+          primary_color: row.project_primary_color,
+        }),
+        members: [],
+      });
+    }
+
+    if (row.member_id) {
+      projectsById.get(row.project_id).members.push(mapMember({
+        id: row.member_id,
+        name: row.member_name,
+        photo: row.member_photo,
+        is_active: row.member_is_active,
+        is_coordinator: row.is_coordinator,
+      }));
+    }
+  });
+
+  return Array.from(projectsById.values()).map((project) => {
+    project.active_members = project.members.filter((member) => member.is_active);
+    project.active_member_ids = project.active_members.map((member) => member.id);
+    project.coordinator_member_ids = project.members
+      .filter((member) => member.is_coordinator)
+      .map((member) => member.id);
+    project.coordinators = project.members.filter((member) => member.is_coordinator);
+    project.active_coordinators = project.active_members.filter(
+      (member) => member.is_coordinator,
+    );
+    project.member_name_preview = firstNamesSummary(project.members);
+    project.coordinator_name_preview = firstNamesSummary(project.coordinators);
+    return project;
+  });
 }
 
 // FUNCAO: createProject.
