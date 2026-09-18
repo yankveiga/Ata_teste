@@ -606,9 +606,36 @@
  <ul class="report-deletion-log-list report-warning-log-list">
  {% for event in warningEvents %}
  <li>
- <strong>{{ 'Advertência registrada' if event.new_count > event.previous_count else 'Contagem atualizada' }} · {{ event.previous_count }} → {{ event.new_count }}/3</strong>
+ <strong>{% if event.event_type == 'edited' %}Advertência #{{ event.target_event_id }} editada{% elif event.event_type == 'deleted' %}Advertência #{{ event.target_event_id }} excluída{% elif event.is_warning %}Advertência #{{ event.id }} registrada{% else %}Contagem atualizada{% endif %} · {{ event.previous_count }} → {{ event.new_count }}/3{% if event.is_deleted %} · Excluída{% endif %}</strong>
  <small>Por {{ event.actor_name or 'Usuário não disponível' }} em {{ event.created_at | formatDateTime }}</small>
+ {% if event.event_type == 'edited' %}
+ <p>Motivo anterior: {{ event.previous_note or 'Sem motivo registrado.' }}</p>
+ <p>Novo motivo: {{ event.note or 'Sem motivo registrado.' }}</p>
+ {% else %}
  <p>{{ event.note or 'Sem motivo registrado.' }}</p>
+ {% endif %}
+ {% if event.is_warning and not event.is_deleted %}
+ <p><strong>Motivo atual:</strong> {{ event.current_note or 'Sem motivo registrado.' }}</p>
+ {% if canManageWarnings %}
+ <details class="report-warning-edit">
+ <summary>Editar advertência</summary>
+ <form action="/relatorios/warnings/{{ selectedMember.id }}/update" method="post">
+ <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+ <input type="hidden" name="warning_action" value="edit">
+ <input type="hidden" name="warning_id" value="{{ event.id }}">
+ <label class="form-label" for="warning_note_{{ event.id }}">Motivo/observação</label>
+ <textarea id="warning_note_{{ event.id }}" name="warning_note" rows="3" maxlength="300" class="form-control">{{ event.current_note }}</textarea>
+ <button type="submit" class="btn-submit btn-submit-small">Salvar edição</button>
+ </form>
+ </details>
+ <form action="/relatorios/warnings/{{ selectedMember.id }}/update" method="post" class="js-warning-delete-form">
+ <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+ <input type="hidden" name="warning_action" value="delete">
+ <input type="hidden" name="warning_id" value="{{ event.id }}">
+ <button type="submit" class="report-goal-delete-button">Excluir advertência</button>
+ </form>
+ {% endif %}
+ {% endif %}
  </li>
  {% endfor %}
  </ul>
@@ -1039,6 +1066,11 @@
     forceMoreActionsModalLayout();
     openPanel(activePanelId || defaultPanelId);
     setOpen(false);
+    if (new URLSearchParams(window.location.search).get('warnings') === '1') {
+      returnFocus = warningDetails || toggle;
+      openPanel('report_panel_warnings');
+      setOpen(true);
+    }
     modal.dataset.bound = '1';
     window.__reportMoreActionsDelegated = true;
     window.__reportMoreActionsOpenPanel = openPanel;
@@ -1065,6 +1097,11 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   window.addEventListener('hashchange', updateReportNavigation);
   updateReportNavigation();
+  document.querySelectorAll('.js-warning-delete-form').forEach(function(form) {
+    form.addEventListener('submit', function(event) {
+      if (!window.confirm('Excluir esta advertência? O histórico será preservado.')) event.preventDefault();
+    });
+  });
   const warningBox = document.getElementById('member_warning_box');
   if (warningBox) {
     const warningToggle = document.getElementById('member_warning_toggle');

@@ -1051,6 +1051,9 @@ function ensureSchema() {
   ensureColumn("chat_conversation", "is_read_only", "INTEGER NOT NULL DEFAULT 0");
   ensureColumn("event_attendee", "cpf", "TEXT");
   ensureColumn("event_attendee", "attendee_id", "INTEGER");
+  ensureColumn("member_warning_event", "event_type", "TEXT NOT NULL DEFAULT 'count_changed'");
+  ensureColumn("member_warning_event", "target_event_id", "INTEGER REFERENCES member_warning_event(id)");
+  ensureColumn("member_warning_event", "previous_note", "TEXT");
 
   db.exec(`
     INSERT INTO attendee (name, cpf, email, badge_code)
@@ -3089,7 +3092,7 @@ function listReportMembersSummary() {
         SELECT e.new_count AS warning_count
         FROM member_warning_event e
         WHERE e.member_id = m.id
-        ORDER BY CAST(e.created_at AS timestamp) DESC, e.id DESC
+        ORDER BY e.id DESC
         LIMIT 1
       ) w ON true
       LEFT JOIN LATERAL (
@@ -5744,7 +5747,7 @@ function getMemberWarningState(memberId) {
           SELECT e.new_count
           FROM member_warning_event e
           WHERE e.member_id = ?
-          ORDER BY CAST(e.created_at AS timestamp) DESC, e.id DESC
+          ORDER BY e.id DESC
           LIMIT 1
         ), 0) AS warning_count,
         (
@@ -5761,13 +5764,54 @@ function getMemberWarningState(memberId) {
 }
 
 function listMemberWarningEvents(memberId) {
-  return getDb().prepare(`
+  const events = getDb().prepare(`
     SELECT e.*, COALESCE(NULLIF(u.name, ''), u.username) AS actor_name
     FROM member_warning_event e
     LEFT JOIN "user" u ON u.id = e.actor_user_id
     WHERE e.member_id = ?
-    ORDER BY e.created_at DESC, e.id DESC
+    ORDER BY e.id DESC
   `).all(memberId);
+  return events.map((event) => {
+    const revisions = events.filter((revision) => revision.target_event_id === event.id);
+    const latestEdit = revisions.find((revision) => revision.event_type === "edited");
+    return {
+      ...event,
+      is_warning: event.event_type === "added" || (event.event_type === "count_changed" && event.new_count > event.previous_count),
+      is_deleted: revisions.some((revision) => revision.event_type === "deleted"),
+      current_note: latestEdit ? latestEdit.note : event.note,
+    };
+  });
+}
+
+// Append-only history: existing records and original reasons are never overwritten.
+function mutateMemberWarning({ memberId, actorUserId, action, warningId, note = "" }) {
+  const validationError = (message) => Object.assign(new Error(message), { warningValidation: true });
+  if (!isUserMemberOfProjectName(actorUserId, "Administrativo")) {
+    throw validationError("Somente membros do Administrativo podem alterar advertências.");
+  }
+  if (!["add", "edit", "delete"].includes(action)) throw validationError("Ação inválida.");
+  const normalizedNote = String(note || "").trim();
+  if (normalizedNote.length > 300) throw validationError("O motivo deve ter no máximo 300 caracteres.");
+  return withTransaction((db) => {
+    if (!db.prepare("SELECT id FROM member WHERE id = ? FOR UPDATE").get(memberId)) {
+      throw validationError("Membro inválido.");
+    }
+    const current = getMemberWarningState(memberId);
+    const target = action === "add" ? null : listMemberWarningEvents(memberId).find((event) => event.id === warningId && event.is_warning && !event.is_deleted);
+    if (action !== "add" && !target) throw validationError("Advertência não encontrada ou já excluída.");
+    if (action === "add" && current.warning_count >= 3) throw validationError("Este membro já possui 3 advertências.");
+    const count = action === "add" ? current.warning_count + 1
+      : action === "delete" ? Math.max(0, current.warning_count - (target.new_count - target.previous_count))
+        : current.warning_count;
+    db.prepare(`
+      INSERT INTO member_warning_event
+        (member_id, actor_user_id, previous_count, new_count, note, event_type, target_event_id, previous_note)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(memberId, actorUserId, current.warning_count, count,
+      action === "delete" ? target.current_note : normalizedNote,
+      { add: "added", edit: "edited", delete: "deleted" }[action], target?.id || null, target?.current_note || null);
+    return { warning_count: count, previous_count: current.warning_count, changed: true };
+  });
 }
 
 function setMemberWarningCount({ memberId, actorUserId, newCount, note = "" }) {
@@ -6923,6 +6967,7 @@ module.exports = {
   getUserByMemberId,
   getMemberWarningState,
   listMemberWarningEvents,
+  mutateMemberWarning,
   isUserMemberOfProjectName,
   getInventoryCategoryById,
   getInventoryItemById,

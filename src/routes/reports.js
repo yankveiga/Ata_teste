@@ -89,26 +89,26 @@ function registerReportRoutes(ctx) {
       req.flash("warning", "Membro invalido.");
       return res.redirect("/relatorios");
     }
-    const currentState = database.getMemberWarningState(member.id);
     const warningAction = String(req.body.warning_action || "").trim().toLowerCase();
-    const count = warningAction === "add"
-      ? Math.min(3, Number(currentState.warning_count || 0) + 1)
-      : Number(req.body.warning_count);
-    if (!Number.isInteger(count) || count < 0 || count > 3) {
-      req.flash("warning", "A quantidade de advertencias deve ser entre 0 e 3.");
+    let state;
+    try {
+      state = database.mutateMemberWarning({
+        memberId: member.id,
+        actorUserId: req.currentUser.id,
+        action: warningAction,
+        warningId: parseId(req.body.warning_id),
+        note: req.body.warning_note,
+      });
+    } catch (error) {
+      if (!error.warningValidation) throw error;
+      req.flash("warning", error.message);
       return res.redirect(`/relatorios?member_id=${member.id}#report-goals-panel`);
     }
-    const state = database.setMemberWarningCount({
-      memberId: member.id,
-      actorUserId: req.currentUser.id,
-      newCount: count,
-      note: req.body.warning_note,
-    });
     if (state.changed && Number(state.previous_count || 0) < 3 && state.warning_count === 3) {
       database.createWarningBroadcastForMember(member);
     }
     req.flash("success", "Advertencias atualizadas.");
-    return res.redirect(`/relatorios?member_id=${member.id}#report-goals-panel`);
+    return res.redirect(`/relatorios?member_id=${member.id}&warnings=1#report-goals-panel`);
   });
 
   app.post("/relatorios/warnings/:memberId/restriction/start", requireAuth, (req, res) => {
