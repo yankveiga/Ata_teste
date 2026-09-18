@@ -227,6 +227,8 @@ function createApp() {
   const notificationService = createNotificationService({ database, config });
   const unreadConversationCache = new Map();
   const unreadConversationCacheTtlMs = 5000;
+  let plannerLifecycleLastCheckedAt = 0;
+  const plannerLifecycleCheckIntervalMs = 60000;
 
   function getCachedRequestValue(req, namespace, key, loader) {
     if (!req.localCache) {
@@ -294,6 +296,10 @@ function createApp() {
   app.set("trust proxy", 1);
   app.set("view engine", "html");
 
+  app.use("/static", express.static(config.staticDir, {
+    maxAge: config.nodeEnv === "production" ? 300000 : 0,
+  }));
+
   app.get("/healthz", (req, res) => {
     res.status(200).type("text/plain").send("ok");
   });
@@ -348,8 +354,6 @@ app.use(
       next();
     });
   }
-  app.use("/static", express.static(config.staticDir));
-
   app.use((req, res, next) => {
     ensureCsrfToken(req);
     req.flash = (category, message) => addFlash(req, category, message);
@@ -818,7 +822,10 @@ function render(res, template, data = {}) {
     const currentWeekStart = getCurrentWeekStartDate();
     const selectedNoteWeekStart = normalizeWeekStartDate(req.query.note_week_start) || currentWeekStart;
     const nowSql = toSqlDateTime(new Date());
-    database.refreshPlannerTaskLifecycle({ graceDays: 2 });
+    if (Date.now() - plannerLifecycleLastCheckedAt >= plannerLifecycleCheckIntervalMs) {
+      plannerLifecycleLastCheckedAt = Date.now();
+      database.refreshPlannerTaskLifecycle({ graceDays: 2 });
+    }
     const membersSummary = database.listReportMembersSummary();
     const requestedMemberId = parseId(data.selectedMemberId || req.query.member_id);
     const selectedMemberId =
@@ -1084,7 +1091,24 @@ function render(res, template, data = {}) {
     const inventoryEditOpenId = parseId(data.inventoryEditOpenId);
     const inventoryEditFormData = data.inventoryEditFormData || {};
     const inventoryEditErrors = data.inventoryEditErrors || {};
-    const rawInventoryItems = database.listInventoryItems();
+    const needsDashboard = activeTab === "overview" || activeTab === "manage";
+    const needsAllItems = activeTab === "manage";
+    const needsStockItems = activeTab === "stock" || activeTab === "withdraw";
+    const needsPatrimonyItems = activeTab === "borrow";
+    const needsCatalog = activeTab === "manage";
+    const needsRequests = activeTab === "requests";
+    const needsLoans = activeTab === "borrowed";
+    const rawInventoryItems = needsAllItems ? database.listInventoryItems() : [];
+    const stockItems = needsAllItems || needsStockItems
+      ? (needsAllItems
+          ? rawInventoryItems.filter((item) => item.item_type === "stock")
+          : database.listInventoryItems({ type: "stock" }))
+      : [];
+    const patrimonyItems = needsAllItems || needsPatrimonyItems
+      ? (needsAllItems
+          ? rawInventoryItems.filter((item) => item.item_type === "patrimony")
+          : database.listInventoryItems({ type: "patrimony" }))
+      : [];
     const inventoryItems = rawInventoryItems.map((item) => ({
       ...item,
       edit_form_data: {
@@ -1101,21 +1125,40 @@ function render(res, template, data = {}) {
       edit_errors: item.id === inventoryEditOpenId ? inventoryEditErrors : {},
       is_edit_open: item.id === inventoryEditOpenId,
     }));
+    const emptyDashboard = {
+      summary: {
+        user_count: 0,
+        item_count: 0,
+        stock_item_count: 0,
+        patrimony_item_count: 0,
+        category_count: 0,
+        location_count: 0,
+        request_count: 0,
+        active_loan_count: 0,
+        overdue_loan_count: 0,
+        total_units: 0,
+        stock_units: 0,
+        patrimony_units: 0,
+      },
+      recent_requests: [],
+      recent_loans: [],
+      recent_users: [],
+    };
 
     return render(res, "almoxarifado/index.html", {
       title: "Almoxarifado",
       activeSection: "almox",
       activeTab,
-      dashboard: database.getInventoryDashboardData(),
+      dashboard: needsDashboard ? database.getInventoryDashboardData() : emptyDashboard,
       inventoryItems,
-      stockItems: rawInventoryItems.filter((item) => item.item_type === "stock"),
-      patrimonyItems: rawInventoryItems.filter((item) => item.item_type === "patrimony"),
-      categories: database.listInventoryCategories(),
-      locations: database.listInventoryLocations(),
-      requests: database.listInventoryRequests(),
-      activeLoans: database.listInventoryLoans({ status: "active" }),
-      returnedLoans: database.listInventoryLoans({ status: "returned", limit: 12 }),
-      overdueLoans: database.listInventoryLoans({ status: "overdue" }),
+      stockItems,
+      patrimonyItems,
+      categories: needsCatalog ? database.listInventoryCategories() : [],
+      locations: needsCatalog ? database.listInventoryLocations() : [],
+      requests: needsRequests ? database.listInventoryRequests() : [],
+      activeLoans: needsLoans ? database.listInventoryLoans({ status: "active" }) : [],
+      returnedLoans: needsLoans ? database.listInventoryLoans({ status: "returned", limit: 12 }) : [],
+      overdueLoans: needsLoans ? database.listInventoryLoans({ status: "overdue" }) : [],
       itemFormData: {
         name: "",
         itemType: "stock",

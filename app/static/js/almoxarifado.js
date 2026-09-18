@@ -31,13 +31,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  links.forEach((link) => {
-    link.addEventListener("click", (event) => {
-      event.preventDefault();
-      setActiveTab(link.dataset.tabLink, link.href);
-    });
-  });
-
   setActiveTab(root.dataset.activeTab || "overview");
 
   const hashTarget = window.location.hash

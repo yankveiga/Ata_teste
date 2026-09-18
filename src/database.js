@@ -954,17 +954,20 @@ function ensureSchema() {
     CREATE INDEX IF NOT EXISTS ix_planner_task_completion_log_member_id ON planner_task_completion_log(assigned_member_id);
     CREATE INDEX IF NOT EXISTS ix_planner_task_completion_log_completed_at ON planner_task_completion_log(completed_at);
     CREATE INDEX IF NOT EXISTS ix_estoque_name ON estoque(name);
+    CREATE INDEX IF NOT EXISTS ix_estoque_type_name ON estoque(item_type, name, id);
     CREATE INDEX IF NOT EXISTS ix_estoque_item_type ON estoque(item_type);
     CREATE INDEX IF NOT EXISTS ix_estoque_category_id ON estoque(category_id);
     CREATE INDEX IF NOT EXISTS ix_estoque_location_id ON estoque(location_id);
     CREATE INDEX IF NOT EXISTS ix_pedido_usuario_id ON pedido(usuario_id);
     CREATE INDEX IF NOT EXISTS ix_pedido_estoque_id ON pedido(estoque_id);
+    CREATE INDEX IF NOT EXISTS ix_pedido_data_id ON pedido(data_pedido, id);
     CREATE INDEX IF NOT EXISTS ix_inventory_category_name ON inventory_category(name);
     CREATE INDEX IF NOT EXISTS ix_inventory_location_name ON inventory_location(name);
     CREATE INDEX IF NOT EXISTS ix_inventory_loan_item_id ON inventory_loan(item_id);
     CREATE INDEX IF NOT EXISTS ix_inventory_loan_user_id ON inventory_loan(user_id);
     CREATE INDEX IF NOT EXISTS ix_inventory_loan_due_at ON inventory_loan(due_at);
     CREATE INDEX IF NOT EXISTS ix_inventory_loan_returned_at ON inventory_loan(returned_at);
+    CREATE INDEX IF NOT EXISTS ix_inventory_loan_open_due ON inventory_loan(returned_at, due_at, id);
     CREATE INDEX IF NOT EXISTS ix_writing_general_author ON writing_general_entry(author_user_id);
     CREATE INDEX IF NOT EXISTS ix_writing_general_created_at ON writing_general_entry(created_at);
     CREATE INDEX IF NOT EXISTS ix_writing_tutor_author ON writing_tutor_private_entry(tutor_user_id);
@@ -1087,6 +1090,9 @@ function ensureSchema() {
   );
   getDb().exec(
     "CREATE INDEX IF NOT EXISTS ix_planner_task_member_open_due ON planner_task(assigned_member_id, is_completed, due_at)",
+  );
+  getDb().exec(
+    "CREATE INDEX IF NOT EXISTS ix_planner_task_active_due ON planner_task(workflow_state, is_completed, due_at)",
   );
   getDb().exec(
     "CREATE INDEX IF NOT EXISTS ix_report_week_goal_member_project_week ON report_week_goal(member_id, project_id, week_start)",
@@ -2454,7 +2460,14 @@ function getProjectById(id) {
 }
 
 // FUNCAO: listProjectsWithMembers.
-function listProjectsWithMembers() {
+function listProjectsWithMembers(projectIds = null) {
+  const ids = Array.isArray(projectIds)
+    ? [...new Set(projectIds.map((id) => Number(id)).filter((id) => Number.isInteger(id) && id > 0))]
+    : null;
+  if (ids && !ids.length) {
+    return [];
+  }
+  const projectFilter = ids ? `WHERE p.id IN (${ids.map(() => "?").join(", ")})` : "";
   const rows = getDb()
     .prepare(
       `
@@ -2471,10 +2484,11 @@ function listProjectsWithMembers() {
       FROM project p
       LEFT JOIN project_members pm ON pm.project_id = p.id
       LEFT JOIN member m ON m.id = pm.member_id
+      ${projectFilter}
       ORDER BY LOWER(p.name), LOWER(m.name), m.id
     `,
     )
-    .all();
+    .all(...(ids || []));
 
   const projectsById = new Map();
   rows.forEach((row) => {
@@ -2526,8 +2540,7 @@ function listProjectsWithMembersByIds(projectIds = []) {
   if (!ids.length) {
     return [];
   }
-  const idSet = new Set(ids);
-  return listProjectsWithMembers().filter((project) => idSet.has(Number(project.id)));
+  return listProjectsWithMembers(ids);
 }
 
 // FUNCAO: createProject.
@@ -3875,8 +3888,8 @@ function refreshPlannerTaskLifecycle({ now = null, graceDays = 2 } = {}) {
         FROM planner_task
         WHERE is_completed = 0
           AND workflow_state = 'active'
-          AND CAST(due_at AS timestamp) <= CAST(? AS timestamp)
-        ORDER BY CAST(due_at AS timestamp) ASC, id ASC
+          AND due_at <= ?
+        ORDER BY due_at ASC, id ASC
       `,
       )
       .all(nowSql)
@@ -4150,7 +4163,7 @@ function listPlannerTasks({
       INNER JOIN member m ON m.id = t.assigned_member_id
       LEFT JOIN "user" u ON u.id = t.created_by_user_id
       ${whereClause}
-      ORDER BY CAST(t.due_at AS timestamp) ASC, t.id DESC
+      ORDER BY t.due_at ASC, t.id DESC
       LIMIT ?
     `,
     )
@@ -4664,12 +4677,12 @@ function listInventoryItems({ type = null } = {}) {
       SELECT id, name, item_type, category, category_id, location, location_id, amount, description
       FROM estoque
       WHERE item_type = ?
-      ORDER BY LOWER(name), id
+      ORDER BY name ASC, id ASC
     `
     : `
       SELECT id, name, item_type, category, category_id, location, location_id, amount, description
       FROM estoque
-      ORDER BY LOWER(name), id
+      ORDER BY name ASC, id ASC
     `;
 
   const rows = normalizedType
@@ -5145,6 +5158,7 @@ function listInventoryRequests(limit = null) {
 function listInventoryLoans({ status = null, limit = null } = {}) {
   const conditions = [];
   const params = [];
+  const nowSql = toSqlDateTime(new Date());
   let orderBy = `
     ORDER BY
       CASE WHEN l.returned_at IS NULL THEN 0 ELSE 1 END,
@@ -5170,7 +5184,8 @@ function listInventoryLoans({ status = null, limit = null } = {}) {
     `;
   } else if (status === "overdue") {
     conditions.push("l.returned_at IS NULL");
-    conditions.push("CAST(l.due_at AS timestamp) < CURRENT_TIMESTAMP");
+    conditions.push("l.due_at < ?");
+    params.push(nowSql);
     orderBy = `
       ORDER BY
         l.due_at ASC,
@@ -5223,42 +5238,55 @@ function listInventoryLoans({ status = null, limit = null } = {}) {
 // FUNCAO: getInventoryDashboardData.
 function getInventoryDashboardData() {
   const db = getDb();
+  const inventoryStats = db
+    .prepare(
+      `
+      SELECT
+        COUNT(*) AS item_count,
+        COALESCE(SUM(CASE WHEN item_type = 'stock' THEN 1 ELSE 0 END), 0) AS stock_item_count,
+        COALESCE(SUM(CASE WHEN item_type = 'patrimony' THEN 1 ELSE 0 END), 0) AS patrimony_item_count,
+        COALESCE(SUM(amount), 0) AS total_units,
+        COALESCE(SUM(CASE WHEN item_type = 'stock' THEN amount ELSE 0 END), 0) AS stock_units,
+        COALESCE(SUM(CASE WHEN item_type = 'patrimony' THEN amount ELSE 0 END), 0) AS patrimony_units
+      FROM estoque
+    `,
+    )
+    .get() || {};
+  const catalogStats = db
+    .prepare(
+      `
+      SELECT
+        (SELECT COUNT(*) FROM inventory_category) AS category_count,
+        (SELECT COUNT(*) FROM inventory_location) AS location_count
+    `,
+    )
+    .get() || {};
+  const loanStats = db
+    .prepare(
+      `
+      SELECT
+        COUNT(*) AS active_loan_count,
+        COALESCE(SUM(CASE WHEN due_at < ? THEN 1 ELSE 0 END), 0) AS overdue_loan_count
+      FROM inventory_loan
+      WHERE returned_at IS NULL
+    `,
+    )
+    .get(toSqlDateTime(new Date())) || {};
   const summary = {
     user_count:
       db.prepare("SELECT COUNT(*) AS total FROM user WHERE is_active = 1").get()?.total || 0,
-    item_count:
-      db.prepare("SELECT COUNT(*) AS total FROM estoque").get()?.total || 0,
-    stock_item_count:
-      db.prepare("SELECT COUNT(*) AS total FROM estoque WHERE item_type = 'stock'").get()
-        ?.total || 0,
-    patrimony_item_count:
-      db.prepare("SELECT COUNT(*) AS total FROM estoque WHERE item_type = 'patrimony'").get()
-        ?.total || 0,
-    category_count:
-      db.prepare("SELECT COUNT(*) AS total FROM inventory_category").get()?.total || 0,
-    location_count:
-      db.prepare("SELECT COUNT(*) AS total FROM inventory_location").get()?.total || 0,
+    item_count: Number(inventoryStats.item_count || 0),
+    stock_item_count: Number(inventoryStats.stock_item_count || 0),
+    patrimony_item_count: Number(inventoryStats.patrimony_item_count || 0),
+    category_count: Number(catalogStats.category_count || 0),
+    location_count: Number(catalogStats.location_count || 0),
     request_count:
       db.prepare("SELECT COUNT(*) AS total FROM pedido").get()?.total || 0,
-    active_loan_count:
-      db.prepare(
-        "SELECT COUNT(*) AS total FROM inventory_loan WHERE returned_at IS NULL",
-      ).get()?.total || 0,
-    overdue_loan_count:
-      db.prepare(
-        "SELECT COUNT(*) AS total FROM inventory_loan WHERE returned_at IS NULL AND CAST(due_at AS timestamp) < CURRENT_TIMESTAMP",
-      ).get()?.total || 0,
-    total_units:
-      db.prepare("SELECT COALESCE(SUM(amount), 0) AS total FROM estoque").get()
-        ?.total || 0,
-    stock_units:
-      db.prepare(
-        "SELECT COALESCE(SUM(amount), 0) AS total FROM estoque WHERE item_type = 'stock'",
-      ).get()?.total || 0,
-    patrimony_units:
-      db.prepare(
-        "SELECT COALESCE(SUM(amount), 0) AS total FROM estoque WHERE item_type = 'patrimony'",
-      ).get()?.total || 0,
+    active_loan_count: Number(loanStats.active_loan_count || 0),
+    overdue_loan_count: Number(loanStats.overdue_loan_count || 0),
+    total_units: Number(inventoryStats.total_units || 0),
+    stock_units: Number(inventoryStats.stock_units || 0),
+    patrimony_units: Number(inventoryStats.patrimony_units || 0),
   };
 
   return {
@@ -6221,6 +6249,10 @@ function listPlannerTasksDueOnDateForEmail(dateKey, { limit = 2000 } = {}) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(normalizedDateKey)) {
     return [];
   }
+  const nextDateKey = addDaysToDateKey(normalizedDateKey, 1);
+  if (!nextDateKey) {
+    return [];
+  }
 
   return getDb()
     .prepare(
@@ -6258,12 +6290,13 @@ function listPlannerTasksDueOnDateForEmail(dateKey, { limit = 2000 } = {}) {
       ) ru ON true
       WHERE t.is_completed = 0
         AND t.workflow_state = 'active'
-        AND SUBSTRING(t.due_at FROM 1 FOR 10) = ?
-      ORDER BY CAST(t.due_at AS timestamp) ASC, t.id ASC
+        AND t.due_at >= ?
+        AND t.due_at < ?
+      ORDER BY t.due_at ASC, t.id ASC
       LIMIT ?
     `,
     )
-    .all(normalizedDateKey, limit)
+    .all(`${normalizedDateKey} 00:00:00`, `${nextDateKey} 00:00:00`, limit)
     .map((row) => ({
       id: Number(row.id),
       project_id: Number(row.project_id),
