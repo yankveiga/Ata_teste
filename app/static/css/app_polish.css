@@ -285,12 +285,93 @@ body.theme-dark.section-messages .chat-main-compose {
 body.section-reports .report-tabs-nav {
   position: sticky;
   top: 68px;
+  left: auto;
   z-index: 20;
-  padding: 10px;
-  border-radius: 20px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  width: min(100%, 720px);
+  padding: 6px;
+  border-radius: 18px;
   background: rgba(255, 255, 255, 0.72);
   border: 1px solid rgba(100, 116, 139, 0.18);
   backdrop-filter: blur(10px);
+}
+
+body.section-reports .report-tabs-nav .module-tab-link {
+  min-height: 48px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border-color: transparent;
+  background: transparent;
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+body.section-reports .report-tabs-nav .module-tab-link.is-active {
+  color: #fff;
+  background: linear-gradient(135deg, #275e32, #43864c);
+  box-shadow: 0 4px 12px rgba(39, 94, 50, 0.2);
+}
+
+body.section-reports .report-tabs-nav .module-tab-link:hover:not(.is-active) {
+  background: var(--ui-surface-soft);
+}
+
+.member-warning-details {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.member-warning-details:hover {
+  border-color: currentColor;
+}
+
+.member-warning-details:focus-visible,
+body.section-reports .report-tabs-nav .module-tab-link:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 3px;
+}
+
+body.member-warning-modal-open { overflow: hidden; }
+
+#member_warning_backdrop {
+  z-index: 4999;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+#member_warning_popover {
+  top: 50% !important;
+  left: 50%;
+  transform: translate(-50%, -50%) !important;
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+}
+
+.report-warning-log-list p {
+  margin: 8px 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 520px) {
+  body.section-reports .report-tabs-nav .module-tab-link {
+    flex-direction: column;
+    gap: 5px;
+    padding: 8px 4px;
+    font-size: 0.75rem;
+  }
 }
 
 body.section-reports .report-member-photo-card,

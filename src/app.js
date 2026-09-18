@@ -1014,6 +1014,7 @@ function render(res, template, data = {}) {
       selectedProjectId: selectedProjectId || "",
       selectedMember,
       canManageWarnings,
+      warningEvents: selectedMember ? database.listMemberWarningEvents(selectedMember.id) : [],
       membersSummary,
       reportProjectOptions,
       createGoalProjectOptions,

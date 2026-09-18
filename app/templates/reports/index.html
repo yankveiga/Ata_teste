@@ -93,7 +93,7 @@
  {% if selectedMember %}
  <div class="member-warning-panel {{ 'is-max' if selectedMember.warning_count == 3 else '' }}">
  <div>
- <strong>Advertencias: <span class="member-warning-count {{ 'is-max' if selectedMember.warning_count == 3 else '' }}">{{ selectedMember.warning_count }}</span>/3</strong>
+ <button type="button" class="member-warning-details" id="member_warning_details" aria-haspopup="dialog" aria-controls="report_more_actions_modal" aria-label="Ver advertências de {{ selectedMember.name }}: {{ selectedMember.warning_count }} de 3">Advertências: <span class="member-warning-count {{ 'is-max' if selectedMember.warning_count == 3 else '' }}">{{ selectedMember.warning_count }}</span>/3 <ion-icon name="chevron-forward-outline" aria-hidden="true"></ion-icon></button>
  {% if selectedMember.restriction_is_active %}
  <p>Periodo de acompanhamento/restricao ativo: {{ selectedMember.restriction_days_remaining }} dias restantes.</p>
  {% elif selectedMember.restriction_started_at %}
@@ -103,10 +103,10 @@
  {% if canManageWarnings %}
  <div class="member-warning-actions planner-create-compact" id="member_warning_box">
  <button type="button" class="planner-create-backdrop" id="member_warning_backdrop" hidden aria-label="Fechar advertencias"></button>
- <button type="button" class="planner-create-button member-warning-open" id="member_warning_toggle" aria-expanded="false" aria-controls="member_warning_popover">+ Nova advertencia</button>
- <div class="planner-create-popover member-warning-popover" id="member_warning_popover" hidden>
+ <button type="button" class="planner-create-button member-warning-open" id="member_warning_toggle" aria-expanded="false" aria-controls="member_warning_popover">+ Nova advertência</button>
+ <div class="planner-create-popover member-warning-popover" id="member_warning_popover" role="dialog" aria-modal="true" aria-labelledby="member_warning_title" hidden>
  <header class="planner-create-header">
- <h3>Nova advertencia</h3>
+ <h3 id="member_warning_title">Nova advertência</h3>
  <p>Preencha os dados essenciais para registrar no historico.</p>
  <button type="button" class="planner-create-close-x" id="member_warning_close_x" aria-label="Fechar">×</button>
  </header>
@@ -576,6 +576,10 @@
  <button type="button" class="report-more-actions-close" id="report_more_actions_close" aria-label="Fechar">×</button>
  </header>
  <div class="report-more-actions-menu" id="report_more_actions_menu">
+ <button type="button" class="report-more-action-item" data-report-panel-target="report_panel_warnings">
+ <ion-icon name="alert-circle-outline" aria-hidden="true"></ion-icon>
+ Advertências
+ </button>
  <button type="button" class="report-more-action-item" data-report-panel-target="report_panel_completed">
  <ion-icon name="checkmark-done-outline" aria-hidden="true"></ion-icon>
  Executadas
@@ -594,6 +598,24 @@
  </button>
  </div>
  <div class="report-more-actions-content" id="report_more_actions_content">
+ <section id="report_panel_warnings" class="report-extra-panel" hidden>
+ <header class="report-extra-panel-head">
+ <h4>Advertências de {{ selectedMember.name }} ({{ selectedMember.warning_count }}/3)</h4>
+ </header>
+ {% if warningEvents.length %}
+ <ul class="report-deletion-log-list report-warning-log-list">
+ {% for event in warningEvents %}
+ <li>
+ <strong>{{ 'Advertência registrada' if event.new_count > event.previous_count else 'Contagem atualizada' }} · {{ event.previous_count }} → {{ event.new_count }}/3</strong>
+ <small>Por {{ event.actor_name or 'Usuário não disponível' }} em {{ event.created_at | formatDateTime }}</small>
+ <p>{{ event.note or 'Sem motivo registrado.' }}</p>
+ </li>
+ {% endfor %}
+ </ul>
+ {% else %}
+ <p class="ui-empty-state">Nenhuma advertência registrada para este membro.</p>
+ {% endif %}
+ </section>
 
  <section id="report_panel_completed" class="report-extra-panel" hidden>
  <header class="report-extra-panel-head">
@@ -881,10 +903,19 @@
       }
       button.setAttribute('aria-controls', panelId);
     });
-    const defaultPanelId = buttons.length
+    const defaultPanelId = panels.report_panel_completed ? 'report_panel_completed' : buttons.length
       ? String(buttons[0].dataset.reportPanelTarget || '').trim()
       : '';
     let activePanelId = defaultPanelId;
+    let returnFocus = toggle;
+    const warningDetails = document.getElementById('member_warning_details');
+    if (warningDetails) {
+      warningDetails.addEventListener('click', function() {
+        returnFocus = warningDetails;
+        openPanel('report_panel_warnings');
+        setOpen(true);
+      });
+    }
 
     function ensureModalPortal() {
       if (!modal || !document.body) {
@@ -927,9 +958,11 @@
         forceMoreActionsModalLayout();
         modal.removeAttribute('hidden');
         document.body.classList.add('report-more-actions-open');
+        if (closeButton) closeButton.focus();
       } else {
         modal.setAttribute('hidden', 'hidden');
         document.body.classList.remove('report-more-actions-open');
+        if (modal.contains(document.activeElement)) returnFocus.focus();
       }
     }
 
@@ -958,6 +991,7 @@
 
     toggle.addEventListener('click', function(event) {
       event.preventDefault();
+      returnFocus = toggle;
       const shouldOpen = modal.hasAttribute('hidden');
       setOpen(shouldOpen);
       if (shouldOpen) {
@@ -1019,6 +1053,18 @@
 </script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+  const reportSectionLinks = Array.from(document.querySelectorAll('.report-tabs-nav a[href^="#"]'));
+  function updateReportNavigation() {
+    const activeHash = window.location.hash || '#report-member-selector';
+    reportSectionLinks.forEach(function(link) {
+      const active = link.getAttribute('href') === activeHash;
+      link.classList.toggle('is-active', active);
+      if (active) link.setAttribute('aria-current', 'location');
+      else link.removeAttribute('aria-current');
+    });
+  }
+  window.addEventListener('hashchange', updateReportNavigation);
+  updateReportNavigation();
   const warningBox = document.getElementById('member_warning_box');
   if (warningBox) {
     const warningToggle = document.getElementById('member_warning_toggle');
@@ -1026,9 +1072,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const warningBackdrop = document.getElementById('member_warning_backdrop');
     const warningClose = document.getElementById('member_warning_close');
     const warningCloseX = document.getElementById('member_warning_close_x');
+    document.body.appendChild(warningBackdrop);
+    document.body.appendChild(warningPopover);
 
     function setWarningOpen(open) {
       warningBox.classList.toggle('is-open', open);
+      document.body.classList.toggle('member-warning-modal-open', open);
       if (warningPopover) {
         warningPopover.hidden = !open;
       }
@@ -1038,6 +1087,8 @@ document.addEventListener('DOMContentLoaded', function() {
       if (warningToggle) {
         warningToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
       }
+      if (open) document.getElementById('member_warning_note').focus();
+      else if (warningToggle) warningToggle.focus();
     }
 
     if (warningToggle) {
@@ -1051,6 +1102,18 @@ document.addEventListener('DOMContentLoaded', function() {
       });
     });
     document.addEventListener('keydown', function(event) {
+      if (event.key === 'Tab' && warningBox.classList.contains('is-open')) {
+        const controls = Array.from(warningPopover.querySelectorAll('button, textarea, input:not([type="hidden"])')).filter((el) => !el.disabled);
+        const first = controls[0];
+        const last = controls[controls.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
+      }
       if (event.key === 'Escape' && warningBox.classList.contains('is-open')) {
         setWarningOpen(false);
       }

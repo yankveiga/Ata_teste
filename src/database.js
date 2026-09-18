@@ -5760,6 +5760,16 @@ function getMemberWarningState(memberId) {
   return mapMemberWarningState(row);
 }
 
+function listMemberWarningEvents(memberId) {
+  return getDb().prepare(`
+    SELECT e.*, COALESCE(NULLIF(u.name, ''), u.username) AS actor_name
+    FROM member_warning_event e
+    LEFT JOIN "user" u ON u.id = e.actor_user_id
+    WHERE e.member_id = ?
+    ORDER BY e.created_at DESC, e.id DESC
+  `).all(memberId);
+}
+
 function setMemberWarningCount({ memberId, actorUserId, newCount, note = "" }) {
   const normalizedCount = Math.max(0, Math.min(3, Number(newCount)));
   if (!Number.isInteger(normalizedCount)) {
@@ -6912,6 +6922,7 @@ module.exports = {
   listUsersForFortnightReportDeadlineReminder,
   getUserByMemberId,
   getMemberWarningState,
+  listMemberWarningEvents,
   isUserMemberOfProjectName,
   getInventoryCategoryById,
   getInventoryItemById,
