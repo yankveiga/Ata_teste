@@ -832,6 +832,16 @@ function render(res, template, data = {}) {
       selectedMemberId && membersSummary.some((member) => member.id === selectedMemberId)
         ? getRequestMemberById(req, selectedMemberId)
         : null;
+    const selectedMemberWarningState = selectedMember
+      ? database.getMemberWarningState(selectedMember.id)
+      : null;
+    if (selectedMember && selectedMemberWarningState) {
+      Object.assign(selectedMember, selectedMemberWarningState);
+    }
+    const canManageWarnings = Boolean(
+      req.currentUser?.id
+      && database.isUserMemberOfProjectName(req.currentUser.id, "Administrativo"),
+    );
     const tutorFortnightNote = (req.currentUser?.role === "tutor" && selectedMember)
       ? database.getReportFortnightTutorNote({
         tutorUserId: req.currentUser.id,
@@ -996,6 +1006,7 @@ function render(res, template, data = {}) {
       selectedMemberId: selectedMember ? selectedMember.id : null,
       selectedProjectId: selectedProjectId || "",
       selectedMember,
+      canManageWarnings,
       membersSummary,
       reportProjectOptions,
       createGoalProjectOptions,
@@ -1259,6 +1270,11 @@ function render(res, template, data = {}) {
     canDeleteCompletedGoalFromOthers,
     canDeleteGoalFromExecution,
     getCurrentMember,
+    getRequestMemberById,
+    getRequestProjectById,
+    listRequestProjectsForMember,
+    isRequestProjectMember,
+    isRequestProjectCoordinator,
     getCurrentWeekStartDate,
     getCurrentMonthKeyInSaoPaulo,
     normalizeMonthKey,

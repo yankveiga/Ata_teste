@@ -21,6 +21,9 @@ function registerProjectRoutes(ctx) {
     DEFAULT_PROJECT_COLOR,
     canCreateAtaForProject,
     getCurrentMember,
+    getRequestProjectById,
+    listRequestProjectsForMember,
+    isRequestProjectCoordinator,
     persistUploadedImage,
     deleteStoredImage,
     isUniqueConstraintError,
@@ -39,8 +42,8 @@ function registerProjectRoutes(ctx) {
       return false;
     }
 
-    const memberProjects = database.listProjectsForMember(currentMember.id);
-    return memberProjects.some((project) => database.isProjectCoordinator(project.id, currentMember.id));
+    const memberProjects = listRequestProjectsForMember(req, currentMember.id);
+    return memberProjects.some((project) => isRequestProjectCoordinator(req, project.id, currentMember.id));
   }
 
   function canManageCoordinatorAssignments(req, project = null) {
@@ -54,7 +57,7 @@ function registerProjectRoutes(ctx) {
     }
 
     if (project) {
-      return database.isProjectCoordinator(project.id, currentMember.id);
+      return isRequestProjectCoordinator(req, project.id, currentMember.id);
     }
 
     return isCoordinatorInAnyProject(req);
@@ -215,7 +218,7 @@ app.get("/projects", requireAuth, (req, res) => {
   // DETALHE: Rota GET /projects/edit/:id: consulta dados necessarios e monta resposta (HTML/JSON) para a tela solicitada.
 
   app.get("/projects/edit/:id", requireAuth, (req, res) => {
-    const project = database.getProjectById(parseId(req.params.id));
+    const project = getRequestProjectById(req, parseId(req.params.id));
     if (!project) {
       return notFound(res);
     }
@@ -257,7 +260,7 @@ app.get("/projects", requireAuth, (req, res) => {
       }
 
       const projectId = parseId(req.params.id);
-      const project = database.getProjectById(projectId);
+      const project = getRequestProjectById(req, projectId);
       if (!project) {
         if (req.file) {
           safeUnlink(req.file.path);
@@ -398,7 +401,7 @@ app.get("/projects", requireAuth, (req, res) => {
     }
 
     const projectId = parseId(req.params.id);
-    const project = database.getProjectById(projectId);
+    const project = getRequestProjectById(req, projectId);
     if (!project) {
       return notFound(res);
     }

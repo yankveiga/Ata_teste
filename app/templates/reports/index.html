@@ -27,6 +27,7 @@
  id="report_planner_tab_link"
  href="{{ urlFor('planner') }}?view={{ 'project' if selectedProjectId else 'member' }}{% if selectedProjectId %}&project_id={{ selectedProjectId }}{% elif selectedMemberId %}&member_id={{ selectedMemberId }}{% endif %}&return_anchor=report-goals-panel&embedded=1"
  class="module-tab-link"
+ data-no-global-loading="true"
  >
  <ion-icon name="calendar-outline"></ion-icon>
  Planner
@@ -68,7 +69,10 @@
  <ion-icon name="person-outline"></ion-icon>
  {% endif %}
  </span>
- <span class="report-member-photo-name">{{ member.name }}</span>
+ <span class="report-member-photo-name">{{ member.name }} <strong class="member-warning-count {{ 'is-max' if member.warning_count == 3 else '' }}">{{ member.warning_count }}</strong></span>
+ {% if member.restriction_is_active %}
+ <span class="member-warning-restriction">365d: {{ member.restriction_days_remaining }} dias</span>
+ {% endif %}
  </a>
  </li>
  {% endfor %}
@@ -82,10 +86,58 @@
  <section id="report-goals-panel" class="content-panel report-goals-panel">
  <div class="panel-header">
  <div>
- <h2>Metas da Quinzena{% if selectedMember %} de {{ selectedMember.name }}{% endif %}</h2>
+ <h2>Metas da Quinzena{% if selectedMember %} de {{ selectedMember.name }} <span class="member-warning-count {{ 'is-max' if selectedMember.warning_count == 3 else '' }}">{{ selectedMember.warning_count }}</span>{% endif %}</h2>
  </div>
  </div>
  <div class="panel-body">
+ {% if selectedMember %}
+ <div class="member-warning-panel {{ 'is-max' if selectedMember.warning_count == 3 else '' }}">
+ <div>
+ <strong>Advertencias: <span class="member-warning-count {{ 'is-max' if selectedMember.warning_count == 3 else '' }}">{{ selectedMember.warning_count }}</span>/3</strong>
+ {% if selectedMember.restriction_is_active %}
+ <p>Periodo de acompanhamento/restricao ativo: {{ selectedMember.restriction_days_remaining }} dias restantes.</p>
+ {% elif selectedMember.restriction_started_at %}
+ <p>Periodo de acompanhamento/restricao encerrado.</p>
+ {% endif %}
+ </div>
+ {% if canManageWarnings %}
+ <div class="member-warning-actions planner-create-compact" id="member_warning_box">
+ <button type="button" class="planner-create-backdrop" id="member_warning_backdrop" hidden aria-label="Fechar advertencias"></button>
+ <button type="button" class="planner-create-button member-warning-open" id="member_warning_toggle" aria-expanded="false" aria-controls="member_warning_popover">+ Nova advertencia</button>
+ <div class="planner-create-popover member-warning-popover" id="member_warning_popover" hidden>
+ <header class="planner-create-header">
+ <h3>Nova advertencia</h3>
+ <p>Preencha os dados essenciais para registrar no historico.</p>
+ <button type="button" class="planner-create-close-x" id="member_warning_close_x" aria-label="Fechar">×</button>
+ </header>
+ <form action="/relatorios/warnings/{{ selectedMember.id }}/update#report-goals-panel" method="post" class="member-warning-form">
+ <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+ <section class="planner-create-section planner-create-section-essential">
+ <h4>Essenciais</h4>
+ <input type="hidden" name="warning_action" value="add">
+ <div class="planner-create-grid">
+ <div class="form-group form-group-full">
+ <label class="form-label" for="member_warning_note">Motivo/observacao</label>
+ <textarea id="member_warning_note" name="warning_note" rows="3" maxlength="300" class="form-control" placeholder="Descreva brevemente o motivo da alteracao."></textarea>
+ </div>
+ </div>
+ </section>
+ <div class="form-actions">
+ <button type="submit" class="btn-submit">Salvar</button>
+ <button type="button" class="btn-cancel" id="member_warning_close">Fechar</button>
+ </div>
+ </form>
+ {% if selectedMember.warning_count == 3 and not selectedMember.restriction_is_active %}
+ <form action="/relatorios/warnings/{{ selectedMember.id }}/restriction/start#report-goals-panel" method="post" class="member-warning-restriction-form">
+ <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
+ <button type="submit" class="btn-submit btn-submit-small">Iniciar 365 dias</button>
+ </form>
+ {% endif %}
+ </div>
+ </div>
+ {% endif %}
+ </div>
+ {% endif %}
  {% if selectedMember and reportProjectOptions.length %}
  <div class="report-member-projects">
  <strong>Projetos do membro</strong>
@@ -967,6 +1019,44 @@
 </script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+  const warningBox = document.getElementById('member_warning_box');
+  if (warningBox) {
+    const warningToggle = document.getElementById('member_warning_toggle');
+    const warningPopover = document.getElementById('member_warning_popover');
+    const warningBackdrop = document.getElementById('member_warning_backdrop');
+    const warningClose = document.getElementById('member_warning_close');
+    const warningCloseX = document.getElementById('member_warning_close_x');
+
+    function setWarningOpen(open) {
+      warningBox.classList.toggle('is-open', open);
+      if (warningPopover) {
+        warningPopover.hidden = !open;
+      }
+      if (warningBackdrop) {
+        warningBackdrop.hidden = !open;
+      }
+      if (warningToggle) {
+        warningToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      }
+    }
+
+    if (warningToggle) {
+      warningToggle.addEventListener('click', function() {
+        setWarningOpen(!warningBox.classList.contains('is-open'));
+      });
+    }
+    [warningBackdrop, warningClose, warningCloseX].filter(Boolean).forEach((button) => {
+      button.addEventListener('click', function() {
+        setWarningOpen(false);
+      });
+    });
+    document.addEventListener('keydown', function(event) {
+      if (event.key === 'Escape' && warningBox.classList.contains('is-open')) {
+        setWarningOpen(false);
+      }
+    });
+  }
+
   const forms = Array.from(document.querySelectorAll('.js-goal-auto-save-form'));
   const deleteForms = Array.from(document.querySelectorAll('.js-report-delete-form'));
   const completedItems = Array.from(document.querySelectorAll('.js-completed-goal-item'));

@@ -57,6 +57,9 @@ function registerAuthRoutes(ctx) {
     requireAdminPage,
     canManageProject,
     getCurrentMember,
+    getRequestMemberById,
+    getRequestProjectById,
+    isRequestProjectMember,
     listAccessibleProjects,
     ensureValidCsrf,
     ensureCsrfToken,
@@ -108,7 +111,7 @@ function registerAuthRoutes(ctx) {
     return Boolean(
       currentMember?.is_active
       && Number(currentMember.id) === Number(memberId)
-      && database.isProjectMember(project.id, currentMember.id),
+      && isRequestProjectMember(req, project.id, currentMember.id),
     );
   }
 
@@ -337,17 +340,23 @@ app.get("/services", requireAuth, (req, res) => {
     const plannerEmbedded = String(req.query.embedded || "").trim() === "1";
     const accessibleProjects = listAccessibleProjects(req);
     const accessibleProjectIds = new Set(accessibleProjects.map((project) => project.id));
+    const fullAccessibleProjects = database.listProjectsWithMembersByIds(
+      accessibleProjects.map((project) => project.id),
+    );
+    const fullAccessibleProjectsById = new Map(
+      fullAccessibleProjects.map((project) => [Number(project.id), project]),
+    );
     const requestedProjectId = parseId(req.query.project_id);
     const selectedProject = requestedProjectId && accessibleProjectIds.has(requestedProjectId)
-      ? database.getProjectById(requestedProjectId)
-      : (accessibleProjects[0] ? database.getProjectById(accessibleProjects[0].id) : null);
+      ? fullAccessibleProjectsById.get(Number(requestedProjectId)) || null
+      : (accessibleProjects[0] ? fullAccessibleProjectsById.get(Number(accessibleProjects[0].id)) || null : null);
     const selectedProjectId = selectedProject?.id || null;
 
     let selectedMember = null;
     const requestedMemberId = parseId(req.query.member_id);
     if (isAdmin) {
       selectedMember = requestedMemberId
-        ? database.getMemberById(requestedMemberId)
+        ? getRequestMemberById(req, requestedMemberId)
         : (currentMember || null);
       if (!selectedMember) {
         selectedMember = database.listActiveMembers()[0] || null;
@@ -362,20 +371,6 @@ app.get("/services", requireAuth, (req, res) => {
       : (selectedMember ? [selectedMember] : []);
     const memberViewMode = viewMode === "member";
     const effectiveViewMode = memberViewMode ? "member" : "project";
-    const baseTasks = effectiveViewMode === "project"
-      ? (selectedProjectId ? database.listPlannerTasks({ projectId: selectedProjectId }) : [])
-      : (selectedMemberId ? database.listPlannerTasks({ memberId: selectedMemberId }) : []);
-    const visibleTasks = isAdmin
-      ? baseTasks
-      : baseTasks.filter((task) => accessibleProjectIds.has(task.project_id));
-
-    const nowIso = toSqlDateTime(new Date());
-    const plannerTasks = visibleTasks
-      .filter((task) => !task.is_completed)
-      .map((task) => ({
-      ...task,
-      is_overdue: !task.is_completed && database.isReportDueOverdue(task.due_at, nowIso),
-      }));
     const nowDate = new Date();
     const currentMonthKey = new Intl.DateTimeFormat("en-CA", {
       timeZone: "America/Sao_Paulo",
@@ -391,6 +386,33 @@ app.get("/services", requireAuth, (req, res) => {
     const monthIndex = Number(monthText) - 1;
     const monthStart = new Date(Date.UTC(monthYear, monthIndex, 1));
     const monthEnd = new Date(Date.UTC(monthYear, monthIndex + 1, 0));
+    const plannerDueFrom = `${plannerMonth}-01 00:00:00`;
+    const nextMonthForQuery = new Date(Date.UTC(monthYear, monthIndex + 1, 1));
+    const plannerDueTo = `${nextMonthForQuery.getUTCFullYear()}-${String(nextMonthForQuery.getUTCMonth() + 1).padStart(2, "0")}-01 00:00:00`;
+    const baseTasks = effectiveViewMode === "project"
+      ? (selectedProjectId ? database.listPlannerTasks({
+          projectId: selectedProjectId,
+          includeCompleted: false,
+          dueFrom: plannerDueFrom,
+          dueTo: plannerDueTo,
+        }) : [])
+      : (selectedMemberId ? database.listPlannerTasks({
+          memberId: selectedMemberId,
+          includeCompleted: false,
+          dueFrom: plannerDueFrom,
+          dueTo: plannerDueTo,
+        }) : []);
+    const visibleTasks = isAdmin
+      ? baseTasks
+      : baseTasks.filter((task) => accessibleProjectIds.has(task.project_id));
+
+    const nowIso = toSqlDateTime(new Date());
+    const plannerTasks = visibleTasks
+      .filter((task) => !task.is_completed)
+      .map((task) => ({
+      ...task,
+      is_overdue: !task.is_completed && database.isReportDueOverdue(task.due_at, nowIso),
+      }));
     const firstWeekday = monthStart.getUTCDay(); // 0 = domingo
     const daysInMonth = monthEnd.getUTCDate();
     const prevMonthEnd = new Date(Date.UTC(monthYear, monthIndex, 0));
@@ -476,12 +498,10 @@ app.get("/services", requireAuth, (req, res) => {
     }).format(new Date(`${plannerMonth}-01T12:00:00Z`));
 
     const currentMemberId = currentMember?.is_active ? currentMember.id : null;
-    const creatableProjects = accessibleProjects
-      .map((project) => database.getProjectById(project.id))
-      .filter(Boolean)
+    const creatableProjects = fullAccessibleProjects
       .filter((project) => (
         canManageProject(req, project)
-        || (currentMemberId && database.isProjectMember(project.id, currentMemberId))
+        || (currentMemberId && isRequestProjectMember(req, project.id, currentMemberId))
       ))
       .map((project) => ({
         ...project,
@@ -528,7 +548,7 @@ app.get("/services", requireAuth, (req, res) => {
       ? (
         canManageProject(req, selectedCreateProject)
           ? (selectedCreateProject.active_members || [])
-          : (currentMemberId && database.isProjectMember(selectedCreateProject.id, currentMemberId)
+          : (currentMemberId && isRequestProjectMember(req, selectedCreateProject.id, currentMemberId)
             ? (selectedCreateProject.active_members || []).filter((member) => member.id === currentMemberId)
             : [])
       )
@@ -653,7 +673,7 @@ app.get("/services", requireAuth, (req, res) => {
     const projectId = parseId(formData.projectId);
     const memberId = parseId(formData.memberId);
     const scopeMemberId = parseId(req.body.return_member_id) || null;
-    const project = projectId ? database.getProjectById(projectId) : null;
+    const project = projectId ? getRequestProjectById(req, projectId) : null;
 
     if (!project) {
       errors.projectId = ["Selecione um projeto válido."];
@@ -687,7 +707,7 @@ app.get("/services", requireAuth, (req, res) => {
       }
     } else if (!memberId) {
       errors.memberId = ["Selecione o membro da tarefa."];
-    } else if (project && !database.isProjectMember(project.id, memberId)) {
+    } else if (project && !isRequestProjectMember(req, project.id, memberId)) {
       errors.memberId = ["O membro selecionado não pertence ao projeto escolhido."];
     } else if (project && !canCreatePlannerTaskForMember(req, project, memberId)) {
       errors.memberId = ["Você só pode criar tarefas para si mesmo, exceto se for coordenador do projeto."];

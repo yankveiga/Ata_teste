@@ -75,6 +75,69 @@ function registerReportRoutes(ctx) {
     return renderReportPage(req, res);
   });
 
+  app.post("/relatorios/warnings/:memberId/update", requireAuth, (req, res) => {
+    if (!ensureValidCsrf(req, res)) {
+      return;
+    }
+    if (!database.isUserMemberOfProjectName(req.currentUser.id, "Administrativo")) {
+      req.flash("warning", "Sem permissao para alterar advertencias.");
+      return res.redirect("/relatorios#report-goals-panel");
+    }
+    const memberId = parseId(req.params.memberId);
+    const member = memberId ? database.getMemberById(memberId) : null;
+    if (!member) {
+      req.flash("warning", "Membro invalido.");
+      return res.redirect("/relatorios");
+    }
+    const currentState = database.getMemberWarningState(member.id);
+    const warningAction = String(req.body.warning_action || "").trim().toLowerCase();
+    const count = warningAction === "add"
+      ? Math.min(3, Number(currentState.warning_count || 0) + 1)
+      : Number(req.body.warning_count);
+    if (!Number.isInteger(count) || count < 0 || count > 3) {
+      req.flash("warning", "A quantidade de advertencias deve ser entre 0 e 3.");
+      return res.redirect(`/relatorios?member_id=${member.id}#report-goals-panel`);
+    }
+    const state = database.setMemberWarningCount({
+      memberId: member.id,
+      actorUserId: req.currentUser.id,
+      newCount: count,
+      note: req.body.warning_note,
+    });
+    if (state.changed && Number(state.previous_count || 0) < 3 && state.warning_count === 3) {
+      database.createWarningBroadcastForMember(member);
+    }
+    req.flash("success", "Advertencias atualizadas.");
+    return res.redirect(`/relatorios?member_id=${member.id}#report-goals-panel`);
+  });
+
+  app.post("/relatorios/warnings/:memberId/restriction/start", requireAuth, (req, res) => {
+    if (!ensureValidCsrf(req, res)) {
+      return;
+    }
+    if (!database.isUserMemberOfProjectName(req.currentUser.id, "Administrativo")) {
+      req.flash("warning", "Sem permissao para iniciar acompanhamento.");
+      return res.redirect("/relatorios#report-goals-panel");
+    }
+    const memberId = parseId(req.params.memberId);
+    const member = memberId ? database.getMemberById(memberId) : null;
+    if (!member) {
+      req.flash("warning", "Membro invalido.");
+      return res.redirect("/relatorios");
+    }
+    const state = database.getMemberWarningState(member.id);
+    if (state.warning_count !== 3) {
+      req.flash("warning", "O acompanhamento de 365 dias exige 3 advertencias.");
+      return res.redirect(`/relatorios?member_id=${member.id}#report-goals-panel`);
+    }
+    database.startMemberWarningRestriction({
+      memberId: member.id,
+      actorUserId: req.currentUser.id,
+    });
+    req.flash("success", "Acompanhamento de 365 dias iniciado.");
+    return res.redirect(`/relatorios?member_id=${member.id}#report-goals-panel`);
+  });
+
   app.get("/relatorios/monthly/pdf", requireAuth, async (req, res) => {
     const requestedMemberId = parseId(req.query.member_id);
     const currentMember = getCurrentMember(req);

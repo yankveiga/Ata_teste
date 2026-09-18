@@ -369,15 +369,15 @@ body.theme-dark .nav-unread-badge {
 /* SECAO: barra superior com toggle e informacoes do usuario. */
 
 .topbar {
-  position: sticky;
-  top: 0;
-  z-index: 140;
+  position: relative;
+  z-index: 60;
   width: 100%;
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 16px;
   padding: 14px 24px 0;
+  pointer-events: none;
 }
 
 .toggle {
@@ -394,6 +394,7 @@ body.theme-dark .nav-unread-badge {
   box-shadow: var(--shell-shadow);
   color: var(--shell-text);
   cursor: pointer;
+  pointer-events: auto;
 }
 
 html.theme-dark .toggle,

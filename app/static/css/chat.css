@@ -163,6 +163,11 @@
   box-shadow: inset 0 0 0 1px rgba(64, 255, 169, 0.24);
 }
 
+.chat-conversation-link.is-system {
+  background: color-mix(in srgb, var(--chat-system-color, #f1a7a6) 34%, rgba(12, 23, 40, 0.72));
+  border-color: color-mix(in srgb, var(--chat-system-color, #f1a7a6) 65%, transparent);
+}
+
 .chat-conversation-meta {
   min-width: 0;
   display: grid;
@@ -237,6 +242,15 @@
   border-bottom: 1px solid var(--chat-line);
   background: rgba(255, 255, 255, 0.92);
   backdrop-filter: blur(6px);
+}
+
+.chat-main-head.is-system {
+  background: var(--chat-system-color, #f1a7a6);
+}
+
+.chat-main-head.is-system h3,
+.chat-main-head.is-system p {
+  color: #5f1f1f;
 }
 
 .chat-main-head h3 {
@@ -361,6 +375,15 @@
   background: rgba(255, 255, 255, 0.96);
   backdrop-filter: blur(8px);
   padding: 10px;
+}
+
+.chat-readonly-note {
+  border-top: 1px solid var(--chat-line);
+  padding: 12px;
+  text-align: center;
+  font-weight: 800;
+  color: #7f1d1d;
+  background: #f1a7a6;
 }
 
 .chat-main-compose textarea {

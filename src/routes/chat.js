@@ -162,6 +162,11 @@ function registerChatRoutes(ctx) {
       req.flash("warning", "Você não tem acesso a esta conversa.");
       return res.redirect(urlFor("messages_home"));
     }
+    const conversation = database.getChatConversationById(conversationId);
+    if (conversation?.is_read_only && Number(conversation.created_by_user_id) !== Number(req.currentUser.id)) {
+      req.flash("warning", "Esta conversa é somente para recebimento.");
+      return res.redirect(urlFor("message_conversation", { id: conversationId }));
+    }
 
     const messageFormData = {
       text: String(req.body.text || "").trim(),

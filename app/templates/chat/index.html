@@ -34,9 +34,11 @@
       <ul class="chat-conversation-list">
         {% for convo in conversations %}
           <li>
-            <a href="{{ urlFor('message_conversation', { id: convo.id }) }}" class="chat-conversation-link {{ 'is-active' if selectedConversation and selectedConversation.id == convo.id else '' }}" data-conversation-id="{{ convo.id }}">
+            <a href="{{ urlFor('message_conversation', { id: convo.id }) }}" class="chat-conversation-link {{ 'is-active' if selectedConversation and selectedConversation.id == convo.id else '' }} {{ 'is-system' if convo.conversation_kind == 'system' else '' }}" data-conversation-id="{{ convo.id }}" {% if convo.theme_color %}style="--chat-system-color: {{ convo.theme_color }};"{% endif %}>
               <span class="chat-avatar" aria-hidden="true">
-                {% if convo.other_user_photo %}
+                {% if convo.conversation_kind == 'system' %}
+                  <img src="{{ urlFor('static', { filename: 'img/logoadm.png' }) }}" alt="Administrativo">
+                {% elif convo.other_user_photo %}
                   <img src="{{ mediaUrl(convo.other_user_photo) }}" alt="Foto">
                 {% else %}
                   {{ (convo.other_user_name or convo.participants_label or 'C')[0] | upper }}
@@ -60,13 +62,15 @@
 
   <section class="chat-main">
     {% if selectedConversation %}
-      <header class="chat-main-head">
+      <header class="chat-main-head {{ 'is-system' if selectedConversation.conversation_kind == 'system' else '' }}" {% if selectedConversation.theme_color %}style="--chat-system-color: {{ selectedConversation.theme_color }};"{% endif %}>
         <a href="{{ urlFor('messages_home') }}" class="chat-mobile-back" aria-label="Voltar para conversas">
           <span aria-hidden="true">&lt;</span>
           Conversas
         </a>
         <span class="chat-avatar" aria-hidden="true">
-          {% if selectedConversation.other_user_photo %}
+          {% if selectedConversation.conversation_kind == 'system' %}
+            <img src="{{ urlFor('static', { filename: 'img/logoadm.png' }) }}" alt="Administrativo">
+          {% elif selectedConversation.other_user_photo %}
             <img src="{{ mediaUrl(selectedConversation.other_user_photo) }}" alt="Foto">
           {% else %}
             {{ (selectedConversation.other_user_name or selectedParticipantsLabel or 'C')[0] | upper }}
@@ -104,6 +108,9 @@
         {% endif %}
       </div>
 
+      {% if selectedConversation.is_read_only and selectedConversation.created_by_user_id != currentUser.id %}
+      <div class="chat-readonly-note">Conversa somente para recebimento.</div>
+      {% else %}
       <form action="{{ urlFor('messages_home') }}/conversas/{{ selectedConversation.id }}/mensagens/create" method="post" class="chat-main-compose">
         <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
         <textarea name="text" rows="2" placeholder="Digite sua mensagem...">{{ messageFormData.text }}</textarea>
@@ -111,6 +118,7 @@
         {% if messageErrors.text %}<small class="field-error">{{ messageErrors.text[0] }}</small>{% endif %}
         {% if messageErrors.form %}<small class="field-error">{{ messageErrors.form[0] }}</small>{% endif %}
       </form>
+      {% endif %}
     {% else %}
       <div class="chat-empty">
         <h3>Selecione uma conversa</h3>
