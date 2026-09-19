@@ -818,6 +818,7 @@ function render(res, template, data = {}) {
   // DETALHE: Renderiza tela de relatorios com filtros, resumo, formulario e lista de entradas.
 
   function renderReportPage(req, res, data = {}) {
+    database.applySemiannualMemberWarningCycle();
     const currentMember = getCurrentMember(req);
     const currentWeekStart = getCurrentWeekStartDate();
     const selectedNoteWeekStart = normalizeWeekStartDate(req.query.note_week_start) || currentWeekStart;

@@ -104,6 +104,7 @@
  <div class="member-warning-actions planner-create-compact" id="member_warning_box">
  <button type="button" class="planner-create-backdrop" id="member_warning_backdrop" hidden aria-label="Fechar advertencias"></button>
  <button type="button" class="planner-create-button member-warning-open" id="member_warning_toggle" aria-expanded="false" aria-controls="member_warning_popover">+ Nova advertência</button>
+ <button type="button" class="planner-create-button member-warning-details" id="member_warning_details_direct" aria-haspopup="dialog" aria-controls="report_more_actions_modal">Ver advertências atuais</button>
  <div class="planner-create-popover member-warning-popover" id="member_warning_popover" role="dialog" aria-modal="true" aria-labelledby="member_warning_title" hidden>
  <header class="planner-create-header">
  <h3 id="member_warning_title">Nova advertência</h3>
@@ -576,7 +577,7 @@
  <button type="button" class="report-more-actions-close" id="report_more_actions_close" aria-label="Fechar">×</button>
  </header>
  <div class="report-more-actions-menu" id="report_more_actions_menu">
- <button type="button" class="report-more-action-item" data-report-panel-target="report_panel_warnings">
+ <button type="button" class="report-more-action-item" data-report-panel-target="report_panel_warnings" hidden>
  <ion-icon name="alert-circle-outline" aria-hidden="true"></ion-icon>
  Advertências
  </button>
@@ -935,7 +936,7 @@
       : '';
     let activePanelId = defaultPanelId;
     let returnFocus = toggle;
-    const warningDetails = document.getElementById('member_warning_details');
+    const warningDetails = document.getElementById('member_warning_details_direct') || document.getElementById('member_warning_details');
     if (warningDetails) {
       warningDetails.addEventListener('click', function() {
         returnFocus = warningDetails;
