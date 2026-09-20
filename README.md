@@ -1,71 +1,39 @@
 # Portal PET C3
 
-Aplicacao interna em Node.js + Express + Nunjucks para operacao do PET C3.
+Aplicacao interna em Node.js + Express + Nunjucks para centralizar rotinas do PET C3: relatorios, planner, atas, almoxarifado, presenca, mensagens e manutencao administrativa.
 
-Ultima revisao: 05/09/2026
+Ultima revisao: 19/09/2026
 
-## O que o sistema faz
+## Modulos principais
 
-- Relatorios quinzenais e metas por membro/projeto
-- Planner integrado aos relatorios
-- Atas com geracao de PDF
-- Almoxarifado: estoque, patrimonio, retiradas e emprestimos
-- Presenca por eventos no banco, com check-in, importacao CSV e exportacao CSV
-- Mensagens privadas entre usuarios
-- Espacos de escrita geral e privado de tutor
-- CRUD de membros e projetos
-- Manutencao administrativa de usuarios do portal
+- Relatorios quinzenais por membro e projeto.
+- Planner integrado aos relatorios.
+- Sistema de advertencias por membro, com auditoria e acompanhamento de 365 dias.
+- Atas com geracao de PDF.
+- Almoxarifado: estoque, patrimonio, retiradas, emprestimos e historico.
+- Presenca por eventos: atividades, ouvintes, importacao CSV, check-in e exportacao.
+- Mensagens privadas e conversas administrativas somente leitura.
+- Escrita geral e escrita privada de tutor.
+- CRUD de membros, projetos e usuarios.
 
 Observacao: o modulo PETrello nao faz parte da versao atual.
 
-## Regras importantes de negocio
-
-- Fuso principal: `America/Sao_Paulo`
-- Pagina inicial autenticada: `/relatorios`
-- Healthcheck: `/healthz`
-- Sincronizacao Relatorio x Planner via `report_week_goal.planner_task_id`
-- Relatorios quinzenais possuem 2 dias de tolerancia:
-  - entregas da primeira quinzena podem ser preenchidas ate o fim do dia 17;
-  - entregas da segunda quinzena podem ser preenchidas ate o fim do dia 02 do mes seguinte;
-  - dentro dessa janela, tarefas nao aparecem como atrasadas.
-- Usuarios do portal sao desativados logicamente, nao apagados fisicamente, para preservar historico de chat, relatorios e auditoria.
-- Membros inativos deixam de aparecer nas listas operacionais e nos relatorios atuais.
-- Presenca de eventos usa o banco PostgreSQL como fonte de verdade; a planilha local nao deve ser usada para registrar cada bip.
-- Ouvintes de evento usam o cadastro simples `CRACHA`, `NOME`, `CPF`, `EMAIL`.
-
-## Stack atual
+## Stack
 
 - Backend: Node.js + Express
-- Views: Nunjucks
-- Banco: PostgreSQL (Neon)
+- Templates: Nunjucks
+- Banco: PostgreSQL, normalmente Neon
 - Sessao: `cookie-session`
 - Uploads: local ou Cloudinary
 - PDF: PDFKit
-- Importacao/exportacao: CSV
-- Deploy alvo: Render
-
-## Performance e comportamento atual
-
-- A aplicacao usa PostgreSQL/Neon como fonte de verdade e a camada `src/database.js` mantem uma API sincrona sobre um worker interno.
-- O schema e as migracoes idempotentes sao garantidos uma vez por processo no startup.
-- Dados consultados repetidamente na mesma requisicao, como usuario, membro, projeto e permissao projeto-membro, usam cache por requisicao.
-- O contador de mensagens nao lidas usa cache curto em memoria e e invalidado quando conversas sao lidas ou novas mensagens sao enviadas.
-- Listagens de projetos com membros evitam consultas N+1.
-- A tela do almoxarifado reutiliza a lista de itens carregada para separar estoque e patrimonio.
-
-Para investigar lentidao em producao, habilite temporariamente:
-
-```env
-REQUEST_LOGS=1
-```
-
-Depois revise os tempos das rotas nos logs do Render e confira tambem latencia/conectividade do Neon.
+- XLSX/CSV: `exceljs` e geracao manual de CSV
+- Deploy atual/alvo: Render, podendo rodar localmente com tunel temporario
 
 ## Requisitos
 
 - Node.js 18+
 - NPM 9+
-- Banco PostgreSQL acessivel por `DATABASE_URL`
+- PostgreSQL acessivel por `DATABASE_URL`
 
 ## Como rodar localmente
 
@@ -75,7 +43,7 @@ Depois revise os tempos das rotas nos logs do Render e confira tambem latencia/c
 npm install
 ```
 
-2. Crie `.env` na raiz a partir de `.env.example`. Exemplo minimo:
+2. Crie um `.env` na raiz. Exemplo minimo:
 
 ```env
 NODE_ENV=development
@@ -88,7 +56,7 @@ REPORTS_TIMEZONE=America/Sao_Paulo
 APP_BASE_URL=http://127.0.0.1:3000
 ```
 
-3. Opcionalmente, crie usuario inicial:
+3. Opcionalmente, crie um usuario inicial:
 
 ```bash
 npm run create-user
@@ -100,7 +68,11 @@ npm run create-user
 npm run dev
 ```
 
-URL local padrao: `http://127.0.0.1:3000`
+URL local padrao:
+
+```text
+http://127.0.0.1:3000
+```
 
 ## Scripts
 
@@ -112,39 +84,62 @@ npm run verify
 npm run notify:run-once
 ```
 
-`npm run verify` usa `DATABASE_URL` e cria dados temporarios de verificacao; execute preferencialmente em uma base de teste.
+`npm run verify` carrega a aplicacao e valida fluxos principais. Use preferencialmente uma base de teste.
 
-## Presenca de eventos
+## Rotas importantes
 
-Telas principais:
+- `/login`: entrada do sistema.
+- `/relatorios`: pagina inicial autenticada.
+- `/planner`: planner.
+- `/home`: atas recentes.
+- `/atas/nova`: criacao de ata.
+- `/almoxarifado`: almoxarifado.
+- `/presenca/check-in`: check-in por cracha.
+- `/presenca/eventos`: atividades de presenca.
+- `/presenca/ouvintes`: cadastro/importacao de ouvintes.
+- `/mensagens`: chat.
+- `/projects`: projetos.
+- `/members`: membros.
+- `/manutencao-usuarios`: usuarios e senhas.
+- `/healthz`: healthcheck.
 
-- `/presenca/eventos`: cria, edita, exclui e define evento ativo.
-- `/presenca/ouvintes`: tabela de ouvintes, busca, edicao, importacao CSV e exportacao CSV.
-- `/presenca/check-in`: tela para bipar ou digitar o codigo do cracha no dia do evento.
+## Regras importantes
 
-CSV de importacao:
+- Fuso principal: `America/Sao_Paulo`.
+- Pagina inicial autenticada: `/relatorios`.
+- Usuarios sao desativados logicamente, nao apagados fisicamente, para preservar historico.
+- Membros inativos deixam de aparecer nas listas operacionais.
+- Relatorios quinzenais possuem tolerancia de 2 dias:
+  - primeira quinzena: ate o fim do dia 17;
+  - segunda quinzena: ate o fim do dia 02 do mes seguinte.
+- O planner e os relatorios se conectam por `report_week_goal.planner_task_id`.
+- Advertencias sao historicas e append-only: nao apagar historico.
+- Presenca usa PostgreSQL como fonte de verdade; CSV local e apenas contingencia.
+- Ouvintes de presenca usam `cracha,nome,cpf,email`.
 
-```csv
-cracha,nome,cpf,email
-A001,Joao Silva,000.000.000-00,joao@exemplo.com
+## Performance
+
+- `src/database.js` expoe API sincrona para as rotas, mas executa SQL em worker interno.
+- Evite adicionar consultas em middleware global.
+- Evite consultas dentro de loops quando uma query com join resolver.
+- Telas grandes devem carregar apenas o necessario para a aba/visao atual.
+- Assets estaticos ficam em `/static` e devem passar antes de middlewares caros.
+- Para investigar lentidao:
+
+```env
+REQUEST_LOGS=1
 ```
 
-CSV de exportacao:
-
-```csv
-CRACHA,NOME,CPF,EMAIL,PRESENTE,REGISTRADO_EM
-```
-
-Para eventos presenciais com fila, mantenha um CSV local de contingencia com `cracha,nome,cpf,email,registrado_em` caso internet, Render ou Neon fiquem indisponiveis temporariamente.
+Depois veja os tempos das rotas nos logs e compare com a latencia do banco.
 
 ## Variaveis de ambiente
 
-### Obrigatorias
+Obrigatorias:
 
 - `DATABASE_URL`
 - `SECRET_KEY`
 
-### Recomendadas
+Recomendadas:
 
 - `NODE_ENV`
 - `PORT`
@@ -153,59 +148,74 @@ Para eventos presenciais com fila, mantenha um CSV local de contingencia com `cr
 - `APP_TIMEZONE`
 - `REPORTS_TIMEZONE`
 
-### Bootstrap inicial opcional
+Bootstrap opcional:
 
 - `BOOTSTRAP_ADMIN`
 - `BOOTSTRAP_ADMIN_USERNAME`
 - `BOOTSTRAP_ADMIN_PASSWORD`
 - `BOOTSTRAP_ADMIN_NAME`
 
-### Upload opcional
+Uploads opcionais:
 
 - `CLOUDINARY_CLOUD_NAME`
 - `CLOUDINARY_API_KEY`
 - `CLOUDINARY_API_SECRET`
 - `CLOUDINARY_FOLDER`
 
-### Email e notificacoes opcionais
+Email/notificacoes opcionais:
 
-- `EMAIL_PROVIDER` (padrao: `brevo`)
+- `EMAIL_PROVIDER`
 - `BREVO_API_KEY`
 - `EMAIL_FROM`
 - `EMAIL_FROM_NAME`
 - `EMAIL_REPLY_TO`
 - `NOTIFICATION_SWEEP_INTERVAL_MS`
 
-### Ajustes tecnicos opcionais
+Ajustes tecnicos opcionais:
 
-- `REQUEST_LOGS=1`
+- `REQUEST_LOGS`
 - `DB_SYNC_QUERY_TIMEOUT_MS`
 - `PG_CONNECTION_TIMEOUT_MS`
 
-## Seguranca antes de compartilhar a pasta
+## Hospedagem temporaria local
 
-Antes de enviar este diretorio para outra pessoa, revise:
+Para expor o app local temporariamente:
 
-- nao inclua `.env`, dumps de banco, backups, logs ou chaves privadas;
-- remova `node_modules/`, que pode ser recriado com `npm install`;
-- evite enviar arquivos CSV com dados reais de ouvintes;
-- revise `app/static/uploads/`, pois pode conter fotos, logos ou arquivos enviados por usuarios;
-- gere um pacote a partir do Git limpo, de preferencia com `git archive`, em vez de compactar a pasta inteira;
-- rode `npm audit` e corrija vulnerabilidades aplicaveis;
-- troque `SECRET_KEY`, senhas bootstrap e tokens caso algum segredo tenha sido compartilhado por engano.
+```powershell
+npm start
+```
 
-## Arquivos que normalmente nao devem ser enviados
+Em outro terminal:
+
+```powershell
+.\cloudflared-windows-amd64.exe tunnel --url http://localhost:3000
+```
+
+O Cloudflare gera uma URL temporaria `trycloudflare.com`. Mantenha o terminal aberto enquanto precisar do tunel.
+
+## Documentacao
+
+Leia os guias em `docs/` antes de mexer:
+
+- [GUIA_DESENVOLVIMENTO.md](./docs/GUIA_DESENVOLVIMENTO.md): arquitetura, mapa de arquivos e como alterar com seguranca.
+- [GUIA_DADOS_E_PERMISSOES.md](./docs/GUIA_DADOS_E_PERMISSOES.md): tabelas, regras, permissoes e advertencias.
+- [GUIA_OPERACAO.md](./docs/GUIA_OPERACAO.md): deploy, ambiente, incidentes, backup, presenca em evento e tunel local.
+
+## Antes de compartilhar a pasta
+
+Nao envie:
 
 - `.env`
 - `node_modules/`
-- `*.log`
-- `*.db`, `*.sqlite`, `*.sqlite3`
-- dumps ou backups de banco
-- CSVs, planilhas ou exportacoes com dados pessoais
-- uploads com dados sensiveis
+- arquivos `.log`
+- dumps/backups de banco
+- CSVs ou planilhas com dados reais
+- uploads com dados pessoais
+- tokens, chaves privadas ou credenciais
 
-## Documentacao do projeto
+Antes de entregar para outra pessoa:
 
-- [GUIA_OPERACAO.md](./docs/GUIA_OPERACAO.md) - deploy, incidentes, backup e restore
-- [GUIA_DESENVOLVIMENTO.md](./docs/GUIA_DESENVOLVIMENTO.md) - arquitetura e alteracao segura
-- [GUIA_DADOS_E_PERMISSOES.md](./docs/GUIA_DADOS_E_PERMISSOES.md) - modelagem e acesso
+```bash
+npm run verify
+git status --short
+```

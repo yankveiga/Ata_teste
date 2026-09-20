@@ -5685,6 +5685,7 @@ function getUserByMemberId(memberId) {
   return mapUser(row);
 }
 
+// Garante um usuario remetente fixo para mensagens automaticas administrativas.
 function getOrCreateAdministrativeUser() {
   const username = "administrativo";
   const existing = getUserByUsername(username);
@@ -5703,6 +5704,7 @@ function getOrCreateAdministrativeUser() {
   return getUserById(result.lastInsertRowid);
 }
 
+// Data atual da aplicacao na timezone configurada, usada por ciclos automaticos.
 function getCurrentAppDateKey() {
   const formatter = new Intl.DateTimeFormat("en-CA", {
     timeZone: APP_TIMEZONE,
@@ -5713,11 +5715,13 @@ function getCurrentAppDateKey() {
   return formatter.format(new Date());
 }
 
+// So retorna uma data nos dias em que as advertencias devem ser processadas.
 function getCurrentWarningCycleDateKey() {
   const today = getCurrentAppDateKey();
   return today.endsWith("-01-01") || today.endsWith("-07-02") ? today : null;
 }
 
+// Aplica a regra semestral: zera quem tem menos de 3 e inicia restricao para quem tem 3.
 function applySemiannualMemberWarningCycle() {
   const cycleDateKey = getCurrentWarningCycleDateKey();
   if (!cycleDateKey) {
@@ -5805,6 +5809,7 @@ function applySemiannualMemberWarningCycle() {
   });
 }
 
+// Confere se o usuario pertence a um projeto pelo nome, usado em permissoes simples.
 function isUserMemberOfProjectName(userId, projectName) {
   const row = getDb()
     .prepare(
@@ -5822,6 +5827,7 @@ function isUserMemberOfProjectName(userId, projectName) {
   return Boolean(row?.ok);
 }
 
+// Monta o estado atual de advertencias e calcula os dias restantes sem gravar um dia por vez.
 function mapMemberWarningState(row) {
   const count = Math.max(0, Math.min(3, Number(row?.warning_count || 0)));
   const restrictionStartedAt = row?.restriction_started_at || null;
@@ -5845,6 +5851,7 @@ function mapMemberWarningState(row) {
   };
 }
 
+// Busca a quantidade atual de advertencias e o ultimo periodo de restricao de um membro.
 function getMemberWarningState(memberId) {
   const row = getDb()
     .prepare(
@@ -5870,6 +5877,7 @@ function getMemberWarningState(memberId) {
   return mapMemberWarningState(row);
 }
 
+// Lista o historico completo de advertencias, incluindo edicoes e exclusoes logicas.
 function listMemberWarningEvents(memberId) {
   const events = getDb().prepare(`
     SELECT e.*, COALESCE(NULLIF(u.name, ''), u.username) AS actor_name
@@ -5890,7 +5898,7 @@ function listMemberWarningEvents(memberId) {
   });
 }
 
-// Append-only history: existing records and original reasons are never overwritten.
+// Historico append-only: registros antigos e motivos originais nunca sao sobrescritos.
 function mutateMemberWarning({ memberId, actorUserId, action, warningId, note = "" }) {
   const validationError = (message) => Object.assign(new Error(message), { warningValidation: true });
   if (!isUserMemberOfProjectName(actorUserId, "Administrativo")) {
@@ -5921,6 +5929,7 @@ function mutateMemberWarning({ memberId, actorUserId, action, warningId, note = 
   });
 }
 
+// Ajusta a quantidade total registrando uma nova linha de auditoria.
 function setMemberWarningCount({ memberId, actorUserId, newCount, note = "" }) {
   const normalizedCount = Math.max(0, Math.min(3, Number(newCount)));
   if (!Number.isInteger(normalizedCount)) {
@@ -5941,6 +5950,7 @@ function setMemberWarningCount({ memberId, actorUserId, newCount, note = "" }) {
   return { ...getMemberWarningState(memberId), previous_count: current.warning_count, changed: true };
 }
 
+// Inicia manualmente o periodo de acompanhamento/restricao de 365 dias.
 function startMemberWarningRestriction({ memberId, actorUserId, startedAt = null }) {
   const normalizedStartedAt = startedAt || toSqlDateTime(new Date());
   getDb()
@@ -5954,6 +5964,7 @@ function startMemberWarningRestriction({ memberId, actorUserId, startedAt = null
   return getMemberWarningState(memberId);
 }
 
+// Cria conversa read-only do Administrativo avisando todos os usuarios sobre 3 advertencias.
 function createWarningBroadcastForMember(member) {
   if (!member?.id) {
     return null;
@@ -5978,6 +5989,7 @@ function createWarningBroadcastForMember(member) {
   return conversation;
 }
 
+// Procura conversa direta existente entre dois usuarios para evitar duplicidade.
 function findDirectConversationByUsers(userAId, userBId) {
   const row = getDb()
     .prepare(

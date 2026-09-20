@@ -96,7 +96,7 @@
                             aria-expanded="{{ 'true' if plannerFormErrors.projectId or plannerFormErrors.memberId or plannerFormErrors.title or plannerFormErrors.dueAt else 'false' }}"
                             aria-controls="planner_create_popover"
                         >
-                            + Nova tarefa
+                            <ion-icon name="add-outline" aria-hidden="true"></ion-icon>Nova tarefa
                         </button>
                         <div class="planner-create-popover" id="planner_create_popover" {% if not (plannerFormErrors.projectId or plannerFormErrors.memberId or plannerFormErrors.title or plannerFormErrors.dueAt) %}hidden{% endif %}>
                             <header class="planner-create-header">

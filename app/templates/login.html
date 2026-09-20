@@ -15,6 +15,8 @@
     <link rel="stylesheet" href="{{ urlFor('static', { filename: 'css/custom_styles.css' }) }}">
     <link rel="stylesheet" href="{{ urlFor('static', { filename: 'css/login.css' }) }}">
     <link rel="icon" type="image/png" href="{{ urlFor('static', { filename: 'uploads/icone.png' }) }}">
+    <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
+    <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
 </head>
 
 <!-- SECAO: configuracao visual das particulas de fundo na tela de login. -->
@@ -111,6 +113,7 @@
 
             <div class="form-group">
                 <label class="form-label" for="password">Senha</label>
+                <div class="password-field">
                 <input
                     id="password"
                     name="password"
@@ -118,6 +121,10 @@
                     class="form-control"
                     placeholder="Sua senha"
                 >
+                <button type="button" class="password-toggle" id="password_toggle" aria-label="Mostrar senha" aria-pressed="false">
+                    <ion-icon name="eye-outline" aria-hidden="true"></ion-icon>
+                </button>
+                </div>
                 {% if errors.password %}
                 <div class="form-error">
                     {% for error in errors.password %}
@@ -132,5 +139,22 @@
             </div>
         </form>
     </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const passwordInput = document.getElementById('password');
+            const toggle = document.getElementById('password_toggle');
+            if (!passwordInput || !toggle) return;
+
+            toggle.addEventListener('click', function() {
+                const shouldShow = passwordInput.type === 'password';
+                passwordInput.type = shouldShow ? 'text' : 'password';
+                toggle.setAttribute('aria-label', shouldShow ? 'Ocultar senha' : 'Mostrar senha');
+                toggle.setAttribute('aria-pressed', shouldShow ? 'true' : 'false');
+                const icon = toggle.querySelector('ion-icon');
+                if (icon) icon.setAttribute('name', shouldShow ? 'eye-off-outline' : 'eye-outline');
+                passwordInput.focus();
+            });
+        });
+    </script>
 </body>
 </html>

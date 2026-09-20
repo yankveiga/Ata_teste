@@ -4,18 +4,35 @@
   IMPACTO DE MUDANCAS:
   - Alterar links de retorno afeta recuperacao de navegacao apos erro.
 #}
-{% extends "base.html" %}
-
-{% block content %}
-    {# SECAO: titulo e orientacao principal para erro de pagina nao encontrada. #}
-
-    <div class="page-header">
-        <h1>Página Não Encontrada (404)</h1>
-    </div>
-    {# SECAO: mensagem orientativa com atalho de retorno seguro para o usuario. #}
-
-    <div class="message-card message-card-warning">
-        <p>Oops! A página que você está procurando não existe.</p>
-        <p>Verifique se o endereço foi digitado corretamente ou volte para a <a href="{{ urlFor('relatorios') }}">página de relatórios</a>.</p>
-    </div>
-{% endblock %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title or 'Pagina nao encontrada' }} - Portal PET C3</title>
+    <link rel="stylesheet" href="{{ urlFor('static', { filename: 'css/custom_styles.css' }) }}">
+    <link rel="stylesheet" href="{{ urlFor('static', { filename: 'css/app_polish.css' }) }}">
+    <link rel="icon" type="image/png" href="{{ urlFor('static', { filename: 'uploads/icone.png' }) }}">
+    <script>
+        (function() {
+            try {
+                var mode = localStorage.getItem('portal_theme_mode');
+                if (mode === 'dark') {
+                    document.documentElement.classList.add('theme-dark');
+                }
+            } catch (error) {}
+        })();
+    </script>
+</head>
+<body class="page-404-shell">
+    <main class="page-404" aria-label="Pagina nao encontrada">
+        <div class="page-404-visual" role="img" aria-label="Pagina perdida">
+            <h1>404</h1>
+        </div>
+        <div class="page-404-copy">
+            <p>O caminho que voc&ecirc; tentou abrir n&atilde;o existe ou foi movido.</p>
+            <a class="page-404-link" href="{{ urlFor('relatorios') }}">Voltar para Relat&oacute;rios</a>
+        </div>
+    </main>
+</body>
+</html>

@@ -1,108 +1,371 @@
 # Guia de Operacao
 
-Ultima revisao: 05/09/2026
+Ultima revisao: 19/09/2026
 
-Se precisar operar deploy, incidente, backup, restore ou check-in de evento, use este guia.
+Este guia e para quem precisa rodar, publicar, testar, monitorar ou resolver problema no Portal PET C3.
 
-## Ambiente de producao
+## Ambientes
+
+Producao atual/alvo:
 
 - App web: Render
-- Banco: Neon/PostgreSQL
-- Midia: Cloudinary (opcional)
-- Presenca: tabelas no PostgreSQL, com importacao/exportacao CSV
-- Email: Brevo (opcional)
+- Banco: PostgreSQL/Neon
+- Midia: local ou Cloudinary
+- Email: Brevo opcional
 
-## Variaveis essenciais no Render
+Local:
+
+- Node.js
+- `.env`
+- PostgreSQL remoto ou base de teste
+- `npm run dev`
+
+Temporario em casa:
+
+- App local em `localhost:3000`
+- Cloudflare Tunnel ou ngrok
+- Recomendado para teste curto, nao para operacao permanente
+
+## Variaveis essenciais
+
+Obrigatorias:
+
+- `DATABASE_URL`
+- `SECRET_KEY`
+
+Recomendadas em producao:
 
 - `NODE_ENV=production`
-- `SECRET_KEY`
-- `DATABASE_URL`
-- `APP_BASE_URL`
 - `PORT`
+- `APP_BASE_URL`
 - `SESSION_MAX_AGE_HOURS`
-- `APP_TIMEZONE`
-- `REPORTS_TIMEZONE`
+- `APP_TIMEZONE=America/Sao_Paulo`
+- `REPORTS_TIMEZONE=America/Sao_Paulo`
 
-Opcional:
+Uploads:
 
-- `CLOUDINARY_*`
-- `EMAIL_PROVIDER`, `BREVO_API_KEY`, `EMAIL_FROM`, `EMAIL_FROM_NAME`, `EMAIL_REPLY_TO`
+- `CLOUDINARY_CLOUD_NAME`
+- `CLOUDINARY_API_KEY`
+- `CLOUDINARY_API_SECRET`
+- `CLOUDINARY_FOLDER`
+
+Email:
+
+- `EMAIL_PROVIDER`
+- `BREVO_API_KEY`
+- `EMAIL_FROM`
+- `EMAIL_FROM_NAME`
+- `EMAIL_REPLY_TO`
 - `NOTIFICATION_SWEEP_INTERVAL_MS`
-- `BOOTSTRAP_ADMIN*` somente no bootstrap inicial
 
-Recomendacao para PostgreSQL: usar `sslmode=verify-full` na `DATABASE_URL` quando o provedor suportar.
+Tecnicas:
 
-## Deploy
+- `REQUEST_LOGS`
+- `DB_SYNC_QUERY_TIMEOUT_MS`
+- `PG_CONNECTION_TIMEOUT_MS`
 
-- Build: `npm install`
-- Start: `npm start`
-- Healthcheck: `GET /healthz` deve retornar `200 ok`
+Bootstrap:
 
-## Smoke test pos deploy
+- `BOOTSTRAP_ADMIN`
+- `BOOTSTRAP_ADMIN_USERNAME`
+- `BOOTSTRAP_ADMIN_PASSWORD`
+- `BOOTSTRAP_ADMIN_NAME`
 
-1. Login/logout
-2. Relatorios: criar e atualizar meta
-3. Planner: criar e concluir tarefa
-4. Atas: criar e baixar PDF
-5. Almoxarifado: criar item e listar
-6. Mensagens: criar conversa e enviar mensagem
-7. Projetos: criar/editar
-8. Presenca: criar evento, importar CSV, registrar um check-in e exportar CSV
+Use bootstrap somente quando precisar criar usuario inicial. Remova/desative depois.
 
-## Monitoramento de lentidao
+## Deploy no Render
 
-Quando usuarios relatarem lentidao:
+Build:
 
-1. Conferir se o servico no Render estava frio ou reiniciando.
-2. Conferir status e latencia do Neon/PostgreSQL.
-3. Habilitar temporariamente `REQUEST_LOGS=1` e observar nos logs quais rotas passam de alguns segundos.
-4. Testar paginas historicamente mais pesadas: `/relatorios`, `/planner`, `/projects`, `/almoxarifado` e `/mensagens`.
-5. Desabilitar `REQUEST_LOGS` depois da investigacao para reduzir ruido de log.
+```bash
+npm install
+```
 
-Observacoes tecnicas:
+Start:
 
-- O schema e garantido no startup e nao deve repetir o pacote completo de migracoes durante o uso normal do app.
-- Algumas consultas repetidas dentro da mesma requisicao usam cache local da propria requisicao.
-- O contador de mensagens nao lidas usa cache curto e e atualizado quando conversas sao lidas ou novas mensagens sao enviadas.
+```bash
+npm start
+```
 
-## Presenca em evento
+Healthcheck:
 
-Fluxo recomendado antes do evento:
+```text
+GET /healthz
+```
 
-1. Criar a atividade/palestra/minicurso em `/presenca/eventos`.
-2. Cadastrar/importar a lista geral de ouvintes em `/presenca/ouvintes` com CSV no formato `cracha,nome,cpf,email`.
-3. Selecionar o evento em `/presenca/ouvintes` e vincular os ouvintes que pagaram/participam daquele evento.
-4. Conferir a pre-visualizacao e resolver duplicados.
-5. Abrir `/presenca/check-in` em um computador logado e selecionar o evento correto.
-6. Fazer um teste com 2 ou 3 crachas antes da fila abrir.
-7. Exportar CSV da atividade ou XLSX geral em `/presenca/exportar-geral.xlsx`.
+Resposta esperada:
 
-Para uma fila de cerca de 100 pessoas, o fluxo atual deve ser tranquilo: cada bip gera uma requisicao pequena e uma gravacao simples no banco. O gargalo real costuma ser internet instavel, Render frio ou indisponibilidade temporaria do Neon.
+```text
+ok
+```
 
-## Contingencia simples para check-in
+## Smoke test depois de deploy
 
-Tenha sempre um plano B pronto antes do evento:
+1. Abrir `/healthz`.
+2. Fazer login.
+3. Abrir `/relatorios`.
+4. Trocar membro no seletor.
+5. Criar/editar uma meta simples em base de teste.
+6. Abrir planner pelo atalho.
+7. Abrir `/home` e baixar uma ata existente, se houver.
+8. Abrir `/almoxarifado`.
+9. Abrir `/presenca/eventos`, `/presenca/ouvintes` e `/presenca/check-in`.
+10. Abrir `/mensagens`.
+11. Sair e entrar novamente.
 
-- deixe um CSV aberto localmente com colunas `cracha,nome,cpf,email,registrado_em`;
-- se a tela online falhar, continue bipando/digitando os codigos nesse CSV;
-- quando o sistema voltar, confira os codigos no modulo Ouvintes e registre ou reconcilie os presentes;
-- ao fim, exporte o CSV oficial do evento pelo sistema.
+Se algum passo travar, olhar logs do Render e status do banco.
 
-Para reduzir risco:
+## Rodar localmente
 
-- abra a tela de check-in 10 minutos antes e mantenha a sessao ativa;
-- evite depender de internet de celular sem teste previo;
-- tenha um segundo notebook logado como reserva;
-- nao deixe o servico acordar pela primeira vez quando a fila ja estiver formada;
-- faca backup do banco antes de grandes importacoes.
+```bash
+npm install
+npm run dev
+```
 
-## Verificacao tecnica
+URL:
+
+```text
+http://127.0.0.1:3000
+```
+
+Verificacao tecnica:
 
 ```bash
 npm run verify
 ```
 
-## Backup e restore do banco
+Criar usuario inicial:
+
+```bash
+npm run create-user
+```
+
+Rodar notificacoes uma vez:
+
+```bash
+npm run notify:run-once
+```
+
+## Tunel temporario local
+
+Use para mostrar o sistema temporariamente sem deploy.
+
+1. Rode o app:
+
+```powershell
+npm start
+```
+
+2. Em outro terminal, na pasta do `cloudflared`:
+
+```powershell
+.\cloudflared-windows-amd64.exe tunnel --url http://localhost:3000
+```
+
+3. Compartilhe a URL `https://...trycloudflare.com`.
+
+Cuidados:
+
+- O computador precisa ficar ligado.
+- O terminal do tunnel precisa ficar aberto.
+- Nao deixe publico por muito tempo.
+- Nao use como producao definitiva.
+- Se usar banco real, qualquer pessoa com login valido pode acessar pela URL.
+
+## Operacao por modulo
+
+### Relatorios
+
+Rota:
+
+- `/relatorios`
+
+Operacoes comuns:
+
+- selecionar membro;
+- filtrar projeto;
+- criar/meta da quinzena;
+- usar planner embutido;
+- abrir advertencias atuais;
+- acessar mais acoes: executadas, exclusoes, historico de tarefas e PDF.
+
+Pontos de atencao:
+
+- Relatorios dependem de membros ativos.
+- Advertencias aparecem ao lado do nome.
+- O acompanhamento de 365 dias calcula dias restantes na leitura, sem job diario.
+
+### Advertencias
+
+Onde operar:
+
+- `/relatorios`, no painel do membro.
+
+Quem altera:
+
+- membros do projeto `Administrativo`.
+
+Fluxos:
+
+- `+ Nova advertencia`: adiciona uma advertencia.
+- `Ver advertencias atuais`: abre historico e acoes de editar/excluir.
+- Ao atingir 3: mensagem administrativa automatica para todos.
+- Em 01/01 e 02/07: ciclo automatico ao abrir relatorios.
+
+Conferir se deu certo:
+
+- numero ao lado do membro;
+- modal de historico;
+- conversa administrativa no chat quando atinge 3;
+- indicador de 365 dias quando aplicavel.
+
+### Planner
+
+Rota:
+
+- `/planner`
+
+Pontos de atencao:
+
+- tarefas atrasadas e concluidas geram logs;
+- relatorios podem abrir planner embutido;
+- lentidao geralmente vem de consultas amplas ou banco remoto frio.
+
+### Atas
+
+Rotas:
+
+- `/home`
+- `/atas/nova`
+
+Operacoes:
+
+- criar ata;
+- gerar PDF;
+- baixar ata recente;
+- excluir se permitido.
+
+### Almoxarifado
+
+Rota:
+
+- `/almoxarifado`
+
+Abas:
+
+- Visao Geral
+- Estoque
+- Cadastro
+- Retiradas
+- Emprestimos
+- Materiais Emprestados
+- Historico
+
+Pontos de atencao:
+
+- A tela deve carregar por aba para nao ficar lenta.
+- Retirada de estoque registra historico em `pedido`.
+- Emprestimo de patrimonio registra `inventory_loan`.
+- Devolucao precisa devolver quantidade ao item.
+
+### Presenca
+
+Rotas:
+
+- `/presenca/eventos`
+- `/presenca/ouvintes`
+- `/presenca/check-in`
+- `/presenca/crachas`
+
+Fluxo recomendado:
+
+1. Criar atividade em `/presenca/eventos`.
+2. Importar/cadastrar ouvintes em `/presenca/ouvintes`.
+3. Selecionar atividade e vincular ouvintes.
+4. Abrir `/presenca/check-in`.
+5. Fazer teste com alguns crachas.
+6. Usar check-in no evento.
+7. Exportar CSV da atividade ou XLSX geral.
+
+CSV de importacao:
+
+```csv
+cracha,nome,cpf,email
+A001,Joao Silva,000.000.000-00,joao@exemplo.com
+```
+
+CSV de exportacao:
+
+```csv
+CRACHA,NOME,CPF,EMAIL,PRESENTE,REGISTRADO_EM
+```
+
+Contingencia para evento:
+
+- Tenha um CSV local com `cracha,nome,cpf,email,registrado_em`.
+- Se internet/Render/Neon cair, continue registrando localmente.
+- Depois reconcilie manualmente no sistema.
+- Abra o sistema 10 minutos antes para evitar cold start.
+- Tenha segundo notebook logado se o evento for importante.
+
+### Chat
+
+Rota:
+
+- `/mensagens`
+
+Pontos de atencao:
+
+- Conversas administrativas podem ser somente leitura.
+- Conversas de advertencia usam remetente `Administrativo`.
+- Contador de nao lidas tem cache curto.
+
+### Usuarios, membros e projetos
+
+Rotas:
+
+- `/manutencao-usuarios`
+- `/members`
+- `/projects`
+
+Pontos de atencao:
+
+- Desative usuarios/membros em vez de excluir quando houver historico.
+- Vinculo `user.member_id` e importante para permissoes contextuais.
+- Coordenadores sao definidos por projeto.
+
+## Diagnostico de lentidao
+
+1. Verificar se o Render esta frio/reiniciando.
+2. Verificar latencia/status do Neon.
+3. Habilitar temporariamente:
+
+```env
+REQUEST_LOGS=1
+```
+
+4. Reproduzir a tela lenta.
+5. Ver nos logs qual rota demora.
+6. Testar:
+
+- `/relatorios`
+- `/planner`
+- `/almoxarifado`
+- `/presenca/ouvintes`
+- `/mensagens`
+
+7. Desligar `REQUEST_LOGS` depois.
+
+Checklist tecnico:
+
+- A rota carregou dados de abas escondidas?
+- Tem query em loop?
+- Tem historico sem `LIMIT`?
+- Alguma consulta usa `CAST` que ignora indice?
+- Algum middleware global esta fazendo consulta desnecessaria?
+- Static assets estao passando por sessao/DB?
+
+## Backup e restore
 
 Backup:
 
@@ -116,25 +379,75 @@ Restore:
 pg_restore -d "$DATABASE_URL" --clean --if-exists backup_YYYY-MM-DD.dump
 ```
 
+Antes de grandes importacoes ou mudancas de schema, gere backup.
+
 ## Incidentes comuns
 
-- App cai apos login: validar logs, `DATABASE_URL` e schema no startup.
-- Conexao DB instavel: validar Neon e timeouts (`PG_CONNECTION_TIMEOUT_MS`, `DB_SYNC_QUERY_TIMEOUT_MS`).
-- Paginas lentas: habilitar `REQUEST_LOGS=1`, identificar rota lenta e conferir se o Neon esta respondendo com alta latencia.
-- Upload falhando: revisar `CLOUDINARY_*` ou escrita local.
-- Presenca falhando: verificar Render, Neon, internet local e usar contingencia CSV.
-- Email falhando: validar `BREVO_API_KEY`, `EMAIL_FROM`, `APP_BASE_URL`.
+### Login falha
 
-## Organizacao de arquivos operacionais
+- Verificar se usuario esta ativo.
+- Verificar `DATABASE_URL`.
+- Verificar logs do Render.
+- Verificar se `SECRET_KEY` mudou e invalidou sessoes.
 
-- `.env.example` documenta variaveis sem segredos.
-- `docs/` guarda guias do projeto.
-- `data/examples/` pode guardar exemplos sem dados reais sensiveis.
-- Planilhas reais, dumps e backups devem ficar fora do Git.
+### App abre mas paginas travam
+
+- Habilitar `REQUEST_LOGS`.
+- Conferir Neon.
+- Conferir rota especifica lenta.
+- Verificar se houve mudanca recente em middleware global.
+
+### Almoxarifado lento
+
+- Confirmar se a tela esta carregando somente dados da aba atual.
+- Conferir consultas em `listInventoryItems`, `listInventoryLoans`, `listInventoryRequests`.
+- Conferir indices de `estoque`, `pedido`, `inventory_loan`.
+
+### Presenca falha no evento
+
+- Conferir internet local.
+- Conferir Render.
+- Conferir Neon.
+- Usar contingencia CSV se necessario.
+- Depois registrar/reconciliar no sistema.
+
+### Upload falha
+
+- Conferir Cloudinary se estiver ativo.
+- Conferir permissao de escrita local se Cloudinary nao estiver ativo.
+
+### Email nao envia
+
+- Conferir `BREVO_API_KEY`.
+- Conferir `EMAIL_FROM`.
+- Conferir `APP_BASE_URL`.
+- Rodar `npm run notify:run-once`.
+
+## Seguranca operacional
+
+Nunca publicar:
+
+- `.env`
+- dumps de banco;
+- planilhas reais;
+- CSV com dados pessoais;
+- uploads sensiveis;
+- tokens e chaves.
+
+Quando passar o projeto para outra pessoa:
+
+```bash
+git status --short
+npm run verify
+```
+
+Prefira enviar um pacote limpo do Git em vez de compactar a pasta inteira.
 
 ## Rollback
 
 1. Voltar para ultimo deploy estavel.
 2. Validar `/healthz`.
-3. Validar login e modulo afetado.
-4. Restaurar backup se necessario.
+3. Fazer login.
+4. Testar modulo afetado.
+5. Restaurar backup apenas se houve corrupcao/perda de dados.
+6. Registrar o que aconteceu para evitar repeticao.

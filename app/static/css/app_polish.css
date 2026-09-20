@@ -12,6 +12,7 @@
   --polish-shadow-strong: 0 24px 42px rgba(15, 23, 42, 0.12);
 }
 
+/* Ajusta os tokens de sombra/foco para manter contraste no tema escuro. */
 html.theme-dark,
 body.theme-dark {
   --polish-ring: 0 0 0 4px rgba(142, 168, 255, 0.22);
@@ -19,11 +20,13 @@ body.theme-dark {
   --polish-shadow-strong: 0 28px 46px rgba(2, 6, 23, 0.58);
 }
 
+/* Melhora a renderizacao geral de texto nas telas do portal. */
 body {
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
+/* Pequenos ajustes de espacamento estrutural do layout principal. */
 .topbar {
   padding-bottom: 6px;
 }
@@ -32,6 +35,7 @@ body {
   padding-bottom: 34px;
 }
 
+/* Polimento dos paineis principais: bordas mais suaves e sombra app-like. */
 .content-panel,
 .almox-panel {
   border-radius: 30px;
@@ -39,6 +43,7 @@ body {
   transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
 }
 
+/* Hover discreto nos paineis, apenas para telas com ponteiro preciso. */
 @media (hover: hover) and (pointer: fine) {
   .content-panel:hover,
   .almox-panel:hover {
@@ -47,12 +52,14 @@ body {
   }
 }
 
+/* Cabecalhos internos recebem brilho leve sem virar um bloco pesado. */
 .panel-header {
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.36), rgba(255, 255, 255, 0)),
     transparent;
 }
 
+/* Versao dark do brilho dos cabecalhos internos. */
 html.theme-dark .panel-header,
 body.theme-dark .panel-header {
   background:
@@ -60,6 +67,7 @@ body.theme-dark .panel-header {
     transparent;
 }
 
+/* Base compartilhada das animacoes de botoes do sistema. */
 .btn-primary-action,
 .btn-secondary-action,
 .btn-submit,
@@ -68,45 +76,143 @@ body.theme-dark .panel-header {
 .primary-button,
 .secondary-button,
 .danger-button,
-.ghost-danger-button {
-  transition: transform 150ms ease, box-shadow 180ms ease, filter 180ms ease, border-color 180ms ease;
+.ghost-danger-button,
+.btn-download,
+.btn-delete,
+.report-goal-delete-button,
+.report-inline-confirm-yes {
+  transform-origin: center;
+  transition: transform 190ms ease, box-shadow 220ms ease, filter 190ms ease, border-color 190ms ease, background-color 190ms ease;
 }
 
+/* Hover dos botoes principais: sobe um pouco e ganha presenca visual. */
 .btn-primary-action:hover,
 .btn-submit:hover,
 .btn-create-ata:hover,
 .primary-button:hover {
-  transform: translateY(-1px);
-  filter: saturate(1.04);
-  box-shadow: 0 18px 30px rgba(31, 91, 230, 0.32);
+  transform: translateY(-3px) scale(1.015);
+  filter: saturate(1.12) brightness(1.02);
+  box-shadow: 0 20px 34px rgba(31, 91, 230, 0.36);
 }
 
+/* Hover dos botoes secundarios: realce menor para manter hierarquia. */
 .btn-secondary-action:hover,
 .btn-cancel:hover,
 .secondary-button:hover,
 .ghost-danger-button:hover {
-  transform: translateY(-1px);
+  transform: translateY(-3px) scale(1.015);
   border-color: var(--ui-border-strong);
-  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.08);
+  filter: saturate(1.08) brightness(1.01);
+  box-shadow: 0 16px 28px rgba(15, 23, 42, 0.12);
 }
 
+/* Hover especifico de download, mantendo a ideia de acao informativa. */
+.btn-download:hover,
+.btn-secondary-action:has(ion-icon[name="download-outline"]):hover {
+  transform: translateY(-3px) scale(1.015);
+  filter: saturate(1.12) brightness(1.03);
+  box-shadow: 0 16px 28px rgba(31, 91, 230, 0.26);
+}
+
+/* Padrao visual dos botoes destrutivos. */
+.danger-button,
+.btn-delete,
+.report-goal-delete-button {
+  background: #e62222;
+  border-color: #e62222;
+  color: #fff;
+  box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+/* Mantem o preenchimento do icone igual ao fundo do proprio botao. */
+.danger-button::after,
+.btn-delete::after,
+.report-goal-delete-button::after {
+  background: inherit;
+}
+
+/* Hover destrutivo: vermelho vivo, sem sombra neon. */
 .danger-button:hover,
-.btn-delete:hover {
-  transform: translateY(-1px);
-  filter: brightness(1.04);
-  box-shadow: 0 12px 22px rgba(153, 27, 27, 0.28);
+.btn-delete:hover,
+.report-goal-delete-button:hover {
+  transform: translateY(-3px) scale(1.015);
+  background: #ff3636;
+  border-color: #ff3636;
+  filter: saturate(1.08);
+  box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.15);
 }
 
+/* Estado pressionado dos botoes destrutivos. */
+.danger-button:active,
+.btn-delete:active,
+.report-goal-delete-button:active {
+  background: #c41b1b;
+  border-color: #c41b1b;
+}
+
+/* Botoes de confirmar/salvar ficam no verde padrao compartilhado. */
+button.btn-primary-action:has(ion-icon[name*="checkmark"]),
+button.btn-primary-action:has(ion-icon[name="save-outline"]),
+button.btn-primary-action:has(ion-icon[name="cloud-upload-outline"]),
+button.btn-submit,
+.report-inline-confirm-yes {
+  background: #209978;
+  border-color: #209978;
+  color: #fff;
+}
+
+/* Faz o overlay do icone herdar a cor do botao de confirmar/salvar. */
+button.btn-primary-action:has(ion-icon[name*="checkmark"])::after,
+button.btn-primary-action:has(ion-icon[name="save-outline"])::after,
+button.btn-primary-action:has(ion-icon[name="cloud-upload-outline"])::after,
+button.btn-submit::after,
+.report-inline-confirm-yes::after {
+  background: inherit;
+}
+
+/* Hover de salvar/confirmar mantem a mesma cor e anima apenas o movimento. */
+button.btn-primary-action:has(ion-icon[name*="checkmark"]):hover,
+button.btn-primary-action:has(ion-icon[name="save-outline"]):hover,
+button.btn-primary-action:has(ion-icon[name="cloud-upload-outline"]):hover,
+button.btn-submit:hover,
+.report-inline-confirm-yes:hover {
+  transform: translateY(-3px) scale(1.015);
+  background: #209978;
+  border-color: #209978;
+  filter: none;
+  box-shadow: 0 12px 22px rgba(32, 153, 120, 0.18);
+}
+
+/* Relatorios usa verde proprio; este override impede troca de cor no hover. */
+body.section-reports button.btn-submit:hover {
+  background: linear-gradient(135deg, #317039, #3f8f48);
+  border-color: transparent;
+  filter: none;
+}
+
+/* Mesmo travamento de cor para o tema escuro em Relatorios. */
+body.theme-dark.section-reports button.btn-submit:hover {
+  background: linear-gradient(135deg, #317039, #3f8f48);
+  border-color: transparent;
+  filter: none;
+}
+
+/* Pressionar qualquer botao volta a altura normal para dar feedback tactil. */
 .btn-primary-action:active,
 .btn-submit:active,
 .btn-create-ata:active,
 .primary-button:active,
 .secondary-button:active,
 .danger-button:active,
-.ghost-danger-button:active {
+.ghost-danger-button:active,
+.btn-download:active,
+.btn-delete:active,
+.report-goal-delete-button:active,
+.report-inline-confirm-yes:active {
   transform: translateY(0);
 }
 
+/* Transicoes padronizadas para campos de formulario. */
 .form-control,
 .form-control-file,
 .stacked-form input,
@@ -119,12 +225,14 @@ body.theme-dark .panel-header {
   transition: border-color 160ms ease, box-shadow 180ms ease, background-color 180ms ease;
 }
 
+/* Placeholder mais suave que o texto preenchido. */
 .form-control::placeholder,
 .stacked-form input::placeholder,
 .inline-form input::placeholder {
   color: color-mix(in srgb, var(--ui-muted) 78%, transparent);
 }
 
+/* Foco acessivel e consistente para entradas de dados. */
 .form-control:focus,
 .form-control-file:focus,
 .stacked-form input:focus,
@@ -137,18 +245,22 @@ body.theme-dark .panel-header {
   box-shadow: var(--polish-ring);
 }
 
+/* Cabecalho de tabelas com fundo leve para separar dados de titulos. */
 .styled-table thead th {
   background: linear-gradient(180deg, rgba(31, 91, 230, 0.06), rgba(31, 91, 230, 0.01));
 }
 
+/* Linhas alternadas para facilitar leitura em tabelas longas. */
 .styled-table tbody tr:nth-child(even) {
   background: rgba(148, 163, 184, 0.05);
 }
 
+/* Hover das tabelas indica a linha que esta sendo lida. */
 .styled-table tbody tr:hover {
   background: color-mix(in srgb, var(--ui-accent-soft) 78%, transparent);
 }
 
+/* Cabecalho de tabela no tema escuro. */
 html.theme-dark .styled-table thead th,
 body.theme-dark .styled-table thead th {
   background: linear-gradient(180deg, rgba(142, 168, 255, 0.14), rgba(142, 168, 255, 0.02));
@@ -333,8 +445,30 @@ body.section-reports .report-tabs-nav .module-tab-link:hover:not(.is-active) {
   cursor: pointer;
 }
 
-.member-warning-details:hover {
+.member-warning-details:not(.planner-create-button):hover {
   border-color: currentColor;
+}
+
+.planner-create-button {
+  transition: transform 190ms ease, box-shadow 220ms ease, filter 190ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .planner-create-button:not(:disabled):hover {
+    transform: translateY(-3px) scale(1.015);
+    filter: brightness(1.03);
+    box-shadow: var(--polish-shadow-soft);
+  }
+}
+
+.planner-create-button:not(:disabled):active {
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .planner-create-button {
+    transition: none;
+  }
 }
 
 .member-warning-details:focus-visible,
@@ -386,6 +520,24 @@ body.section-reports .report-member-photo-card:hover,
 body.section-reports .report-member-project-chip:hover,
 body.section-reports .report-goal-item:hover {
   transform: translateY(-2px);
+}
+
+body.section-reports .report-member-photo-grid:has(.report-member-photo-card.is-active) .report-member-photo-card:not(.is-active) {
+  transform: none;
+  opacity: 1;
+}
+
+body.section-reports .report-member-photo-grid:has(.report-member-photo-card.is-active) .report-member-photo-card:not(.is-active):hover {
+  transform: translateY(-4px);
+  opacity: 1;
+}
+
+body.section-reports .report-member-photo-card.is-active {
+  transform: none;
+}
+
+body.section-reports .report-member-photo-card.is-active:hover {
+  transform: translateY(-4px);
 }
 
 body.section-reports .report-kanban-column {
@@ -492,5 +644,69 @@ body.theme-dark.section-user_maintenance .um-modal-top {
 @media (max-width: 980px) {
   body.section-reports .report-tabs-nav {
     top: 60px;
+  }
+}
+
+/* Reserve icon space independently of each component's padding rules. */
+.button-motion {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  box-sizing: border-box;
+  height: auto;
+  min-height: 2.25rem;
+  padding-inline-end: 3rem !important;
+  white-space: normal !important;
+  text-overflow: clip !important;
+}
+
+.button-motion > .button-motion-label {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  white-space: normal;
+  pointer-events: none;
+  transition: opacity 180ms ease;
+}
+
+.button-motion > .button-motion-icon {
+  position: absolute;
+  inset: 0 0 0 auto;
+  width: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: inherit;
+  pointer-events: none;
+  transition: width 260ms ease;
+}
+
+.button-motion > .button-motion-icon > :is(ion-icon, svg, i) {
+  margin: 0;
+  flex: none;
+  width: 1.2em;
+  height: 1.2em;
+  transition: transform 180ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .button-motion:not(:disabled):not([aria-disabled="true"]):hover > .button-motion-label {
+    opacity: 0;
+  }
+  .button-motion:not(:disabled):not([aria-disabled="true"]):hover > .button-motion-icon {
+    width: 100%;
+  }
+}
+
+.button-motion:not(:disabled):active > .button-motion-icon > :is(ion-icon, svg, i) {
+  transform: scale(0.85);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .button-motion > .button-motion-label,
+  .button-motion > .button-motion-icon,
+  .button-motion > .button-motion-icon > :is(ion-icon, svg, i) {
+    transition: none;
   }
 }

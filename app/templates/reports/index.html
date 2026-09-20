@@ -8,12 +8,14 @@
 {% extends "base.html" %}
 
 {% block content %}
+ {# Cabecalho simples da pagina de relatorios. #}
  <div class="page-header page-header-split">
  <div>
  <h1>Relatórios Quinzenais</h1>
  </div>
  </div>
 
+ {# Atalhos fixos entre membros, metas da quinzena e planner embutido. #}
  <nav class="module-tab-nav report-tabs-nav" aria-label="Navegação de Relatórios">
  <a href="#report-member-selector" class="module-tab-link is-active">
  <ion-icon name="people-outline"></ion-icon>
@@ -34,6 +36,7 @@
  </a>
  </nav>
 
+ {# Modal que carrega o Planner em iframe para evitar sair da tela de relatorios. #}
  <div id="report_planner_modal" class="report-planner-modal" hidden>
  <button type="button" id="report_planner_backdrop" class="report-planner-backdrop" aria-label="Fechar Planner"></button>
  <div class="report-planner-dialog" role="dialog" aria-modal="true" aria-labelledby="report_planner_title">
@@ -47,6 +50,7 @@
  </div>
  </div>
 
+ {# Seletor visual dos membros e destaque do perfil atualmente escolhido. #}
  <section id="report-member-selector" class="content-panel report-members-hero-panel">
  <div class="panel-header">
  <div>
@@ -55,6 +59,28 @@
  </div>
  <div class="panel-body">
  {% if membersSummary.length %}
+ {% if selectedMember %}
+ {# Card grande com foto, nome, advertencias e situacao do membro selecionado. #}
+ <div class="report-selected-member-spotlight">
+ <div class="report-selected-member-portrait" aria-hidden="true">
+ {% if selectedMember.photo %}
+ <img src="{{ mediaUrl(selectedMember.photo) }}" alt="Foto de {{ selectedMember.name }}">
+ {% else %}
+ <ion-icon name="person-outline"></ion-icon>
+ {% endif %}
+ </div>
+ <div class="report-selected-member-copy">
+ <span class="report-selected-member-kicker">Perfil selecionado</span>
+ <h3>{{ selectedMember.name }} <strong class="member-warning-count {{ 'is-max' if selectedMember.warning_count == 3 else '' }}">{{ selectedMember.warning_count }}</strong></h3>
+ {% if selectedMember.restriction_is_active %}
+ <p>Em acompanhamento de 365 dias: {{ selectedMember.restriction_days_remaining }} dias restantes.</p>
+ {% else %}
+ <p>Use o seletor abaixo para trocar rapidamente o membro acompanhado nos relatórios.</p>
+ {% endif %}
+ </div>
+ </div>
+ {% endif %}
+ {# Carrossel/lista de membros para trocar rapidamente o relatorio aberto. #}
  <ul class="report-member-photo-grid">
  {% for member in membersSummary %}
  <li>
@@ -83,6 +109,7 @@
  </div>
  </section>
 
+ {# Painel principal da quinzena: advertencias, projetos e quadro de metas. #}
  <section id="report-goals-panel" class="content-panel report-goals-panel">
  <div class="panel-header">
  <div>
@@ -91,9 +118,10 @@
  </div>
  <div class="panel-body">
  {% if selectedMember %}
+ {# Resumo das advertencias do membro e botoes administrativos quando permitido. #}
  <div class="member-warning-panel {{ 'is-max' if selectedMember.warning_count == 3 else '' }}">
  <div>
- <button type="button" class="member-warning-details" id="member_warning_details" aria-haspopup="dialog" aria-controls="report_more_actions_modal" aria-label="Ver advertências de {{ selectedMember.name }}: {{ selectedMember.warning_count }} de 3">Advertências: <span class="member-warning-count {{ 'is-max' if selectedMember.warning_count == 3 else '' }}">{{ selectedMember.warning_count }}</span>/3 <ion-icon name="chevron-forward-outline" aria-hidden="true"></ion-icon></button>
+ <button type="button" class="member-warning-details" id="member_warning_details" aria-haspopup="dialog" aria-controls="report_warning_modal" aria-label="Ver advertências de {{ selectedMember.name }}: {{ selectedMember.warning_count }} de 3">Advertências: <span class="member-warning-count {{ 'is-max' if selectedMember.warning_count == 3 else '' }}">{{ selectedMember.warning_count }}</span>/3 <ion-icon name="chevron-forward-outline" aria-hidden="true"></ion-icon></button>
  {% if selectedMember.restriction_is_active %}
  <p>Periodo de acompanhamento/restricao ativo: {{ selectedMember.restriction_days_remaining }} dias restantes.</p>
  {% elif selectedMember.restriction_started_at %}
@@ -101,10 +129,11 @@
  {% endif %}
  </div>
  {% if canManageWarnings %}
+ {# Popover para registrar nova advertencia e abrir historico atual. #}
  <div class="member-warning-actions planner-create-compact" id="member_warning_box">
  <button type="button" class="planner-create-backdrop" id="member_warning_backdrop" hidden aria-label="Fechar advertencias"></button>
- <button type="button" class="planner-create-button member-warning-open" id="member_warning_toggle" aria-expanded="false" aria-controls="member_warning_popover">+ Nova advertência</button>
- <button type="button" class="planner-create-button member-warning-details" id="member_warning_details_direct" aria-haspopup="dialog" aria-controls="report_more_actions_modal">Ver advertências atuais</button>
+ <button type="button" class="planner-create-button member-warning-open" id="member_warning_toggle" aria-expanded="false" aria-controls="member_warning_popover"><ion-icon name="add-outline" aria-hidden="true"></ion-icon>Nova advertência</button>
+ <button type="button" class="planner-create-button member-warning-details" id="member_warning_details_direct" aria-haspopup="dialog" aria-controls="report_warning_modal"><ion-icon name="eye-outline" aria-hidden="true"></ion-icon>Ver advertências atuais</button>
  <div class="planner-create-popover member-warning-popover" id="member_warning_popover" role="dialog" aria-modal="true" aria-labelledby="member_warning_title" hidden>
  <header class="planner-create-header">
  <h3 id="member_warning_title">Nova advertência</h3>
@@ -140,6 +169,7 @@
  </div>
  {% endif %}
  {% if selectedMember and reportProjectOptions.length %}
+ {# Filtro por projeto do membro selecionado. #}
  <div class="report-member-projects">
  <strong>Projetos do membro</strong>
  <ul class="report-member-project-chip-list">
@@ -171,6 +201,7 @@
  {% endif %}
 
  {% if selectedMember %}
+ {# Cabecalho do quadro da quinzena e botao de criar nova tarefa. #}
  <div class="report-goal-section-header">
  <h3>Quadro da Quinzena</h3>
 {% if canCreateGoalsForSelectedMember %}
@@ -183,7 +214,7 @@
  aria-expanded="{{ 'true' if goalFormErrors.projectId or goalFormErrors.memberId or goalFormErrors.activity or goalFormErrors.description or goalFormErrors.dueAt or goalFormErrors.recurrenceIntervalDays else 'false' }}"
  aria-controls="report_goal_create_popover"
  >
- + Nova Tarefa
+ <ion-icon name="add-outline" aria-hidden="true"></ion-icon>Nova Tarefa
  </button>
  <div class="planner-create-popover" id="report_goal_create_popover" {% if not (goalFormErrors.projectId or goalFormErrors.memberId or goalFormErrors.activity or goalFormErrors.description or goalFormErrors.dueAt or goalFormErrors.recurrenceIntervalDays) %}hidden{% endif %}>
  <header class="planner-create-header">
@@ -564,45 +595,14 @@
  </section>
  </div>
 
- <div class="report-more-actions" id="report_more_actions">
- <button type="button" class="report-more-actions-toggle" id="report_more_actions_toggle" aria-expanded="false" aria-controls="report_more_actions_modal">
- <ion-icon name="ellipsis-horizontal-outline" aria-hidden="true"></ion-icon>
- Mais ações
- </button>
- <div class="report-more-actions-modal" id="report_more_actions_modal" hidden>
- <button type="button" class="report-more-actions-backdrop" id="report_more_actions_backdrop" aria-label="Fechar ações"></button>
- <div class="report-more-actions-dialog" role="dialog" aria-modal="true" aria-labelledby="report_more_actions_title">
+ <div class="report-warning-modal" id="report_warning_modal" hidden>
+ <button type="button" class="report-warning-backdrop" id="report_warning_backdrop" aria-label="Fechar advertências"></button>
+ <div class="report-warning-dialog" role="dialog" aria-modal="true" aria-labelledby="report_warning_modal_title">
  <header class="report-more-actions-head">
- <h4 id="report_more_actions_title">Mais ações</h4>
- <button type="button" class="report-more-actions-close" id="report_more_actions_close" aria-label="Fechar">×</button>
+ <h4 id="report_warning_modal_title">Advertências de {{ selectedMember.name }} ({{ selectedMember.warning_count }}/3)</h4>
+ <button type="button" class="report-more-actions-close" id="report_warning_close" aria-label="Fechar">×</button>
  </header>
- <div class="report-more-actions-menu" id="report_more_actions_menu">
- <button type="button" class="report-more-action-item" data-report-panel-target="report_panel_warnings" hidden>
- <ion-icon name="alert-circle-outline" aria-hidden="true"></ion-icon>
- Advertências
- </button>
- <button type="button" class="report-more-action-item" data-report-panel-target="report_panel_completed">
- <ion-icon name="checkmark-done-outline" aria-hidden="true"></ion-icon>
- Executadas
- </button>
- <button type="button" class="report-more-action-item" data-report-panel-target="report_panel_deletions">
- <ion-icon name="trash-outline" aria-hidden="true"></ion-icon>
- Histórico de exclusões
- </button>
- <button type="button" class="report-more-action-item" data-report-panel-target="report_panel_tasks">
- <ion-icon name="time-outline" aria-hidden="true"></ion-icon>
- Histórico de tarefas
- </button>
- <button type="button" class="report-more-action-item" data-report-panel-target="report_panel_pdf">
- <ion-icon name="document-outline" aria-hidden="true"></ion-icon>
- Gerar PDF
- </button>
- </div>
- <div class="report-more-actions-content" id="report_more_actions_content">
- <section id="report_panel_warnings" class="report-extra-panel" hidden>
- <header class="report-extra-panel-head">
- <h4>Advertências de {{ selectedMember.name }} ({{ selectedMember.warning_count }}/3)</h4>
- </header>
+ <div class="report-warning-content">
  {% if warningEvents.length %}
  <ul class="report-deletion-log-list report-warning-log-list">
  {% for event in warningEvents %}
@@ -624,8 +624,8 @@
  <input type="hidden" name="csrf_token" value="{{ csrfToken }}">
  <input type="hidden" name="warning_action" value="edit">
  <input type="hidden" name="warning_id" value="{{ event.id }}">
- <label class="form-label" for="warning_note_{{ event.id }}">Motivo/observação</label>
- <textarea id="warning_note_{{ event.id }}" name="warning_note" rows="3" maxlength="300" class="form-control">{{ event.current_note }}</textarea>
+ <label class="form-label" for="warning_modal_note_{{ event.id }}">Motivo/observação</label>
+ <textarea id="warning_modal_note_{{ event.id }}" name="warning_note" rows="3" maxlength="300" class="form-control">{{ event.current_note }}</textarea>
  <button type="submit" class="btn-submit btn-submit-small">Salvar edição</button>
  </form>
  </details>
@@ -643,8 +643,41 @@
  {% else %}
  <p class="ui-empty-state">Nenhuma advertência registrada para este membro.</p>
  {% endif %}
- </section>
+ </div>
+ </div>
+ </div>
 
+ <div class="report-more-actions" id="report_more_actions">
+ <button type="button" class="report-more-actions-toggle" id="report_more_actions_toggle" aria-expanded="false" aria-controls="report_more_actions_modal">
+ <ion-icon name="ellipsis-horizontal-outline" aria-hidden="true"></ion-icon>
+ Mais ações
+ </button>
+ <div class="report-more-actions-modal" id="report_more_actions_modal" hidden>
+ <button type="button" class="report-more-actions-backdrop" id="report_more_actions_backdrop" aria-label="Fechar ações"></button>
+ <div class="report-more-actions-dialog" role="dialog" aria-modal="true" aria-labelledby="report_more_actions_title">
+ <header class="report-more-actions-head">
+ <h4 id="report_more_actions_title">Mais ações</h4>
+ <button type="button" class="report-more-actions-close" id="report_more_actions_close" aria-label="Fechar">×</button>
+ </header>
+ <div class="report-more-actions-menu" id="report_more_actions_menu">
+ <button type="button" class="report-more-action-item" data-report-panel-target="report_panel_completed">
+ <ion-icon name="checkmark-done-outline" aria-hidden="true"></ion-icon>
+ Executadas
+ </button>
+ <button type="button" class="report-more-action-item" data-report-panel-target="report_panel_deletions">
+ <ion-icon name="trash-outline" aria-hidden="true"></ion-icon>
+ Histórico de exclusões
+ </button>
+ <button type="button" class="report-more-action-item" data-report-panel-target="report_panel_tasks">
+ <ion-icon name="time-outline" aria-hidden="true"></ion-icon>
+ Histórico de tarefas
+ </button>
+ <button type="button" class="report-more-action-item" data-report-panel-target="report_panel_pdf">
+ <ion-icon name="document-outline" aria-hidden="true"></ion-icon>
+ Gerar PDF
+ </button>
+ </div>
+ <div class="report-more-actions-content" id="report_more_actions_content">
  <section id="report_panel_completed" class="report-extra-panel" hidden>
  <header class="report-extra-panel-head">
  <h4>Tarefas executadas ({{ completedGoals.length }})</h4>
@@ -936,14 +969,6 @@
       : '';
     let activePanelId = defaultPanelId;
     let returnFocus = toggle;
-    const warningDetails = document.getElementById('member_warning_details_direct') || document.getElementById('member_warning_details');
-    if (warningDetails) {
-      warningDetails.addEventListener('click', function() {
-        returnFocus = warningDetails;
-        openPanel('report_panel_warnings');
-        setOpen(true);
-      });
-    }
 
     function ensureModalPortal() {
       if (!modal || !document.body) {
@@ -1067,11 +1092,6 @@
     forceMoreActionsModalLayout();
     openPanel(activePanelId || defaultPanelId);
     setOpen(false);
-    if (new URLSearchParams(window.location.search).get('warnings') === '1') {
-      returnFocus = warningDetails || toggle;
-      openPanel('report_panel_warnings');
-      setOpen(true);
-    }
     modal.dataset.bound = '1';
     window.__reportMoreActionsDelegated = true;
     window.__reportMoreActionsOpenPanel = openPanel;
@@ -1081,6 +1101,90 @@
     document.addEventListener('DOMContentLoaded', initReportMoreActionsModal);
   } else {
     initReportMoreActionsModal();
+  }
+})();
+
+(function() {
+  function initReportWarningModal() {
+    const openButton = document.getElementById('member_warning_details_direct') || document.getElementById('member_warning_details');
+    const modal = document.getElementById('report_warning_modal');
+    const dialog = modal ? modal.querySelector('.report-warning-dialog') : null;
+    const backdrop = document.getElementById('report_warning_backdrop');
+    const closeButton = document.getElementById('report_warning_close');
+    if (!openButton || !modal || modal.dataset.bound === '1') {
+      return;
+    }
+
+    function ensureModalPortal() {
+      if (modal.dataset.portalMounted === '1') {
+        return;
+      }
+      document.body.appendChild(modal);
+      modal.dataset.portalMounted = '1';
+    }
+
+    function forceModalLayout() {
+      const topbar = document.querySelector('.topbar');
+      const topbarBottom = topbar ? Math.ceil(topbar.getBoundingClientRect().bottom) : 0;
+      const modalTop = Math.max(12, topbarBottom + 8);
+      const viewportHeight = Math.max(window.innerHeight || 0, 320);
+      modal.style.paddingTop = String(modalTop) + 'px';
+      if (backdrop) backdrop.style.top = String(topbarBottom) + 'px';
+      if (dialog) dialog.style.maxHeight = String(Math.max(260, viewportHeight - modalTop - 12)) + 'px';
+    }
+
+    function setOpen(open) {
+      if (open) {
+        ensureModalPortal();
+        forceModalLayout();
+        modal.removeAttribute('hidden');
+        document.body.classList.add('report-more-actions-open');
+        if (closeButton) closeButton.focus();
+      } else {
+        modal.setAttribute('hidden', 'hidden');
+        document.body.classList.remove('report-more-actions-open');
+        if (modal.contains(document.activeElement)) openButton.focus();
+      }
+    }
+
+    function closeFromEvent(event) {
+      if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+      setOpen(false);
+    }
+
+    openButton.addEventListener('click', function(event) {
+      event.preventDefault();
+      setOpen(true);
+    });
+    if (closeButton) closeButton.addEventListener('click', closeFromEvent);
+    if (backdrop) {
+      backdrop.addEventListener('click', closeFromEvent);
+      backdrop.addEventListener('pointerup', closeFromEvent);
+    }
+    document.addEventListener('keydown', function(event) {
+      if (event.key === 'Escape' && !modal.hasAttribute('hidden')) {
+        closeFromEvent(event);
+      }
+    });
+    window.addEventListener('resize', function() {
+      if (!modal.hasAttribute('hidden')) {
+        forceModalLayout();
+      }
+    });
+
+    if (new URLSearchParams(window.location.search).get('warnings') === '1') {
+      setOpen(true);
+    }
+    modal.dataset.bound = '1';
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initReportWarningModal);
+  } else {
+    initReportWarningModal();
   }
 })();
 </script>

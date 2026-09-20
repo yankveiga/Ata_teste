@@ -1,4 +1,16 @@
-﻿.chat-app {
+/*
+ * ARQUIVO: chat.css
+ * FUNCAO: layout e visual do modulo de conversas.
+ * GUIA RAPIDO:
+ * - Cores principais ficam nas variaveis do .chat-app.
+ * - Lista lateral fica em .chat-sidebar e .chat-conversation-*.
+ * - Bolhas de mensagem ficam em .chat-bubble e .chat-message.is-mine.
+ * - Visual de celular fica nos @media max-width 980px e 768px.
+ * - Tema escuro fica nos seletores body.theme-dark.
+ */
+
+/* Container geral do chat: define paleta, grid sidebar/conversa e fundo da tela. */
+.chat-app {
   --chat-bg: #eef3fb;
   --chat-panel: #ffffff;
   --chat-sidebar: #0f1b2d;
@@ -25,6 +37,8 @@
     0 8px 24px rgba(19, 40, 74, 0.14);
 }
 
+/* SECAO: barra lateral com conversas e formulario de nova conversa. */
+
 .chat-sidebar {
   background:
     radial-gradient(circle at 20% 0%, rgba(39, 194, 111, 0.2), transparent 35%),
@@ -49,6 +63,7 @@
   font-size: 0.9rem;
 }
 
+/* Formulario para iniciar conversa direta com outro usuario. */
 .chat-new-form {
   display: grid;
   gap: 10px;
@@ -80,6 +95,7 @@
   background: rgba(11, 22, 40, 0.86);
 }
 
+/* Foco acessivel nos campos principais do chat. */
 .chat-new-form select:focus-visible,
 .chat-main-compose textarea:focus-visible {
   outline: none;
@@ -87,6 +103,7 @@
   border-color: rgba(39, 194, 111, 0.7);
 }
 
+/* Botao principal do chat, usado para criar/enviar. */
 .chat-btn-primary {
   border: 0;
   border-radius: 12px;
@@ -110,6 +127,7 @@
   transform: translateY(0);
 }
 
+/* Lista rolavel de conversas na lateral. */
 .chat-conversation-list {
   list-style: none;
   margin: 0;
@@ -127,6 +145,7 @@
   flex: 0 0 auto;
 }
 
+/* Scrollbar compartilhada entre lista de conversas e historico de mensagens. */
 .chat-conversation-list::-webkit-scrollbar,
 .chat-main-messages::-webkit-scrollbar {
   width: 10px;
@@ -138,6 +157,7 @@
   background: rgba(132, 157, 197, 0.42);
 }
 
+/* Item de conversa: avatar, nome/previa e contador. */
 .chat-conversation-link {
   display: grid;
   grid-template-columns: 46px 1fr auto;
@@ -157,17 +177,20 @@
   background: rgba(20, 35, 58, 0.66);
 }
 
+/* Conversa atualmente aberta. */
 .chat-conversation-link.is-active {
   background: rgba(24, 54, 90, 0.92);
   border-color: rgba(64, 255, 169, 0.45);
   box-shadow: inset 0 0 0 1px rgba(64, 255, 169, 0.24);
 }
 
+/* Conversas automaticas do sistema usam cor propria via variavel. */
 .chat-conversation-link.is-system {
   background: color-mix(in srgb, var(--chat-system-color, #f1a7a6) 34%, rgba(12, 23, 40, 0.72));
   border-color: color-mix(in srgb, var(--chat-system-color, #f1a7a6) 65%, transparent);
 }
 
+/* Textos de nome e previa dentro da conversa na sidebar. */
 .chat-conversation-meta {
   min-width: 0;
   display: grid;
@@ -189,6 +212,7 @@
   font-size: 0.82rem;
 }
 
+/* Bolinha de mensagens nao lidas. */
 .chat-unread-pill {
   align-self: center;
   min-width: 22px;
@@ -205,6 +229,7 @@
   box-shadow: 0 6px 12px rgba(127, 29, 29, 0.35);
 }
 
+/* Avatar de conversa, com fallback de iniciais quando nao ha imagem. */
 .chat-avatar {
   width: 42px;
   height: 42px;
@@ -226,6 +251,8 @@
   object-fit: cover;
 }
 
+/* SECAO: area principal com cabecalho, historico e campo de envio. */
+
 .chat-main {
   display: grid;
   grid-template-rows: auto 1fr auto;
@@ -234,6 +261,7 @@
     #f5f8fd;
 }
 
+/* Cabecalho da conversa aberta: avatar, titulo e subtitulo. */
 .chat-main-head {
   display: flex;
   align-items: center;
@@ -244,27 +272,32 @@
   backdrop-filter: blur(6px);
 }
 
+/* Cabecalho de conversa do sistema/Administrativo usa a cor configurada da conversa. */
 .chat-main-head.is-system {
   background: var(--chat-system-color, #f1a7a6);
 }
 
+/* Texto do cabecalho de sistema fica mais escuro para contrastar com fundo claro. */
 .chat-main-head.is-system h3,
 .chat-main-head.is-system p {
   color: #5f1f1f;
 }
 
+/* Titulo da conversa aberta. */
 .chat-main-head h3 {
   margin: 0;
   color: var(--chat-text);
   font-size: 1.06rem;
 }
 
+/* Subtitulo da conversa aberta, normalmente participantes ou contexto. */
 .chat-main-head p {
   margin: 2px 0 0;
   color: var(--chat-muted);
   font-size: 0.88rem;
 }
 
+/* Botao de voltar que aparece apenas no layout mobile. */
 .chat-mobile-back {
   display: none;
   align-items: center;
@@ -280,11 +313,13 @@
   line-height: 1;
 }
 
+/* Ajuste do simbolo/texto dentro do botao voltar mobile. */
 .chat-mobile-back span {
   font-size: 1rem;
   line-height: 1;
 }
 
+/* Contador de nao lidas no cabecalho da conversa aberta. */
 .chat-head-unread {
   margin-left: auto;
   border-radius: 999px;
@@ -296,6 +331,7 @@
   box-shadow: 0 8px 14px rgba(127, 29, 29, 0.35);
 }
 
+/* Area rolavel onde as mensagens aparecem. */
 .chat-main-messages {
   padding: 16px;
   overflow-y: auto;
@@ -303,16 +339,19 @@
   gap: 11px;
 }
 
+/* Linha de mensagem com avatar e bolha. */
 .chat-message {
   display: flex;
   gap: 8px;
   align-items: flex-end;
 }
 
+/* Mensagens do usuario logado ficam alinhadas a direita. */
 .chat-message.is-mine {
   justify-content: flex-end;
 }
 
+/* Bolha das mensagens recebidas: cor, raio e sombra principais. */
 .chat-bubble {
   position: relative;
   max-width: min(620px, 78%);
@@ -323,6 +362,7 @@
   box-shadow: 0 6px 14px rgba(19, 39, 72, 0.1);
 }
 
+/* Pontinha da bolha recebida, simulando balao de conversa. */
 .chat-message:not(.is-mine) .chat-bubble::after {
   content: "";
   position: absolute;
@@ -335,6 +375,7 @@
   border-radius: 2px;
 }
 
+/* Bolha das mensagens enviadas pelo usuario logado. */
 .chat-message.is-mine .chat-bubble {
   background: linear-gradient(135deg, var(--chat-mine-2), var(--chat-mine-1));
   color: #fff;
@@ -342,6 +383,7 @@
   box-shadow: 0 8px 16px rgba(19, 146, 77, 0.28);
 }
 
+/* Pontinha da bolha enviada; deve acompanhar a cor da bolha do usuario. */
 .chat-message.is-mine .chat-bubble::after {
   content: "";
   position: absolute;
@@ -354,6 +396,7 @@
   border-radius: 2px;
 }
 
+/* Metadados pequenos dentro da bolha, como hora e autor. */
 .chat-bubble small,
 .chat-bubble time {
   display: block;
@@ -361,12 +404,14 @@
   opacity: 0.82;
 }
 
+/* Texto principal da mensagem; pre-wrap preserva quebras digitadas pelo usuario. */
 .chat-bubble p {
   margin: 5px 0;
   white-space: pre-wrap;
   line-height: 1.45;
 }
 
+/* Rodape de composicao: textarea e botao de envio. */
 .chat-main-compose {
   display: grid;
   grid-template-columns: 1fr auto;
@@ -377,6 +422,7 @@
   padding: 10px;
 }
 
+/* Aviso usado em conversas somente leitura, como Administrativo. */
 .chat-readonly-note {
   border-top: 1px solid var(--chat-line);
   padding: 12px;
@@ -386,6 +432,7 @@
   background: #f1a7a6;
 }
 
+/* Campo de texto para enviar mensagem. */
 .chat-main-compose textarea {
   border: 1px solid var(--chat-line);
   border-radius: 14px;
@@ -395,10 +442,12 @@
   background: #f9fbff;
 }
 
+/* Mensagens de erro no composer ocupam a largura toda. */
 .chat-main-compose .field-error {
   grid-column: 1 / -1;
 }
 
+/* Estado vazio quando nao existe conversa selecionada ou mensagem. */
 .chat-empty {
   padding: 24px;
 }
@@ -420,16 +469,20 @@
   color: #b42338;
 }
 
+/* Responsivo tablet: troca o layout de duas colunas por modo lista/conversa. */
 @media (max-width: 980px) {
+  /* Chat vira uma coluna so; JS alterna entre lista e conversa aberta. */
   .chat-app {
     grid-template-columns: 1fr;
     min-height: auto;
   }
 
+  /* Quando uma conversa esta aberta no tablet, escondemos a lista lateral. */
   .chat-app.has-open-conversation .chat-sidebar {
     display: none;
   }
 
+  /* Modo lista mostra apenas conversas, usado antes de escolher uma conversa. */
   .chat-app.is-list-mode .chat-main {
     display: none;
   }
@@ -443,16 +496,20 @@
     border-bottom: 1px solid rgba(255, 255, 255, 0.16);
   }
 
+  /* Limita altura do historico para caber junto do cabecalho e composer. */
   .chat-main-messages {
     max-height: 52vh;
   }
 
+  /* Bolhas ocupam mais largura em telas menores. */
   .chat-bubble {
     max-width: 88%;
   }
 }
 
+/* Responsivo celular: visual mais parecido com app de mensagem. */
 @media (max-width: 768px) {
+  /* Remove moldura de desktop e usa fundo de conversa em tela cheia. */
   body.section-messages .chat-app {
     min-height: calc(100dvh - 92px);
     border-radius: 0;
@@ -461,11 +518,13 @@
     background: #ece5dd;
   }
 
+  /* Garante altura de tela para lista ou conversa aberta. */
   body.section-messages .chat-app.is-list-mode .chat-sidebar,
   body.section-messages .chat-app.has-open-conversation .chat-main {
     min-height: calc(100dvh - 92px);
   }
 
+  /* Sidebar mobile com verde mais forte e menos espacamento. */
   body.section-messages .chat-sidebar {
     gap: 10px;
     padding: 12px 10px 12px;
@@ -503,6 +562,7 @@
     font-size: 0.9rem;
   }
 
+  /* Itens de conversa ficam mais compactos no celular. */
   body.section-messages .chat-conversation-link {
     grid-template-columns: 42px 1fr auto;
     gap: 7px;
@@ -528,6 +588,7 @@
     background-position: 0 0, 14px 14px;
   }
 
+  /* Cabecalho da conversa fica fixo no topo no celular. */
   body.section-messages .chat-main-head {
     position: sticky;
     top: 0;
@@ -554,6 +615,7 @@
     box-shadow: 0 4px 10px rgba(2, 24, 22, 0.34);
   }
 
+  /* Botao de voltar aparece somente no mobile. */
   body.section-messages .chat-mobile-back {
     display: inline-flex;
   }
@@ -570,10 +632,12 @@
     max-height: none;
   }
 
+  /* No celular a bolha fica limpa, sem avatar repetido em cada mensagem. */
   body.section-messages .chat-main-messages .chat-message > .chat-avatar {
     display: none;
   }
 
+  /* Bolha recebida no celular. */
   body.section-messages .chat-bubble {
     max-width: 85%;
     border-radius: 9px;
@@ -582,6 +646,7 @@
     background: #ffffff;
   }
 
+  /* Pontinha da bolha recebida no celular. */
   body.section-messages .chat-message:not(.is-mine) .chat-bubble::after {
     left: -4px;
     bottom: 7px;
@@ -591,6 +656,7 @@
     background: #ffffff;
   }
 
+  /* Bolha enviada no celular. */
   body.section-messages .chat-message.is-mine .chat-bubble {
     background: #dcf8c6;
     color: #102118;
@@ -598,6 +664,7 @@
     box-shadow: 0 2px 4px rgba(34, 78, 38, 0.16);
   }
 
+  /* Pontinha da bolha enviada no celular. */
   body.section-messages .chat-message.is-mine .chat-bubble::after {
     right: -4px;
     bottom: 7px;
@@ -607,6 +674,7 @@
     background: #dcf8c6;
   }
 
+  /* Oculta metadados menos importantes para economizar espaco. */
   body.section-messages .chat-bubble small {
     display: none;
   }
@@ -624,6 +692,7 @@
     opacity: 0.62;
   }
 
+  /* Composer grudado no rodape, respeitando safe-area de celular. */
   body.section-messages .chat-main-compose {
     position: sticky;
     bottom: 0;
@@ -637,6 +706,7 @@
     backdrop-filter: none;
   }
 
+  /* Textarea mobile com raio maior, estilo campo de mensagem. */
   body.section-messages .chat-main-compose textarea {
     border-radius: 22px;
     min-height: 44px;
@@ -647,6 +717,7 @@
     font-size: 0.92rem;
   }
 
+  /* Botao de envio vira um circulo somente com simbolo. */
   body.section-messages .chat-main-compose .chat-btn-primary {
     width: 44px;
     min-width: 44px;
@@ -659,6 +730,7 @@
     background: linear-gradient(180deg, #25d366, #1fae55);
   }
 
+  /* Simbolo interno do botao circular de envio. */
   body.section-messages .chat-main-compose .chat-btn-primary::before {
     content: ">";
     font-size: 1.05rem;
@@ -669,6 +741,7 @@
   }
 }
 
+/* Tema escuro: troca variaveis principais do chat sem reescrever cada bloco. */
 body.theme-dark .chat-app {
   --chat-bg: #0a1322;
   --chat-panel: #0f1b30;
@@ -685,36 +758,43 @@ body.theme-dark .chat-app {
     0 8px 24px rgba(2, 11, 30, 0.34);
 }
 
+/* Borda lateral mais discreta no tema escuro. */
 body.theme-dark .chat-sidebar {
   border-right-color: rgba(164, 188, 231, 0.12);
 }
 
+/* Caixa de nova conversa no tema escuro. */
 body.theme-dark .chat-new-form {
   background: rgba(8, 16, 30, 0.72);
   border-color: rgba(139, 166, 210, 0.26);
 }
 
+/* Select de nova conversa no tema escuro. */
 body.theme-dark .chat-new-form select {
   background: rgba(7, 14, 26, 0.96);
   color: #edf5ff;
   border-color: rgba(149, 173, 217, 0.34);
 }
 
+/* Item de conversa no tema escuro. */
 body.theme-dark .chat-conversation-link {
   border-color: rgba(145, 173, 220, 0.14);
   background: rgba(10, 21, 38, 0.56);
 }
 
+/* Hover do item de conversa no tema escuro. */
 body.theme-dark .chat-conversation-link:hover {
   background: rgba(15, 30, 52, 0.82);
   border-color: rgba(176, 203, 245, 0.32);
 }
 
+/* Conversa ativa no tema escuro. */
 body.theme-dark .chat-conversation-link.is-active {
   background: rgba(19, 47, 77, 0.94);
   border-color: rgba(76, 245, 163, 0.52);
 }
 
+/* Avatar no tema escuro. */
 body.theme-dark .chat-avatar {
   background: linear-gradient(135deg, #1e365b, #2b4d80);
   color: #e8f0ff;
@@ -722,64 +802,77 @@ body.theme-dark .chat-avatar {
   box-shadow: 0 6px 12px rgba(2, 8, 20, 0.46);
 }
 
+/* Fundo da area principal no tema escuro. */
 body.theme-dark .chat-main {
   background:
     radial-gradient(circle at top left, rgba(80, 136, 214, 0.2), transparent 36%),
     #0b1729;
 }
 
+/* Cabecalho e composer no tema escuro. */
 body.theme-dark .chat-main-head,
 body.theme-dark .chat-main-compose {
   background: rgba(10, 19, 34, 0.94);
   border-color: rgba(149, 172, 214, 0.24);
 }
 
+/* Campo de mensagem no tema escuro. */
 body.theme-dark .chat-main-compose textarea {
   background: rgba(10, 18, 30, 0.96);
   color: #eaf2ff;
   border-color: rgba(149, 172, 214, 0.28);
 }
 
+/* Bolha recebida no tema escuro. */
 body.theme-dark .chat-bubble {
   background: #18283f;
   color: #eaf2ff;
   box-shadow: 0 8px 16px rgba(1, 7, 20, 0.42);
 }
 
+/* Pontinha da bolha recebida no tema escuro. */
 body.theme-dark .chat-message:not(.is-mine) .chat-bubble::after {
   background: #18283f;
 }
 
+/* Texto da bolha enviada no tema escuro. */
 body.theme-dark .chat-message.is-mine .chat-bubble {
   color: #f7fffb;
 }
 
+/* Scrollbar do chat no tema escuro. */
 body.theme-dark .chat-conversation-list::-webkit-scrollbar-thumb,
 body.theme-dark .chat-main-messages::-webkit-scrollbar-thumb {
   background: rgba(136, 161, 203, 0.5);
 }
 
+/* Indicadores de nao lidas no tema escuro. */
 body.theme-dark .chat-unread-pill,
 body.theme-dark .chat-head-unread {
   background: linear-gradient(135deg, #fb7185, #f43f5e);
   box-shadow: 0 8px 14px rgba(136, 19, 55, 0.5);
 }
 
+/* Erro do composer no tema escuro. */
 body.theme-dark .chat-main .field-error {
   color: #ffb7c4;
 }
 
+/* Ajustes mobile especificos do tema escuro. */
 @media (max-width: 768px) {
+  /* Fundo geral mobile no tema escuro. */
   body.theme-dark.section-messages .chat-app {
     background: #0e151f;
   }
 
+  /* Sidebar mobile no tema escuro. */
   body.theme-dark.section-messages .chat-sidebar {
     background:
       radial-gradient(circle at 12% -20%, rgba(67, 214, 141, 0.34), transparent 34%),
       linear-gradient(180deg, #07251f, #0a3b33);
   }
 
+  /* Fundo pontilhado da conversa mobile no tema escuro. */
   body.theme-dark.section-messages .chat-main {
     background-color: #0e151f;
     background-image:
@@ -787,39 +880,47 @@ body.theme-dark .chat-main .field-error {
       radial-gradient(circle at 1px 1px, rgba(129, 150, 186, 0.12) 1px, transparent 1.1px);
   }
 
+  /* Cabecalho mobile no tema escuro. */
   body.theme-dark.section-messages .chat-main-head {
     background: linear-gradient(180deg, #0a3b33, #0f5247);
   }
 
+  /* Botao voltar mobile no tema escuro. */
   body.theme-dark.section-messages .chat-mobile-back {
     background: rgba(5, 30, 26, 0.52);
     border-color: rgba(128, 184, 173, 0.5);
     color: #dbfff5;
   }
 
+  /* Bolha recebida mobile no tema escuro. */
   body.theme-dark.section-messages .chat-bubble {
     background: #1a2432;
     color: #e6f0ff;
   }
 
+  /* Pontinha da bolha recebida mobile no tema escuro. */
   body.theme-dark.section-messages .chat-message:not(.is-mine) .chat-bubble::after {
     background: #1a2432;
   }
 
+  /* Bolha enviada mobile no tema escuro. */
   body.theme-dark.section-messages .chat-message.is-mine .chat-bubble {
     background: #1f6f43;
     color: #f2fff7;
   }
 
+  /* Pontinha da bolha enviada mobile no tema escuro. */
   body.theme-dark.section-messages .chat-message.is-mine .chat-bubble::after {
     background: #1f6f43;
   }
 
+  /* Composer mobile no tema escuro. */
   body.theme-dark.section-messages .chat-main-compose {
     background: #111b24;
     border-top-color: rgba(128, 152, 190, 0.25);
   }
 
+  /* Campo de texto mobile no tema escuro. */
   body.theme-dark.section-messages .chat-main-compose textarea {
     background: #202c33;
     color: #e9f6ff;

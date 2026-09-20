@@ -214,6 +214,47 @@ body.login-page-body {
     transform: translateY(-1px);
 }
 
+.password-field {
+    position: relative;
+}
+
+.password-field .form-control {
+    padding-right: 48px;
+}
+
+.password-toggle {
+    position: absolute;
+    top: 50%;
+    right: 8px;
+    width: 36px;
+    height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transform: translateY(-50%);
+    border: 1px solid transparent;
+    border-radius: 999px;
+    background: transparent;
+    color: rgba(240, 248, 255, 0.78);
+    cursor: pointer;
+    transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+}
+
+.password-toggle ion-icon {
+    font-size: 1.2rem;
+}
+
+.password-toggle:hover,
+.password-toggle:focus-visible {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.14);
+    border-color: rgba(255, 255, 255, 0.16);
+}
+
+.password-toggle:active {
+    transform: translateY(-50%) scale(0.96);
+}
+
 .form-error {
     color: var(--error-color);
     background-color: var(--error-bg-glass);
@@ -317,20 +358,16 @@ body.login-page-body {
     margin-top: -10px;
 }
 .form-check-input {
-    appearance: none; -webkit-appearance: none; -moz-appearance: none;
-    width: 18px; height: 18px;
-    border: 2px solid var(--form-border-glass);
-    border-radius: 4px; margin-right: 10px; cursor: pointer; position: relative;
-    transition: background-color 0.2s, border-color 0.2s;
+    --checkbox-accent: var(--original-primary-accent);
+    width: 18px;
+    height: 18px;
+    margin-right: 10px;
+    border-color: var(--form-border-glass);
     background-color: rgba(255,255,255,0.2);
 }
 .form-check-input:checked {
-    background-color: var(--original-primary-accent);
-    border-color: var(--original-primary-accent);
-}
-.form-check-input:checked::before {
-    content: '?'; font-size: 12px; color: var(--white);
-    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    background-color: var(--checkbox-accent);
+    border-color: var(--checkbox-accent);
 }
 .form-check-label {
     margin-bottom: 0; font-weight: normal;

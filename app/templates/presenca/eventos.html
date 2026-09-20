@@ -2,8 +2,10 @@
 
 {% block content %}
 <div class="presence-page">
+    {# Abas internas do modulo de presenca. #}
     {% include "partials/presenca_tabs.html" %}
 
+    {# Cabecalho da pagina e atalho para exportar a planilha geral. #}
     <header class="page-header page-header-split">
         <div>
             <h1>Atividades</h1>
@@ -14,6 +16,7 @@
         </a>    </header>
 
     {% if isAdmin %}
+    {# Formulario exibido apenas para administradores criarem uma nova atividade. #}
     <section class="content-panel">
         <div class="panel-header">
             <div>
@@ -48,6 +51,7 @@
     </section>
     {% endif %}
 
+    {# Lista principal de atividades cadastradas, com edicao, acoes e totais. #}
     <section class="content-panel">
         <div class="panel-header">
             <div>
@@ -58,7 +62,9 @@
         <div class="panel-body">
             <div class="presence-event-list">
                 {% for event in events %}
+                {# Card de uma atividade, incluindo status, data, acoes e estatisticas. #}
                 <article class="presence-event-card" id="event-{{ event.id }}">
+                    {# Linha de identificacao da atividade. #}
                     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
                         <span class="presence-chip{% if event.is_active %} presence-chip-ok{% endif %}" style="font-size:0.72rem">
                             {% if event.is_active %}Ativo{% else %}Inativo{% endif %}
@@ -68,6 +74,7 @@
                     </div>
 
                     {% if isAdmin %}
+                    {# Area recolhivel de edicao/exclusao, restrita a administradores. #}
                     <details style="margin-top:4px">
                         <summary style="cursor:pointer;font-size:0.84rem;color:#6d28d9;font-weight:700;list-style:none;display:flex;align-items:center;gap:6px">
                             <ion-icon name="create-outline"></ion-icon>
@@ -100,6 +107,7 @@
                     </details>
                     {% endif %}
 
+                    {# Acoes operacionais da atividade: check-in, ouvintes e exportacao. #}
                     <div class="presence-event-actions">
                         <a class="btn-primary-action" href="{{ urlFor('presenca_checkin') }}?event_id={{ event.id }}" style="background:linear-gradient(135deg,#6d28d9,#a855f7);color:#fff;text-decoration:none">
                             <ion-icon name="barcode-outline"></ion-icon>
@@ -115,6 +123,7 @@
                         </a>
                     </div>
 
+                    {# Totais rapidos da atividade para leitura sem abrir detalhes. #}
                     <div class="presence-card-stats">
                         <span><strong>{{ event.attendee_count }}</strong> ouvintes</span>
                         <span><strong>{{ event.present_count }}</strong> presentes</span>
@@ -122,6 +131,7 @@
                     </div>
                 </article>
                 {% else %}
+                {# Estado vazio quando nenhuma atividade foi cadastrada ainda. #}
                 <div class="ui-empty-state" style="text-align:center;padding:32px 20px">
                     <ion-icon name="calendar-outline" style="font-size:2.4rem;opacity:0.4;display:block;margin:0 auto 10px"></ion-icon>
                     Nenhuma atividade cadastrada ainda.

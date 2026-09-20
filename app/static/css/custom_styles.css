@@ -38,6 +38,131 @@ body.theme-dark {
   --ui-shadow-md: 0 24px 42px rgba(2, 6, 23, 0.56);
 }
 
+input[type="checkbox"] {
+  --checkbox-accent: var(--ui-accent);
+  --checkbox-border: #9098a9;
+  --checkbox-tick: #ffffff;
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  border: 1px solid var(--checkbox-border);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.86);
+  cursor: pointer;
+  vertical-align: middle;
+  transform: translate3d(0, 0, 0) scale(1);
+  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+input[type="checkbox"]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  display: block;
+  border-radius: 50%;
+  background: var(--checkbox-accent);
+  opacity: 1;
+  transform: scale(0);
+  pointer-events: none;
+}
+
+input[type="checkbox"]::after {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: 2px;
+  width: 5px;
+  height: 10px;
+  border: solid var(--checkbox-tick);
+  border-width: 0 2px 2px 0;
+  opacity: 0;
+  transform: rotate(45deg) scale(0.65);
+  transition: opacity 0.18s ease 0.08s, transform 0.26s ease 0.08s;
+}
+
+input[type="checkbox"]:hover {
+  border-color: var(--checkbox-accent);
+}
+
+input[type="checkbox"]:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--checkbox-accent) 24%, transparent);
+}
+
+input[type="checkbox"]:checked {
+  background: var(--checkbox-accent);
+  border-color: var(--checkbox-accent);
+  animation: checkbox-wave 0.4s ease;
+}
+
+input[type="checkbox"]:checked::before {
+  opacity: 0;
+  transform: scale(3.4);
+  transition: transform 0.6s ease, opacity 0.6s ease;
+}
+
+input[type="checkbox"]:checked::after {
+  opacity: 1;
+  transform: rotate(45deg) scale(1);
+}
+
+input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+input[type="checkbox"]:indeterminate {
+  background: var(--checkbox-accent);
+  border-color: var(--checkbox-accent);
+}
+
+input[type="checkbox"]:indeterminate::after {
+  left: 4px;
+  top: 7px;
+  width: 8px;
+  height: 0;
+  border-width: 0 0 2px 0;
+  opacity: 1;
+  transform: none;
+}
+
+body.theme-dark input[type="checkbox"],
+html.theme-dark input[type="checkbox"] {
+  --checkbox-border: rgba(154, 174, 220, 0.58);
+  background: rgba(15, 23, 42, 0.84);
+}
+
+body.section-reports input[type="checkbox"] {
+  --checkbox-accent: #317039;
+}
+
+body.section-presenca input[type="checkbox"] {
+  --checkbox-accent: #7c3aed;
+}
+
+body.section-almox input[type="checkbox"] {
+  --checkbox-accent: #e28700;
+}
+
+@keyframes checkbox-wave {
+  50% {
+    transform: scale(0.9);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  input[type="checkbox"],
+  input[type="checkbox"]::before,
+  input[type="checkbox"]::after {
+    animation: none;
+    transition: none;
+  }
+}
+
 /* SECAO: mensagens globais de feedback (flash success/error/info/warning). */
 
 .flash-messages {
@@ -1840,12 +1965,45 @@ body.theme-dark.section-presenca .content-panel.presence-panel {
   box-shadow: 0 24px 42px rgba(10, 6, 20, 0.52);
 }
 
+body.theme-dark.section-presenca .content-panel {
+  background: rgba(18, 24, 43, 0.94);
+  border-color: rgba(139, 92, 246, 0.32);
+  box-shadow: 0 22px 40px rgba(4, 6, 18, 0.5);
+}
+
+body.theme-dark.section-presenca .panel-header {
+  border-bottom-color: rgba(139, 92, 246, 0.22);
+}
+
 body.theme-dark.section-presenca .panel-header h2 {
   color: #d9c6ff;
 }
 
 body.theme-dark.section-presenca .panel-header p {
   color: #b9a4e8;
+}
+
+body.theme-dark.section-presenca .form-label,
+body.theme-dark.section-presenca label,
+body.theme-dark.section-presenca .checkbox-inline {
+  color: #e9d5ff;
+}
+
+body.theme-dark.section-presenca .form-control,
+body.theme-dark.section-presenca select.form-control,
+body.theme-dark.section-presenca input.form-control {
+  background: rgba(30, 24, 52, 0.94);
+  border-color: rgba(139, 92, 246, 0.36);
+  color: #f1e8ff;
+}
+
+body.theme-dark.section-presenca .form-control::placeholder {
+  color: #a995d0;
+}
+
+body.theme-dark.section-presenca .form-control:focus {
+  border-color: rgba(196, 181, 253, 0.72);
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.22);
 }
 
 /* SECAO: layout de tres telas do modulo Presenca (Eventos, Ouvintes, Check-in). */
@@ -1855,12 +2013,14 @@ body.theme-dark.section-presenca .panel-header p {
   gap: 22px;
 }
 
+/* Passos/resumo do fluxo de presenca em tres colunas. */
 .presence-flow {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
 }
 
+/* Card de cada etapa do fluxo de presenca. */
 .presence-flow-step {
   display: grid;
   grid-template-columns: auto 1fr;
@@ -1873,6 +2033,7 @@ body.theme-dark.section-presenca .panel-header p {
   background: rgba(255, 255, 255, 0.78);
 }
 
+/* Numero/icone redondo dentro do card de etapa. */
 .presence-flow-step span {
   grid-row: span 2;
   display: inline-grid;
@@ -1894,11 +2055,13 @@ body.theme-dark.section-presenca .panel-header p {
   font-weight: 650;
 }
 
+/* Etapa ativa do fluxo, usada para orientar onde o usuario esta. */
 .presence-flow-step.is-active {
   border-color: rgba(124, 58, 237, 0.34);
   background: rgba(245, 243, 255, 0.9);
 }
 
+/* Bolinha da etapa ativa ganha preenchimento roxo. */
 .presence-flow-step.is-active span {
   background: #6d28d9;
   color: #fff;
@@ -1906,11 +2069,13 @@ body.theme-dark.section-presenca .panel-header p {
 
 /* --- tela Eventos --- */
 
+/* Lista vertical dos cards de atividades. */
 .presence-event-list {
   display: grid;
   gap: 14px;
 }
 
+/* Card de atividade: nome, edicao, acoes e estatisticas. */
 .presence-event-card {
   border-radius: 20px;
   border: 1px solid rgba(124, 58, 237, 0.14);
@@ -1921,30 +2086,36 @@ body.theme-dark.section-presenca .panel-header p {
   transition: box-shadow 180ms ease, border-color 180ms ease;
 }
 
+/* Hover do card de atividade para indicar interacao. */
 .presence-event-card:hover {
   border-color: rgba(124, 58, 237, 0.28);
   box-shadow: 0 8px 24px rgba(109, 40, 217, 0.1);
 }
 
+/* Formulario recolhivel de edicao de atividade. */
 .presence-event-edit-form {
   display: grid;
   gap: 8px;
 }
 
+/* Fundo dos campos no formulario de edicao de atividade. */
 .presence-event-edit-form .form-control {
   background: rgba(245, 241, 255, 0.78);
 }
 
+/* Formulario de criacao de nova atividade. */
 .presence-event-form {
   display: grid;
   gap: 12px;
 }
 
+/* Formulario de exclusao alinhado a direita. */
 .presence-event-delete-form {
   display: flex;
   justify-content: flex-end;
 }
 
+/* Linha de botoes do card: check-in, ouvintes e exportacao. */
 .presence-event-actions {
   display: flex;
   flex-wrap: wrap;
@@ -1953,6 +2124,7 @@ body.theme-dark.section-presenca .panel-header p {
   margin-top: 6px;
 }
 
+/* Totais no rodape do card de atividade. */
 .presence-card-stats {
   display: flex;
   gap: 16px;
@@ -1963,6 +2135,7 @@ body.theme-dark.section-presenca .panel-header p {
   border-top: 1px solid rgba(124, 58, 237, 0.12);
 }
 
+/* Numeros dos totais da atividade. */
 .presence-card-stats strong {
   font-size: 1.1rem;
   color: #4c1d95;
@@ -1970,22 +2143,27 @@ body.theme-dark.section-presenca .panel-header p {
 
 /* --- tela Ouvintes (toolbar, import, list) --- */
 
+/* Barra superior de filtros/acoes da tela de ouvintes. */
 .presence-toolbar {
   padding: 16px 20px;
 }
 
+/* Espacamento interno do painel de importacao CSV. */
 .presence-import-panel .panel-body {
   gap: 14px;
 }
 
+/* Painel com lista/tabela de ouvintes. */
 .presence-list-panel {
   overflow: hidden;
 }
 
+/* Painel de previa da importacao antes de gravar dados. */
 .presence-preview-panel {
   overflow: hidden;
 }
 
+/* Acoes da previa de importacao, como confirmar ou alterar modo de duplicados. */
 .presence-preview-actions {
   display: flex;
   flex-wrap: wrap;
@@ -1996,6 +2174,7 @@ body.theme-dark.section-presenca .panel-header p {
   border-bottom: 1px solid var(--ui-border);
 }
 
+/* Formulario de confirmacao da importacao CSV. */
 .presence-confirm-form {
   display: flex;
   flex-wrap: wrap;
@@ -2009,6 +2188,7 @@ body.theme-dark.section-presenca .panel-header p {
 
 /* --- chip de erro no preview --- */
 
+/* Chip vermelho para linhas problematicas na previa de importacao. */
 .presence-chip-error {
   color: #991b1b;
   background: rgba(254, 226, 226, 0.9);
@@ -2017,22 +2197,26 @@ body.theme-dark.section-presenca .panel-header p {
 
 /* --- tela Check-in --- */
 
+/* Painel central do check-in, limitado para leitura confortavel. */
 .presence-checkin-panel {
   max-width: 720px;
   margin: 0 auto;
   width: 100%;
 }
 
+/* Seletor de atividade na tela de check-in. */
 .presence-event-picker {
   margin-bottom: 20px;
 }
 
 /* --- resultado animado do check-in --- */
 
+/* Caixa de feedback apos leitura do cracha. */
 .presence-result {
   animation: presenceResultFade 200ms ease;
 }
 
+/* Animacao curta do resultado do check-in. */
 @keyframes presenceResultFade {
   from { opacity: 0; transform: translateY(4px); }
   to   { opacity: 1; transform: translateY(0);  }
@@ -2043,6 +2227,39 @@ body.theme-dark.section-presenca .panel-header p {
 body.theme-dark.section-presenca .presence-event-card {
   background: rgba(40, 24, 72, 0.78);
   border-color: rgba(139, 92, 246, 0.28);
+}
+
+body.theme-dark.section-presenca .presence-flow-step {
+  background: rgba(28, 22, 48, 0.9);
+  border-color: rgba(139, 92, 246, 0.28);
+}
+
+body.theme-dark.section-presenca .presence-flow-step span {
+  background: rgba(139, 92, 246, 0.22);
+  color: #ddd6fe;
+}
+
+body.theme-dark.section-presenca .presence-flow-step strong {
+  color: #f1e8ff;
+}
+
+body.theme-dark.section-presenca .presence-flow-step small {
+  color: #b9a4e8;
+}
+
+body.theme-dark.section-presenca .presence-flow-step.is-active {
+  background: rgba(76, 29, 149, 0.38);
+  border-color: rgba(196, 181, 253, 0.48);
+}
+
+body.theme-dark.section-presenca .presence-event-card [style*="color:#4c1d95"],
+body.theme-dark.section-presenca .presence-event-card [style*="color: #4c1d95"] {
+  color: #f1e8ff !important;
+}
+
+body.theme-dark.section-presenca .presence-event-card [style*="color:#6d28d9"],
+body.theme-dark.section-presenca .presence-event-card [style*="color: #6d28d9"] {
+  color: #c4b5fd !important;
 }
 
 body.theme-dark.section-presenca .presence-event-card:hover {
@@ -2082,6 +2299,137 @@ body.theme-dark.section-presenca .presence-import-result {
   background: rgba(6, 78, 59, 0.3);
   border-color: rgba(34, 197, 94, 0.28);
   color: #bbf7d0;
+}
+
+body.theme-dark.section-presenca .presence-summary,
+body.theme-dark.section-presenca .presence-import-drop,
+body.theme-dark.section-presenca .presence-table-wrap,
+body.theme-dark.section-presenca .presence-preview-panel,
+body.theme-dark.section-presenca .presence-list-panel,
+body.theme-dark.section-presenca .presence-entry-panel,
+body.theme-dark.section-presenca .presence-import-panel {
+  background: rgba(18, 24, 43, 0.72);
+  border-color: rgba(139, 92, 246, 0.28);
+}
+
+body.theme-dark.section-presenca .presence-summary {
+  background: transparent;
+}
+
+body.theme-dark.section-presenca .presence-summary span {
+  background:
+    radial-gradient(circle at top right, rgba(139, 92, 246, 0.22), transparent 42%),
+    rgba(28, 22, 48, 0.92);
+  border-color: rgba(196, 181, 253, 0.26);
+  color: #cbbcf4;
+  box-shadow: 0 12px 24px rgba(4, 6, 18, 0.28);
+}
+
+body.theme-dark.section-presenca .presence-summary strong {
+  color: #f1e8ff;
+}
+
+body.theme-dark.section-presenca .presence-summary span,
+body.theme-dark.section-presenca .presence-import-note,
+body.theme-dark.section-presenca .presence-table td,
+body.theme-dark.section-presenca .presence-table td small {
+  color: #cbbcf4;
+}
+
+body.theme-dark.section-presenca .presence-summary strong,
+body.theme-dark.section-presenca .presence-table th {
+  color: #f1e8ff;
+}
+
+body.theme-dark.section-presenca .styled-table,
+body.theme-dark.section-presenca .presence-table {
+  background: rgba(16, 22, 40, 0.96);
+  color: #e9d5ff;
+}
+
+body.theme-dark.section-presenca .styled-table thead,
+body.theme-dark.section-presenca .presence-table thead {
+  background: rgba(46, 31, 80, 0.98);
+}
+
+body.theme-dark.section-presenca .styled-table th,
+body.theme-dark.section-presenca .styled-table td,
+body.theme-dark.section-presenca .presence-table th,
+body.theme-dark.section-presenca .presence-table td {
+  border-color: rgba(139, 92, 246, 0.22);
+}
+
+body.theme-dark.section-presenca .styled-table tbody tr,
+body.theme-dark.section-presenca .presence-table tbody tr {
+  background: rgba(18, 24, 43, 0.78);
+}
+
+body.theme-dark.section-presenca .styled-table tbody tr:nth-child(even),
+body.theme-dark.section-presenca .presence-table tbody tr:nth-child(even) {
+  background: rgba(28, 22, 48, 0.72);
+}
+
+body.theme-dark.section-presenca .styled-table tbody tr:hover,
+body.theme-dark.section-presenca .presence-table tbody tr:hover {
+  background: rgba(55, 30, 95, 0.72);
+}
+
+body.theme-dark.section-presenca .page-badge,
+body.theme-dark.section-presenca .presence-chip {
+  background: rgba(139, 92, 246, 0.18);
+  border-color: rgba(196, 181, 253, 0.28);
+  color: #ddd6fe;
+}
+
+body.theme-dark.section-presenca .presence-chip-ok {
+  background: rgba(6, 78, 59, 0.38);
+  border-color: rgba(34, 197, 94, 0.32);
+  color: #bbf7d0;
+}
+
+body.theme-dark.section-presenca .presence-chip-error {
+  background: rgba(127, 29, 29, 0.38);
+  border-color: rgba(248, 113, 113, 0.32);
+  color: #fecaca;
+}
+
+body.theme-dark.section-presenca #checkin-feed p {
+  color: #b9a4e8 !important;
+}
+
+body.theme-dark.section-presenca #checkin-feed-list li {
+  background: rgba(18, 24, 43, 0.82) !important;
+  border-color: rgba(139, 92, 246, 0.22) !important;
+  color: #e9d5ff !important;
+}
+
+body.theme-dark.section-presenca #checkin-feed-list li span {
+  color: inherit;
+}
+
+body.theme-dark.section-presenca code {
+  color: #e9d5ff;
+  background: rgba(139, 92, 246, 0.14);
+  border-radius: 6px;
+  padding: 0.08rem 0.28rem;
+}
+
+body.theme-dark.section-presenca .presence-tab-nav {
+  background: rgba(15, 23, 42, 0.58);
+  border-color: rgba(139, 92, 246, 0.24);
+}
+
+body.theme-dark.section-presenca .presence-tab-nav .module-tab-link {
+  background: rgba(18, 24, 43, 0.72);
+  border-color: rgba(139, 92, 246, 0.24);
+  color: #d8caff;
+}
+
+body.theme-dark.section-presenca .presence-tab-nav .module-tab-link.is-active,
+body.theme-dark.section-presenca .presence-tab-nav .module-tab-link:hover {
+  background: rgba(76, 29, 149, 0.48);
+  border-color: rgba(196, 181, 253, 0.44);
+  color: #ffffff;
 }
 
 body.theme-dark.section-presenca .presence-preview-actions {
@@ -2228,6 +2576,80 @@ body.theme-dark.section-almox .form-control {
   background: var(--ui-surface);
   color: var(--ui-muted);
   border: 1px solid var(--ui-border);
+}
+
+/* Button icon animations are shared in app_polish.css. */
+
+.page-404 {
+  min-height: 100vh;
+  display: grid;
+  align-content: center;
+  gap: 1.1rem;
+  padding: clamp(1.2rem, 3vw, 2.5rem);
+  text-align: center;
+}
+
+.page-404-shell {
+  min-height: 100vh;
+  margin: 0;
+  background: #fff;
+  color: var(--ui-text);
+  overflow-x: hidden;
+}
+
+html.theme-dark .page-404-shell {
+  background: #fff;
+}
+
+.page-404-visual {
+  min-height: clamp(360px, 64vh, 660px);
+  display: grid;
+  place-items: start center;
+  width: min(1180px, 100%);
+  margin: 0 auto;
+  border-radius: 34px;
+  background: url("../img/404-pet-lost.gif") center / min(960px, 94vw) auto no-repeat;
+}
+
+.page-404-visual h1 {
+  margin: 0;
+  color: var(--ui-accent-strong);
+  font-size: clamp(4.5rem, 16vw, 8.5rem);
+  line-height: 1;
+  text-shadow: 0 16px 40px rgba(15, 23, 42, 0.12);
+}
+
+.page-404-copy {
+  max-width: 620px;
+  margin: -3.5rem auto 0;
+  padding: 0 1rem;
+  position: relative;
+  z-index: 1;
+}
+
+.page-404-copy p {
+  margin: 0 auto 1rem;
+  color: #2b3442;
+  font-weight: 800;
+}
+
+.page-404-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0.75rem 1.15rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #142f77, #1f4eb8);
+  color: #fff;
+  font-weight: 900;
+  text-decoration: none;
+  box-shadow: 0 18px 36px rgba(20, 47, 119, 0.26);
+}
+
+body.dark-mode .page-404-visual,
+html.theme-dark .page-404-visual {
+  background: url("../img/404-pet-lost.gif") center / min(960px, 94vw) auto no-repeat;
 }
 
 /* SECAO: tabelas padrao (listagens de membros, projetos e afins). */
@@ -2514,6 +2936,8 @@ body.section-planner .planner-side-status-select {
 .checkbox-list-toolbar input[type="checkbox"] {
   inline-size: 1rem;
   block-size: 1rem;
+  width: 18px;
+  height: 18px;
 }
 
 .checkbox-list {
@@ -2795,45 +3219,111 @@ body.theme-dark.section-reports .report-tabs-nav {
   margin-bottom: 20px;
 }
 
+/* Painel que abriga as metas da quinzena e precisa conter colunas/listas internas. */
 .report-goals-panel {
   margin-bottom: 20px;
   overflow: hidden;
 }
 
+/* Grade base dos membros antes da versao horizontal do destaque moderno. */
 .report-member-photo-grid {
   list-style: none;
   padding: 0;
   margin: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
   gap: 14px;
+  align-items: start;
 }
 
+/* Card de membro em estado normal, antes de ser selecionado. */
 .report-member-photo-card {
+  --member-focus: #317039;
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  padding: 10px 8px;
-  border-radius: 14px;
+  min-height: 124px;
+  padding: 10px 8px 12px;
+  border-radius: 20px;
   text-decoration: none;
   border: 1px solid rgba(100, 116, 139, 0.24);
   background: rgba(255, 255, 255, 0.94);
-  transition: transform 140ms ease, border-color 140ms ease, box-shadow 140ms ease, background-color 140ms ease;
+  transform-origin: top center;
+  transition:
+    transform 360ms cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 220ms ease,
+    box-shadow 260ms ease,
+    background-color 220ms ease,
+    opacity 220ms ease,
+    min-height 360ms cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform;
 }
 
+/* Borda interna animada que aparece quando o membro ganha foco visual. */
+.report-member-photo-card::before {
+  content: "";
+  position: absolute;
+  inset: 10px;
+  border-radius: inherit;
+  border: 1px solid transparent;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 260ms ease, inset 360ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Hover simples do card de membro sem alterar a selecao atual. */
 .report-member-photo-card:hover {
-  transform: translateY(-2px);
+  transform: translateY(-5px);
   border-color: rgba(49, 112, 57, 0.36);
-  box-shadow: 0 10px 18px rgba(31, 81, 48, 0.14);
+  box-shadow: 0 14px 28px rgba(31, 81, 48, 0.14);
 }
 
+/* Quando alguem esta selecionado, os outros cards recuam para reforcar hierarquia. */
+.report-member-photo-grid:has(.report-member-photo-card.is-active) .report-member-photo-card:not(.is-active) {
+  transform: translateY(-7px) scale(0.9);
+  opacity: 0.62;
+}
+
+/* Permite conferir outro membro pelo hover sem perder totalmente o destaque ativo. */
+.report-member-photo-grid:has(.report-member-photo-card.is-active) .report-member-photo-card:not(.is-active):hover {
+  transform: translateY(-12px) scale(0.96);
+  opacity: 1;
+}
+
+/* Card do membro selecionado: ocupa mais espaco e vira o foco da lista. */
 .report-member-photo-card.is-active {
-  border-color: rgba(49, 112, 57, 0.5);
-  background: rgba(49, 112, 57, 0.1);
-  box-shadow: 0 0 0 2px rgba(49, 112, 57, 0.12);
+  grid-column: span 2;
+  z-index: 2;
+  min-height: 172px;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 18px 18px 18px 126px;
+  border-color: rgba(49, 112, 57, 0.62);
+  background:
+    radial-gradient(circle at 18% 24%, rgba(49, 112, 57, 0.18), transparent 34%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(240, 249, 244, 0.98));
+  box-shadow:
+    0 24px 50px rgba(31, 81, 48, 0.22),
+    0 0 0 3px rgba(49, 112, 57, 0.12);
+  transform: translateY(10px) scale(1.02);
+  animation: reportMemberSpotlight 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
+/* Linha interna do card selecionado, como acabamento de foco. */
+.report-member-photo-card.is-active::before {
+  inset: 8px;
+  opacity: 1;
+  border-color: rgba(49, 112, 57, 0.14);
+}
+
+/* Hover do membro selecionado preserva destaque e adiciona leve aumento. */
+.report-member-photo-card.is-active:hover {
+  transform: translateY(5px) scale(1.035);
+}
+
+/* Avatar circular usado dentro dos cards de membros. */
 .report-member-photo-avatar {
   width: 66px;
   height: 66px;
@@ -2846,14 +3336,42 @@ body.theme-dark.section-reports .report-tabs-nav {
   color: #5a6b81;
   font-size: 1.3rem;
   overflow: hidden;
+  transition:
+    width 220ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    height 220ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow 180ms ease,
+    border-color 180ms ease;
 }
 
+/* Avatares nao selecionados ficam menores quando existe um membro ativo. */
+.report-member-photo-grid:has(.report-member-photo-card.is-active) .report-member-photo-card:not(.is-active) .report-member-photo-avatar {
+  width: 54px;
+  height: 54px;
+}
+
+/* Avatar do membro selecionado cresce e vira elemento principal do card. */
+.report-member-photo-card.is-active .report-member-photo-avatar {
+  position: absolute;
+  left: 20px;
+  top: 50%;
+  width: 90px;
+  height: 90px;
+  border: 3px solid rgba(255, 255, 255, 0.95);
+  box-shadow:
+    0 16px 30px rgba(31, 81, 48, 0.2),
+    0 0 0 5px rgba(49, 112, 57, 0.18);
+  transform: translateY(-50%);
+  animation: reportMemberAvatarPop 620ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Imagem do membro sempre recorta sem distorcer a foto enviada. */
 .report-member-photo-avatar img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
+/* Nome do membro em card normal: compacto para caber na grade. */
 .report-member-photo-name {
   display: block;
   max-width: 100%;
@@ -2866,6 +3384,412 @@ body.theme-dark.section-reports .report-tabs-nav {
   white-space: nowrap;
 }
 
+/* Nome do membro ativo pode quebrar linha porque o card esta maior. */
+.report-member-photo-card.is-active .report-member-photo-name {
+  max-width: 100%;
+  text-align: left;
+  color: #1f5130;
+  font-weight: 800;
+  font-size: 0.98rem;
+  line-height: 1.25;
+  white-space: normal;
+  overflow: visible;
+}
+
+/* Ajuste fino do contador de advertencias dentro do card selecionado. */
+.report-member-photo-card.is-active .member-warning-count {
+  vertical-align: 0.08em;
+}
+
+/* Selo do periodo de restricao abaixo do nome quando existir. */
+.report-member-photo-card.is-active .member-warning-restriction {
+  margin-top: 2px;
+}
+
+/* Entrada do card selecionado: vem de cima e assenta no destaque. */
+@keyframes reportMemberSpotlight {
+  0% {
+    opacity: 0.82;
+    transform: translateY(-8px) scale(0.94);
+  }
+  65% {
+    transform: translateY(12px) scale(1.035);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(10px) scale(1.02);
+  }
+}
+
+/* Pop do avatar selecionado, separado para nao brigar com o card. */
+@keyframes reportMemberAvatarPop {
+  0% {
+    transform: translateY(-50%) scale(0.72);
+  }
+  72% {
+    transform: translateY(-50%) scale(1.08);
+  }
+  100% {
+    transform: translateY(-50%) scale(1);
+  }
+}
+
+/* Responsivo: em telas pequenas o card ativo ocupa a linha inteira. */
+@media (max-width: 680px) {
+  .report-member-photo-grid {
+    grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+    gap: 12px;
+  }
+
+  .report-member-photo-card {
+    min-height: 116px;
+    border-radius: 16px;
+  }
+
+  .report-member-photo-card.is-active {
+    grid-column: 1 / -1;
+    min-height: 154px;
+    padding: 18px 16px 18px 112px;
+    transform: translateY(6px) scale(1);
+  }
+
+  .report-member-photo-card.is-active .report-member-photo-avatar {
+    left: 18px;
+    width: 78px;
+    height: 78px;
+  }
+}
+
+/* Acessibilidade: remove animacoes para quem prefere menos movimento. */
+@media (prefers-reduced-motion: reduce) {
+  .report-member-photo-card,
+  .report-member-photo-avatar {
+    transition: none;
+  }
+}
+
+/* Destaque grande do membro escolhido acima dos atalhos horizontais. */
+.report-selected-member-spotlight {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 22px;
+  min-height: 190px;
+  margin-bottom: 18px;
+  padding: 24px;
+  overflow: hidden;
+  border: 1px solid rgba(49, 112, 57, 0.18);
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at 16% 28%, rgba(49, 112, 57, 0.22), transparent 28%),
+    radial-gradient(circle at 92% 16%, rgba(14, 165, 233, 0.16), transparent 24%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(241, 248, 246, 0.98));
+  box-shadow: 0 24px 60px rgba(31, 81, 48, 0.16);
+  isolation: isolate;
+  animation: reportSelectedMemberEnter 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Faixa decorativa sutil atras do destaque do membro selecionado. */
+.report-selected-member-spotlight::before {
+  content: "";
+  position: absolute;
+  inset: auto -12% -58% 34%;
+  height: 170px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(49, 112, 57, 0.1), rgba(14, 165, 233, 0.12));
+  filter: blur(2px);
+  transform: rotate(-6deg);
+  z-index: -1;
+}
+
+/* Foto grande do membro selecionado no painel de destaque. */
+.report-selected-member-portrait {
+  position: relative;
+  width: 128px;
+  height: 128px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 34px;
+  overflow: hidden;
+  color: #317039;
+  font-size: 3rem;
+  background: rgba(255, 255, 255, 0.9);
+  border: 4px solid rgba(255, 255, 255, 0.95);
+  box-shadow:
+    0 18px 36px rgba(31, 81, 48, 0.22),
+    0 0 0 8px rgba(49, 112, 57, 0.12);
+  animation: reportSelectedPortraitEnter 680ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Pulso suave ao redor da foto grande para dar vida ao foco. */
+.report-selected-member-portrait::after {
+  content: "";
+  position: absolute;
+  inset: -16px;
+  border-radius: 42px;
+  border: 1px solid rgba(49, 112, 57, 0.16);
+  animation: reportSelectedMemberPulse 2.8s ease-in-out infinite;
+}
+
+/* Foto do destaque tambem recorta sem distorcer. */
+.report-selected-member-portrait img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Bloco de texto do membro selecionado. */
+.report-selected-member-copy {
+  min-width: 0;
+}
+
+/* Pequeno rotulo acima do nome do membro escolhido. */
+.report-selected-member-kicker {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  margin-bottom: 8px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(49, 112, 57, 0.12);
+  color: #275b31;
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+
+/* Nome em destaque do membro selecionado. */
+.report-selected-member-copy h3 {
+  margin: 0;
+  color: #10233b;
+  font-size: 1.65rem;
+  line-height: 1.12;
+  letter-spacing: 0;
+}
+
+/* Texto de apoio abaixo do nome do membro selecionado. */
+.report-selected-member-copy p {
+  max-width: 620px;
+  margin: 8px 0 0;
+  color: #486174;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+/* Lista horizontal moderna dos membros dentro do painel hero. */
+.report-members-hero-panel .report-member-photo-grid {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scroll-snap-type: x proximity;
+  scrollbar-color: rgba(49, 112, 57, 0.38) rgba(49, 112, 57, 0.08);
+  scrollbar-width: thin;
+  padding: 4px 2px 12px;
+  margin: 0 -2px;
+}
+
+/* Scrollbar horizontal personalizada dos membros. */
+.report-members-hero-panel .report-member-photo-grid::-webkit-scrollbar {
+  height: 10px;
+}
+
+/* Trilho da scrollbar de membros. */
+.report-members-hero-panel .report-member-photo-grid::-webkit-scrollbar-track {
+  border-radius: 999px;
+  background: rgba(49, 112, 57, 0.08);
+}
+
+/* Puxador da scrollbar de membros com gradiente leve. */
+.report-members-hero-panel .report-member-photo-grid::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background:
+    linear-gradient(90deg, rgba(49, 112, 57, 0.44), rgba(14, 165, 233, 0.34))
+    border-box;
+  background-clip: padding-box, border-box;
+}
+
+/* Hover do puxador da scrollbar para melhorar a percepcao de interacao. */
+.report-members-hero-panel .report-member-photo-grid::-webkit-scrollbar-thumb:hover {
+  background:
+    linear-gradient(90deg, rgba(49, 112, 57, 0.66), rgba(14, 165, 233, 0.52))
+    border-box;
+  background-clip: padding-box, border-box;
+}
+
+/* Cada membro ocupa largura fixa no carrossel horizontal. */
+.report-members-hero-panel .report-member-photo-grid li {
+  flex: 0 0 auto;
+  scroll-snap-align: start;
+}
+
+/* Card compacto usado no carrossel, diferente da grade antiga. */
+.report-members-hero-panel .report-member-photo-card {
+  width: 84px;
+  min-height: 104px;
+  padding: 8px 7px;
+  gap: 7px;
+  border-radius: 18px;
+  transform: none;
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: none;
+}
+
+/* Hover do card compacto do carrossel. */
+.report-members-hero-panel .report-member-photo-card:hover {
+  transform: translateY(-4px);
+  background: rgba(255, 255, 255, 0.96);
+}
+
+/* Estado ativo no carrossel: cresce um pouco sem abrir como a grade antiga. */
+.report-members-hero-panel .report-member-photo-card.is-active {
+  grid-column: auto;
+  width: 104px;
+  min-height: 118px;
+  padding: 9px 8px;
+  align-items: center;
+  justify-content: flex-start;
+  border-color: rgba(49, 112, 57, 0.5);
+  background: rgba(239, 248, 241, 0.96);
+  box-shadow: 0 16px 32px rgba(31, 81, 48, 0.16);
+  transform: none;
+  animation: none;
+}
+
+/* O carrossel nao usa a borda interna do card ativo antigo. */
+.report-members-hero-panel .report-member-photo-card.is-active::before {
+  display: none;
+}
+
+.report-members-hero-panel .report-member-photo-grid:has(.report-member-photo-card.is-active) .report-member-photo-card:not(.is-active),
+.report-members-hero-panel .report-member-photo-grid:has(.report-member-photo-card.is-active) .report-member-photo-card:not(.is-active):hover {
+  transform: none;
+  opacity: 1;
+}
+
+.report-members-hero-panel .report-member-photo-avatar,
+.report-members-hero-panel .report-member-photo-card.is-active .report-member-photo-avatar,
+.report-members-hero-panel .report-member-photo-grid:has(.report-member-photo-card.is-active) .report-member-photo-card:not(.is-active) .report-member-photo-avatar {
+  position: static;
+  width: 54px;
+  height: 54px;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 8px 18px rgba(31, 81, 48, 0.1);
+  transform: none;
+  animation: none;
+}
+
+.report-members-hero-panel .report-member-photo-card.is-active .report-member-photo-avatar {
+  width: 66px;
+  height: 66px;
+  box-shadow:
+    0 10px 20px rgba(31, 81, 48, 0.16),
+    0 0 0 4px rgba(49, 112, 57, 0.12);
+}
+
+.report-members-hero-panel .report-member-photo-name,
+.report-members-hero-panel .report-member-photo-card.is-active .report-member-photo-name {
+  max-width: 100%;
+  text-align: center;
+  color: #10233b;
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.report-members-hero-panel .member-warning-restriction {
+  display: none;
+}
+
+/* Entrada do painel grande do membro selecionado. */
+@keyframes reportSelectedMemberEnter {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Entrada da foto grande do membro selecionado. */
+@keyframes reportSelectedPortraitEnter {
+  0% {
+    opacity: 0;
+    transform: translateX(-18px) rotate(-4deg) scale(0.84);
+  }
+  70% {
+    transform: translateX(0) rotate(1deg) scale(1.04);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) rotate(0deg) scale(1);
+  }
+}
+
+/* Pulso decorativo em torno da foto grande. */
+@keyframes reportSelectedMemberPulse {
+  0%, 100% {
+    opacity: 0.38;
+    transform: scale(0.96);
+  }
+  50% {
+    opacity: 0.78;
+    transform: scale(1.03);
+  }
+}
+
+/* Versao mobile do destaque do membro selecionado. */
+@media (max-width: 680px) {
+  .report-selected-member-spotlight {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+    min-height: 0;
+    padding: 22px 18px;
+    border-radius: 24px;
+  }
+
+  .report-selected-member-portrait {
+    width: 112px;
+    height: 112px;
+    border-radius: 30px;
+  }
+
+  .report-selected-member-copy h3 {
+    font-size: 1.35rem;
+  }
+
+  .report-selected-member-copy p {
+    font-size: 0.9rem;
+  }
+
+  .report-members-hero-panel .report-member-photo-card,
+  .report-members-hero-panel .report-member-photo-card.is-active {
+    width: 82px;
+    min-height: 104px;
+  }
+}
+
+/* Remove animacoes do destaque para usuarios com reducao de movimento. */
+@media (prefers-reduced-motion: reduce) {
+  .report-selected-member-spotlight,
+  .report-selected-member-portrait,
+  .report-selected-member-portrait::after {
+    animation: none;
+  }
+}
+
+/* Bolinha numerica que mostra a quantidade atual de advertencias. */
 .member-warning-count {
   display: inline-flex;
   align-items: center;
@@ -2880,11 +3804,13 @@ body.theme-dark.section-reports .report-tabs-nav {
   font-size: 0.9em;
 }
 
+/* Estado visual quando o membro chegou ao limite de advertencias. */
 .member-warning-count.is-max {
   background: rgba(220, 38, 38, 0.14);
   color: #dc2626;
 }
 
+/* Selo do periodo de acompanhamento/restricao de 365 dias. */
 .member-warning-restriction {
   margin-top: 0.25rem;
   border-radius: 999px;
@@ -2895,6 +3821,7 @@ body.theme-dark.section-reports .report-tabs-nav {
   font-weight: 800;
 }
 
+/* Painel resumido das advertencias dentro do relatorio do membro. */
 .member-warning-panel {
   display: flex;
   flex-wrap: wrap;
@@ -2908,6 +3835,7 @@ body.theme-dark.section-reports .report-tabs-nav {
   background: rgba(15, 118, 110, 0.06);
 }
 
+/* Painel de advertencias quando a pessoa esta no limite maximo. */
 .member-warning-panel.is-max {
   border-color: rgba(220, 38, 38, 0.24);
   background: rgba(241, 167, 166, 0.22);
@@ -2921,10 +3849,12 @@ body.theme-dark.section-reports .report-tabs-nav {
   display: block;
 }
 
+/* Mantem o botao de advertencia alinhado a direita quando ha espaco. */
 .member-warning-actions {
   margin-left: auto;
 }
 
+/* Botao que abre a janela de nova advertencia. */
 .member-warning-open {
   white-space: nowrap;
   background: linear-gradient(135deg, #317039, #3f8f48);
@@ -2933,19 +3863,23 @@ body.theme-dark.section-reports .report-tabs-nav {
   box-shadow: 0 18px 30px rgba(49, 112, 57, 0.28);
 }
 
+/* Janela pequena de advertencias reaproveita o popover de criacao. */
 .member-warning-popover {
   max-width: min(560px, calc(100vw - 32px));
 }
 
+/* Formulario para iniciar o periodo de acompanhamento de 365 dias. */
 .member-warning-restriction-form {
   padding: 0 18px 16px;
   margin-top: -4px;
 }
 
+/* Lista de projetos vinculados ao membro escolhido. */
 .report-member-projects {
   margin-bottom: 16px;
 }
 
+/* Caixa usada para exportacao mensal e complemento da quinzena. */
 .report-monthly-export-form {
   margin: 0 0 16px;
   padding: 14px;
@@ -2954,6 +3888,7 @@ body.theme-dark.section-reports .report-tabs-nav {
   background: linear-gradient(180deg, rgba(246, 255, 249, 0.95), rgba(240, 250, 244, 0.88));
 }
 
+/* Area dos botoes dentro dos formularios de exportacao/complemento. */
 .report-monthly-export-actions {
   display: flex;
   align-items: flex-end;
@@ -3000,16 +3935,19 @@ body.theme-dark.section-reports .report-tabs-nav {
   box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.2);
 }
 
+/* Formulario de criacao de metas/tarefas da quinzena. */
 .report-goal-create-form {
   margin-bottom: 16px;
 }
 
+/* Grade do formulario: atividade de um lado e descricao do outro. */
 .report-goal-create-row {
   display: grid;
   grid-template-columns: minmax(260px, 0.95fr) minmax(0, 1.05fr);
   gap: 12px;
 }
 
+/* Quadro kanban das metas: pendentes, futuras/concluidas e atrasadas. */
 .report-kanban-board {
   display: grid;
   grid-template-columns: minmax(0, 0.78fr) minmax(0, 1fr) minmax(0, 1fr);
@@ -3017,6 +3955,7 @@ body.theme-dark.section-reports .report-tabs-nav {
   margin-top: 12px;
 }
 
+/* Coluna base do kanban, com barra superior colorida por status. */
 .report-kanban-column {
   position: relative;
   display: flex;
@@ -3030,6 +3969,7 @@ body.theme-dark.section-reports .report-tabs-nav {
   backdrop-filter: blur(6px);
 }
 
+/* Barra superior padrao das colunas do kanban. */
 .report-kanban-column::before {
   content: "";
   position: absolute;
@@ -3041,33 +3981,40 @@ body.theme-dark.section-reports .report-tabs-nav {
   background: rgba(49, 112, 57, 0.35);
 }
 
+/* Cor da coluna de metas abertas. */
 .report-kanban-open::before {
   background: rgba(41, 112, 165, 0.55);
 }
 
+/* Coluna de tarefas futuras, com tom mais frio. */
 .report-kanban-future {
   border-color: rgba(14, 116, 144, 0.34);
   background: linear-gradient(180deg, rgba(236, 253, 255, 0.94), rgba(236, 253, 255, 0.78));
 }
 
+/* Cor da barra superior para tarefas futuras. */
 .report-kanban-future::before {
   background: rgba(14, 116, 144, 0.58);
 }
 
+/* Cor da barra superior para tarefas concluidas. */
 .report-kanban-completed::before {
   background: rgba(22, 101, 52, 0.55);
 }
 
+/* Coluna de atrasadas fica mais estreita e com alerta vermelho suave. */
 .report-kanban-overdue {
   max-width: 360px;
   border-color: rgba(220, 38, 38, 0.4);
   background: linear-gradient(180deg, rgba(254, 242, 242, 0.94), rgba(254, 242, 242, 0.82));
 }
 
+/* Cor da barra superior da coluna de atrasadas. */
 .report-kanban-overdue::before {
   background: rgba(220, 38, 38, 0.6);
 }
 
+/* Cabecalho de cada coluna com titulo e contador. */
 .report-kanban-column-header {
   display: flex;
   align-items: center;
@@ -3097,12 +4044,14 @@ body.theme-dark.section-reports .report-tabs-nav {
   font-weight: 800;
 }
 
+/* Mensagem quando uma coluna do kanban nao tem itens. */
 .report-kanban-empty {
   margin: 0;
   color: #5b697c;
   font-size: 0.88rem;
 }
 
+/* Campos internos da criacao de meta com fundo separado. */
 .report-goal-create-activity,
 .report-goal-create-description {
   padding: 10px;
@@ -3111,6 +4060,7 @@ body.theme-dark.section-reports .report-tabs-nav {
   background: rgba(49, 112, 57, 0.05);
 }
 
+/* Cabecalho visual da grade de metas quando nao esta em modo card. */
 .report-goal-grid-header {
   display: grid;
   grid-template-columns: minmax(260px, 0.95fr) minmax(0, 1.05fr);
@@ -3127,6 +4077,7 @@ body.theme-dark.section-reports .report-tabs-nav {
   margin-bottom: 10px;
 }
 
+/* Lista de metas dentro de cada coluna ou secao. */
 .report-goal-list {
   list-style: none;
   padding: 0;
@@ -3135,6 +4086,7 @@ body.theme-dark.section-reports .report-tabs-nav {
   gap: 10px;
 }
 
+/* Card individual de meta/tarefa. */
 .report-goal-item {
   border: 1px solid rgba(100, 116, 139, 0.24);
   border-left: 6px solid var(--goal-project-color, rgba(49, 112, 57, 0.35));
@@ -3145,28 +4097,33 @@ body.theme-dark.section-reports .report-tabs-nav {
   transition: transform 140ms ease, box-shadow 140ms ease;
 }
 
+/* Hover leve para indicar que a meta tem acoes internas. */
 .report-goal-item:hover {
   transform: translateY(-1px);
   box-shadow: 0 10px 18px rgba(15, 23, 42, 0.08);
 }
 
+/* Estado de atraso da meta, usado para destacar pendencias. */
 .report-goal-item.is-overdue {
   border-color: rgba(220, 38, 38, 0.42);
   background: rgba(254, 226, 226, 0.82);
   box-shadow: 0 8px 16px rgba(220, 38, 38, 0.09);
 }
 
+/* Layout de conteudo de uma meta em duas colunas. */
 .report-goal-row {
   display: grid;
   grid-template-columns: minmax(260px, 0.95fr) minmax(0, 1.05fr);
   gap: 12px;
 }
 
+/* Variante compacta usada quando a meta esta dentro do kanban. */
 .report-goal-row-kanban {
   grid-template-columns: 1fr;
   gap: 10px;
 }
 
+/* Linha com checkbox/status e titulo da meta. */
 .report-goal-checkline {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
@@ -3188,6 +4145,7 @@ body.theme-dark.section-reports .report-tabs-nav {
   color: #526176;
 }
 
+/* Tag do projeto responsavel pela meta. */
 .report-goal-project-tag {
   display: inline-flex;
   align-items: center;
@@ -3200,6 +4158,7 @@ body.theme-dark.section-reports .report-tabs-nav {
   font-weight: 700;
 }
 
+/* Bolinha colorida da tag do projeto. */
 .report-goal-project-dot {
   width: 0.62rem;
   height: 0.62rem;
@@ -3208,6 +4167,7 @@ body.theme-dark.section-reports .report-tabs-nav {
   box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.2);
 }
 
+/* Etiqueta de atraso da meta. */
 .report-goal-flag {
   display: inline-flex;
   align-items: center;
@@ -3220,6 +4180,7 @@ body.theme-dark.section-reports .report-tabs-nav {
   font-weight: 700;
 }
 
+/* Variante para indicar meta futura. */
 .report-goal-flag-future {
   color: #0e7490;
   border-color: rgba(14, 116, 144, 0.38);
@@ -3462,6 +4423,8 @@ body.theme-dark.section-reports .report-tabs-nav {
 
 .report-goal-member-check input[type="checkbox"] {
   margin-top: 2px;
+  width: 18px;
+  height: 18px;
 }
 
 .report-goal-member-name {
@@ -3692,11 +4655,13 @@ body.theme-dark.section-reports .report-tabs-nav {
   font-size: 1rem;
 }
 
-.report-more-actions-modal[hidden] {
+.report-more-actions-modal[hidden],
+.report-warning-modal[hidden] {
   display: none;
 }
 
-.report-more-actions-modal {
+.report-more-actions-modal,
+.report-warning-modal {
   position: fixed;
   inset: 0;
   z-index: 5200;
@@ -3712,7 +4677,8 @@ body.theme-dark.section-reports .report-tabs-nav {
   overflow: hidden;
 }
 
-.report-more-actions-backdrop {
+.report-more-actions-backdrop,
+.report-warning-backdrop {
   position: absolute;
   inset: 0;
   z-index: 1;
@@ -3721,7 +4687,8 @@ body.theme-dark.section-reports .report-tabs-nav {
   cursor: pointer;
 }
 
-.report-more-actions-dialog {
+.report-more-actions-dialog,
+.report-warning-dialog {
   position: relative;
   z-index: 2;
   width: min(960px, 100%);
@@ -3735,6 +4702,11 @@ body.theme-dark.section-reports .report-tabs-nav {
   overflow: hidden;
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr);
+}
+
+.report-warning-dialog {
+  width: min(760px, 100%);
+  grid-template-rows: auto minmax(0, 1fr);
 }
 
 .report-more-actions-head {
@@ -3812,6 +4784,13 @@ body.theme-dark.section-reports .report-tabs-nav {
   min-height: 0;
   overflow: auto;
   padding: 8px 10px 10px;
+}
+
+.report-warning-content {
+  min-height: 0;
+  overflow: auto;
+  padding: 12px;
+  background: rgba(248, 250, 252, 0.92);
 }
 
 .report-extra-panel {
@@ -3960,11 +4939,13 @@ body.theme-dark.section-reports .report-tabs-nav {
 }
 
 @media (max-width: 900px) {
-  .report-more-actions-modal {
+  .report-more-actions-modal,
+  .report-warning-modal {
     padding: 10px;
   }
 
-  .report-more-actions-dialog {
+  .report-more-actions-dialog,
+  .report-warning-dialog {
     max-width: calc(100vw - 16px);
     max-height: calc(100dvh - 16px);
     border-radius: 14px;
@@ -3976,7 +4957,8 @@ body.theme-dark.section-reports .report-tabs-nav {
 }
 
 @media (max-width: 620px) {
-  .report-more-actions-dialog {
+  .report-more-actions-dialog,
+  .report-warning-dialog {
     width: 100%;
     max-width: 100%;
     max-height: calc(100dvh - 12px);
@@ -4272,8 +5254,12 @@ body.theme-dark.section-reports .checkbox-list-container {
 }
 
 body.theme-dark.section-reports .report-member-photo-card.is-active {
-  background: rgba(48, 75, 132, 0.38);
-  border-color: rgba(130, 162, 236, 0.56);
+  background:
+    linear-gradient(180deg, rgba(32, 53, 86, 0.98), rgba(23, 44, 74, 0.96));
+  border-color: rgba(142, 182, 255, 0.68);
+  box-shadow:
+    0 20px 40px rgba(0, 8, 24, 0.58),
+    0 0 0 3px rgba(142, 182, 255, 0.14);
 }
 
 body.theme-dark.section-reports .report-member-photo-name,
@@ -4292,6 +5278,76 @@ body.theme-dark.section-reports .member-photo-preview {
   background: rgba(12, 21, 38, 0.95);
   border-color: rgba(113, 140, 190, 0.46);
   color: #c7dafd;
+}
+
+body.theme-dark.section-reports .report-member-photo-card.is-active .report-member-photo-avatar {
+  border-color: rgba(155, 190, 255, 0.62);
+  box-shadow: 0 14px 28px rgba(0, 8, 24, 0.48);
+}
+
+body.theme-dark.section-reports .report-member-photo-card.is-active .report-member-photo-name {
+  color: #eef5ff;
+}
+
+body.theme-dark.section-reports .report-selected-member-spotlight {
+  border-color: rgba(126, 157, 220, 0.38);
+  background:
+    radial-gradient(circle at 16% 28%, rgba(70, 110, 180, 0.32), transparent 30%),
+    radial-gradient(circle at 92% 16%, rgba(45, 180, 180, 0.16), transparent 24%),
+    linear-gradient(135deg, rgba(18, 30, 48, 0.98), rgba(20, 40, 62, 0.98));
+  box-shadow: 0 24px 60px rgba(1, 8, 22, 0.56);
+}
+
+body.theme-dark.section-reports .report-selected-member-portrait {
+  background: rgba(11, 20, 36, 0.96);
+  border-color: rgba(205, 220, 255, 0.22);
+  color: #cfe0ff;
+  box-shadow:
+    0 18px 36px rgba(1, 8, 22, 0.52),
+    0 0 0 8px rgba(133, 170, 239, 0.14);
+}
+
+body.theme-dark.section-reports .report-selected-member-kicker {
+  background: rgba(133, 170, 239, 0.16);
+  color: #d7e6ff;
+}
+
+body.theme-dark.section-reports .report-selected-member-copy h3 {
+  color: #f5f8ff;
+}
+
+body.theme-dark.section-reports .report-selected-member-copy p {
+  color: #b8c9ea;
+}
+
+body.theme-dark.section-reports .report-members-hero-panel .report-member-photo-card {
+  background: rgba(18, 30, 48, 0.68);
+}
+
+body.theme-dark.section-reports .report-members-hero-panel .report-member-photo-card.is-active {
+  background: rgba(48, 75, 132, 0.44);
+}
+
+body.theme-dark.section-reports .report-members-hero-panel .report-member-photo-grid {
+  scrollbar-color: rgba(142, 182, 255, 0.46) rgba(142, 182, 255, 0.1);
+}
+
+body.theme-dark.section-reports .report-members-hero-panel .report-member-photo-grid::-webkit-scrollbar-track {
+  background: rgba(142, 182, 255, 0.1);
+}
+
+body.theme-dark.section-reports .report-members-hero-panel .report-member-photo-grid::-webkit-scrollbar-thumb {
+  background:
+    linear-gradient(90deg, rgba(142, 182, 255, 0.52), rgba(45, 180, 180, 0.38))
+    border-box;
+  background-clip: padding-box, border-box;
+}
+
+body.theme-dark.section-reports .report-members-hero-panel .report-member-photo-grid::-webkit-scrollbar-thumb:hover {
+  background:
+    linear-gradient(90deg, rgba(142, 182, 255, 0.72), rgba(45, 180, 180, 0.54))
+    border-box;
+  background-clip: padding-box, border-box;
 }
 
 body.theme-dark.section-reports .report-monthly-export-form,
@@ -4550,11 +5606,13 @@ body.theme-dark.section-reports .report-more-actions-menu {
   border-bottom-color: rgba(104, 130, 183, 0.28);
 }
 
-body.theme-dark.section-reports .report-more-actions-backdrop {
+body.theme-dark.section-reports .report-more-actions-backdrop,
+body.theme-dark.section-reports .report-warning-backdrop {
   background: rgba(3, 6, 16, 0.66);
 }
 
-body.theme-dark.section-reports .report-more-actions-dialog {
+body.theme-dark.section-reports .report-more-actions-dialog,
+body.theme-dark.section-reports .report-warning-dialog {
   border-color: rgba(104, 130, 183, 0.4);
   background: rgba(16, 24, 43, 0.97);
   box-shadow: 0 18px 34px rgba(1, 8, 22, 0.54);
@@ -4573,6 +5631,10 @@ body.theme-dark.section-reports .report-more-actions-close {
   border-color: rgba(110, 134, 187, 0.42);
   background: rgba(23, 34, 58, 0.92);
   color: #cfdcf8;
+}
+
+body.theme-dark.section-reports .report-warning-content {
+  background: rgba(18, 30, 48, 0.92);
 }
 
 body.theme-dark.section-reports .report-more-action-item {
@@ -4602,6 +5664,16 @@ body.theme-dark.section-reports .report-extra-panel {
 
 body.theme-dark.section-reports .report-extra-panel-head h4 {
   color: #d9e7ff;
+}
+
+body.theme-dark.section-reports .report-entry-item {
+  background: rgba(18, 30, 48, 0.94);
+  border-color: rgba(104, 128, 173, 0.42);
+  box-shadow: 0 16px 32px rgba(1, 8, 22, 0.5);
+}
+
+body.theme-dark.section-reports .report-entry-header strong {
+  color: #e3eeff;
 }
 
 body.theme-dark.section-reports .report-create-inline-error {
@@ -4729,6 +5801,27 @@ body.theme-dark.section-home .ata-summary-card small {
 
 body.theme-dark.section-home .page-header h1 {
   color: #9fc0ff;
+}
+
+body.theme-dark.section-atas .recent-atas-section,
+body.theme-dark.section-atas .content-panel {
+  background: rgba(16, 24, 43, 0.94);
+  border-color: rgba(104, 130, 183, 0.38);
+  box-shadow: 0 22px 40px rgba(1, 8, 22, 0.52);
+}
+
+body.theme-dark.section-atas .recent-atas-list li {
+  background: rgba(18, 30, 48, 0.92);
+  border-color: rgba(104, 128, 173, 0.38);
+  box-shadow: 0 14px 28px rgba(1, 8, 22, 0.4);
+}
+
+body.theme-dark.section-atas .ata-info strong {
+  color: #e3eeff;
+}
+
+body.theme-dark.section-atas .meeting-time {
+  color: #aebfe0;
 }
 
 .recent-atas-list {

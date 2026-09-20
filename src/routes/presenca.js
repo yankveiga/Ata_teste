@@ -7,6 +7,7 @@ const {
   validateBadgeForm,
 } = require("../badges");
 
+// Padroniza cabecalhos de CSV para comparar nomes com ou sem acento/espaco.
 function normalizeHeader(value) {
   return String(value || "")
     .trim()
@@ -17,6 +18,7 @@ function normalizeHeader(value) {
     .replace(/^_+|_+$/g, "");
 }
 
+// Le um CSV simples respeitando aspas, virgulas internas e quebras de linha.
 function parseCsv(text) {
   const rows = [];
   let row = [];
@@ -56,6 +58,7 @@ function parseCsv(text) {
   return rows;
 }
 
+// Busca o primeiro valor disponivel entre nomes de coluna aceitos.
 function getCsvValue(row, headers, acceptedNames) {
   for (const name of acceptedNames) {
     const index = headers.indexOf(name);
@@ -66,11 +69,13 @@ function getCsvValue(row, headers, acceptedNames) {
   return "";
 }
 
+// Escapa valores na exportacao CSV para nao quebrar linhas ou colunas.
 function escapeCsvValue(value) {
   const text = String(value ?? "");
   return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
+// Gera nome seguro para download, sem acentos ou caracteres problemáticos.
 function sanitizeDownloadName(value) {
   return String(value || "presenca")
     .normalize("NFD")
@@ -80,6 +85,7 @@ function sanitizeDownloadName(value) {
     .slice(0, 80) || "presenca";
 }
 
+// Monta a planilha XLSX geral com uma coluna por evento.
 async function buildPresenceWorkbook({ events, rows }) {
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet("Sheet1");
@@ -100,6 +106,7 @@ async function buildPresenceWorkbook({ events, rows }) {
   return workbook;
 }
 
+// Normaliza dados do formulario de atividade antes de validar/salvar.
 function normalizeEventForm(body = {}) {
   return {
     name: String(body.name || "").trim(),
@@ -108,6 +115,7 @@ function normalizeEventForm(body = {}) {
   };
 }
 
+// Normaliza dados do ouvinte antes de validar/salvar.
 function normalizeAttendeeForm(body = {}) {
   return {
     name: String(body.name || "").trim(),
@@ -117,6 +125,7 @@ function normalizeAttendeeForm(body = {}) {
   };
 }
 
+// Valida os campos minimos de uma atividade.
 function validateEventForm(formData) {
   const errors = {};
   if (!formData.name) {
@@ -125,6 +134,7 @@ function validateEventForm(formData) {
   return errors;
 }
 
+// Valida os campos minimos de um ouvinte.
 function validateAttendeeForm(formData) {
   const errors = {};
   if (!formData.name) {
@@ -136,6 +146,7 @@ function validateAttendeeForm(formData) {
   return errors;
 }
 
+// Reconstroi a query string mantendo o evento selecionado e filtros extras.
 function buildEventQuery(eventId, extra = {}) {
   const params = new URLSearchParams();
   if (eventId) {
@@ -150,6 +161,7 @@ function buildEventQuery(eventId, extra = {}) {
   return query ? `?${query}` : "";
 }
 
+// Resolve qual evento deve aparecer selecionado ao abrir telas de presenca.
 function resolveSelectedEvent(database, requestedEventId) {
   const events = database.listEvents();
   const selectedEvent = requestedEventId
@@ -158,6 +170,7 @@ function resolveSelectedEvent(database, requestedEventId) {
   return { events, selectedEvent };
 }
 
+// Converte linhas do CSV em ouvintes, marcando erros e duplicados.
 function mapCsvRows({ rows, existingAttendees }) {
   const headers = (rows.shift() || []).map(normalizeHeader);
   const existingByBadge = new Map(
@@ -196,6 +209,7 @@ function mapCsvRows({ rows, existingAttendees }) {
   });
 }
 
+// Registra todas as rotas do modulo Presenca no app principal.
 function registerPresenceRoutes(ctx) {
   const {
     app,
@@ -213,6 +227,7 @@ function registerPresenceRoutes(ctx) {
     sendApiError,
   } = ctx;
 
+  // Upload temporario de CSV para importacao de ouvintes.
   const csvUpload = multer({
     dest: config.uploadDir,
     limits: {
@@ -232,6 +247,7 @@ function registerPresenceRoutes(ctx) {
     },
   });
 
+  // Upload em memoria da imagem usada para gerar crachas em PDF.
   const badgeImageUpload = multer({
     storage: multer.memoryStorage(),
     limits: {
@@ -254,6 +270,7 @@ function registerPresenceRoutes(ctx) {
     },
   });
 
+  // Renderiza a tela de atividades cadastradas.
   function renderEvents(req, res, data = {}) {
     return render(res, "presenca/eventos.html", {
       title: "Eventos",
@@ -269,6 +286,7 @@ function registerPresenceRoutes(ctx) {
     });
   }
 
+  // Renderiza a tela de ouvintes, mantendo evento selecionado e busca.
   function renderAttendees(req, res, data = {}) {
     const selectedEventId = parseId(data.eventId || req.query.event_id);
     const { events, selectedEvent } = resolveSelectedEvent(database, selectedEventId);
@@ -294,6 +312,7 @@ function registerPresenceRoutes(ctx) {
     });
   }
 
+  // Renderiza a tela de check-in por cracha/codigo.
   function renderCheckin(req, res) {
     const selectedEventId = parseId(req.query.event_id);
     const { events, selectedEvent } = resolveSelectedEvent(database, selectedEventId);
@@ -306,6 +325,7 @@ function registerPresenceRoutes(ctx) {
     });
   }
 
+  // Renderiza o gerador de crachas usado pela administracao.
   function renderBadgeGenerator(req, res, data = {}) {
     return render(res, "presenca/crachas.html", {
       title: "Gerador de Crachas",
@@ -326,12 +346,14 @@ function registerPresenceRoutes(ctx) {
     });
   }
 
+  // Rotas de leitura das telas do modulo.
   app.get("/presenca", requireAuth, (req, res) => res.redirect(urlFor("presenca_checkin")));
   app.get("/presenca/eventos", requireAuth, renderEvents);
   app.get("/presenca/ouvintes", requireAuth, renderAttendees);
   app.get("/presenca/check-in", requireAuth, renderCheckin);
   app.get("/presenca/crachas", requireAuth, requireAdminPage, renderBadgeGenerator);
 
+  // Gera o PDF de crachas a partir da imagem enviada e dos parametros do formulario.
   app.post(
     "/presenca/crachas/gerar",
     requireAuth,
@@ -374,6 +396,7 @@ function registerPresenceRoutes(ctx) {
     },
   );
 
+  // Cria uma nova atividade de presenca.
   app.post("/presenca/eventos/criar", requireAuth, requireAdminPage, (req, res) => {
     if (!ensureValidCsrf(req, res)) {
       return;
@@ -388,6 +411,7 @@ function registerPresenceRoutes(ctx) {
     return res.redirect(`${urlFor("presenca_eventos")}#event-${event.id}`);
   });
 
+  // Edita nome, data e status ativo/inativo de uma atividade.
   app.post("/presenca/eventos/:id/editar", requireAuth, requireAdminPage, (req, res) => {
     if (!ensureValidCsrf(req, res)) {
       return;
@@ -408,6 +432,7 @@ function registerPresenceRoutes(ctx) {
     return res.redirect(`${urlFor("presenca_eventos")}#event-${eventId}`);
   });
 
+  // Remove uma atividade e seus vinculos de presenca.
   app.post("/presenca/eventos/:id/excluir", requireAuth, requireAdminPage, (req, res) => {
     if (!ensureValidCsrf(req, res)) {
       return;
@@ -417,6 +442,7 @@ function registerPresenceRoutes(ctx) {
     return res.redirect(urlFor("presenca_eventos"));
   });
 
+  // Cria um ouvinte e, se houver evento selecionado, ja vincula os dois.
   app.post("/presenca/ouvintes/criar", requireAuth, requireAdminPage, (req, res) => {
     if (!ensureValidCsrf(req, res)) {
       return;
@@ -443,6 +469,7 @@ function registerPresenceRoutes(ctx) {
     return res.redirect(`${urlFor("presenca_ouvintes")}${buildEventQuery(eventId)}`);
   });
 
+  // Edita os dados cadastrais de um ouvinte.
   app.post("/presenca/ouvintes/:id/editar", requireAuth, requireAdminPage, (req, res) => {
     if (!ensureValidCsrf(req, res)) {
       return;
@@ -467,6 +494,7 @@ function registerPresenceRoutes(ctx) {
     return res.redirect(`${urlFor("presenca_ouvintes")}#attendee-${attendee.id}`);
   });
 
+  // Exclui um ouvinte cadastrado.
   app.post("/presenca/ouvintes/:id/excluir", requireAuth, requireAdminPage, (req, res) => {
     if (!ensureValidCsrf(req, res)) {
       return;
@@ -485,6 +513,7 @@ function registerPresenceRoutes(ctx) {
     return res.redirect(urlFor("presenca_ouvintes"));
   });
 
+  // Vincula um ouvinte existente a uma atividade.
   app.post("/presenca/ouvintes/:id/vincular", requireAuth, requireAdminPage, (req, res) => {
     if (!ensureValidCsrf(req, res)) {
       return;
@@ -504,6 +533,7 @@ function registerPresenceRoutes(ctx) {
     return res.redirect(`${urlFor("presenca_ouvintes")}${buildEventQuery(eventId)}#attendee-${attendeeId}`);
   });
 
+  // Mostra uma previa da importacao CSV antes de gravar no banco.
   app.post(
     "/presenca/ouvintes/importar/preview",
     requireAuth,
@@ -556,6 +586,7 @@ function registerPresenceRoutes(ctx) {
     },
   );
 
+  // Confirma a importacao CSV, criando novos ouvintes ou atualizando duplicados.
   app.post("/presenca/ouvintes/importar/confirmar", requireAuth, requireAdminPage, (req, res) => {
     if (!ensureValidCsrf(req, res)) {
       return;
@@ -607,6 +638,7 @@ function registerPresenceRoutes(ctx) {
     });
   });
 
+  // Endpoint usado pelo check-in para registrar presenca via cracha.
   app.post("/presenca/registrar", requireAuth, (req, res) => {
     if (!verifyCsrf(req)) {
       const nextToken = ensureCsrfToken(req);
@@ -626,6 +658,7 @@ function registerPresenceRoutes(ctx) {
     }
   });
 
+  // Exporta a lista de presenca de uma atividade especifica em CSV.
   app.get("/presenca/eventos/:id/exportar.csv", requireAuth, (req, res) => {
     const event = database.getEventById(parseId(req.params.id));
     if (!event) {
@@ -650,6 +683,7 @@ function registerPresenceRoutes(ctx) {
     return res.send(`\uFEFF${lines.join("\r\n")}`);
   });
 
+  // Exporta a matriz geral de presenca em XLSX, com uma coluna por atividade.
   app.get("/presenca/exportar-geral.xlsx", requireAuth, async (req, res) => {
     try {
       const events = database.listPresenceMatrixEvents();
