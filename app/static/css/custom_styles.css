@@ -3841,6 +3841,10 @@ body.theme-dark.section-reports .report-tabs-nav {
   background: rgba(241, 167, 166, 0.22);
 }
 
+.member-warning-details.is-max {
+  color: #dc2626;
+}
+
 .member-warning-panel p {
   margin: 0.25rem 0 0;
 }

@@ -112,7 +112,8 @@ a {
   border: 1px solid var(--sidebar-border);
   box-shadow: 0 30px 52px rgba(7, 13, 30, 0.32);
   transition: width 0.35s ease, transform 0.35s ease;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   z-index: 100;
 }
 

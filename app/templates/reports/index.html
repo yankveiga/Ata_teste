@@ -71,7 +71,7 @@
  </div>
  <div class="report-selected-member-copy">
  <span class="report-selected-member-kicker">Perfil selecionado</span>
- <h3>{{ selectedMember.name }} <strong class="member-warning-count {{ 'is-max' if selectedMember.warning_count == 3 else '' }}">{{ selectedMember.warning_count }}</strong></h3>
+ <h3>{{ selectedMember.name }} <strong class="member-warning-count {{ 'is-max' if selectedMember.warning_count >= 3 else '' }}">{{ selectedMember.warning_count }}</strong></h3>
  {% if selectedMember.restriction_is_active %}
  <p>Em acompanhamento de 365 dias: {{ selectedMember.restriction_days_remaining }} dias restantes.</p>
  {% else %}
@@ -95,7 +95,7 @@
  <ion-icon name="person-outline"></ion-icon>
  {% endif %}
  </span>
- <span class="report-member-photo-name">{{ member.name }} <strong class="member-warning-count {{ 'is-max' if member.warning_count == 3 else '' }}">{{ member.warning_count }}</strong></span>
+ <span class="report-member-photo-name">{{ member.name }} <strong class="member-warning-count {{ 'is-max' if member.warning_count >= 3 else '' }}">{{ member.warning_count }}</strong></span>
  {% if member.restriction_is_active %}
  <span class="member-warning-restriction">365d: {{ member.restriction_days_remaining }} dias</span>
  {% endif %}
@@ -113,15 +113,15 @@
  <section id="report-goals-panel" class="content-panel report-goals-panel">
  <div class="panel-header">
  <div>
- <h2>Metas da Quinzena{% if selectedMember %} de {{ selectedMember.name }} <span class="member-warning-count {{ 'is-max' if selectedMember.warning_count == 3 else '' }}">{{ selectedMember.warning_count }}</span>{% endif %}</h2>
+ <h2>Metas da Quinzena{% if selectedMember %} de {{ selectedMember.name }} <span class="member-warning-count {{ 'is-max' if selectedMember.warning_count >= 3 else '' }}">{{ selectedMember.warning_count }}</span>{% endif %}</h2>
  </div>
  </div>
  <div class="panel-body">
  {% if selectedMember %}
  {# Resumo das advertencias do membro e botoes administrativos quando permitido. #}
- <div class="member-warning-panel {{ 'is-max' if selectedMember.warning_count == 3 else '' }}">
+ <div class="member-warning-panel {{ 'is-max' if selectedMember.warning_count >= 3 else '' }}">
  <div>
- <button type="button" class="member-warning-details" id="member_warning_details" aria-haspopup="dialog" aria-controls="report_warning_modal" aria-label="Ver advertências de {{ selectedMember.name }}: {{ selectedMember.warning_count }} de 3">Advertências: <span class="member-warning-count {{ 'is-max' if selectedMember.warning_count == 3 else '' }}">{{ selectedMember.warning_count }}</span>/3 <ion-icon name="chevron-forward-outline" aria-hidden="true"></ion-icon></button>
+ <button type="button" class="member-warning-details {{ 'is-max' if selectedMember.warning_count >= 3 else '' }}" id="member_warning_details" aria-haspopup="dialog" aria-controls="report_warning_modal" aria-label="Ver advertências de {{ selectedMember.name }}: {{ selectedMember.warning_count }} de 3">Advertências: <span class="member-warning-count {{ 'is-max' if selectedMember.warning_count >= 3 else '' }}">{{ selectedMember.warning_count }}</span>/3 <ion-icon name="chevron-forward-outline" aria-hidden="true"></ion-icon></button>
  {% if selectedMember.restriction_is_active %}
  <p>Periodo de acompanhamento/restricao ativo: {{ selectedMember.restriction_days_remaining }} dias restantes.</p>
  {% elif selectedMember.restriction_started_at %}
@@ -1106,12 +1106,16 @@
 
 (function() {
   function initReportWarningModal() {
-    const openButton = document.getElementById('member_warning_details_direct') || document.getElementById('member_warning_details');
+    const openButtons = [
+      document.getElementById('member_warning_details_direct'),
+      document.getElementById('member_warning_details'),
+    ].filter(Boolean);
     const modal = document.getElementById('report_warning_modal');
     const dialog = modal ? modal.querySelector('.report-warning-dialog') : null;
     const backdrop = document.getElementById('report_warning_backdrop');
     const closeButton = document.getElementById('report_warning_close');
-    if (!openButton || !modal || modal.dataset.bound === '1') {
+    let lastOpenButton = openButtons[0] || null;
+    if (!openButtons.length || !modal || modal.dataset.bound === '1') {
       return;
     }
 
@@ -1143,7 +1147,7 @@
       } else {
         modal.setAttribute('hidden', 'hidden');
         document.body.classList.remove('report-more-actions-open');
-        if (modal.contains(document.activeElement)) openButton.focus();
+        if (modal.contains(document.activeElement) && lastOpenButton) lastOpenButton.focus();
       }
     }
 
@@ -1155,9 +1159,12 @@
       setOpen(false);
     }
 
-    openButton.addEventListener('click', function(event) {
-      event.preventDefault();
-      setOpen(true);
+    openButtons.forEach(function(openButton) {
+      openButton.addEventListener('click', function(event) {
+        event.preventDefault();
+        lastOpenButton = openButton;
+        setOpen(true);
+      });
     });
     if (closeButton) closeButton.addEventListener('click', closeFromEvent);
     if (backdrop) {
