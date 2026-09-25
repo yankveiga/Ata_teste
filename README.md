@@ -4,8 +4,6 @@ Aplicação interna em Node.js + Express + Nunjucks para centralizar rotinas do 
 
 ## Interface
 
-> O portal requer login e contém dados internos. Antes de publicar capturas de tela, use dados fictícios ou oculte informações pessoais.
-
 ![Tela de login](docs/tela_login.png)
 
 ![Relatórios quinzenais em tema claro](docs/relatorios_tema_claro.png)
