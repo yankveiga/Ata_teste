@@ -1,49 +1,76 @@
 # Portal PET C3
 
-Aplicacao interna em Node.js + Express + Nunjucks para centralizar rotinas do PET C3: relatorios, planner, atas, almoxarifado, presenca, mensagens e manutencao administrativa.
+Aplicação interna em Node.js + Express + Nunjucks para centralizar rotinas do PET C3: relatórios, planner, atas, almoxarifado, presença, mensagens e manutenção administrativa.
 
-Ultima revisao: 19/09/2026
+## Interface
 
-## Modulos principais
+> O portal requer login e contém dados internos. Antes de publicar capturas de tela, use dados fictícios ou oculte informações pessoais.
 
-- Relatorios quinzenais por membro e projeto.
-- Planner integrado aos relatorios.
-- Sistema de advertencias por membro, com auditoria e acompanhamento de 365 dias.
-- Atas com geracao de PDF.
-- Almoxarifado: estoque, patrimonio, retiradas, emprestimos e historico.
-- Presenca por eventos: atividades, ouvintes, importacao CSV, check-in e exportacao.
+![Tela de login](docs/tela_login.png)
+
+![Relatórios quinzenais em tema claro](docs/relatorios_tema_claro.png)
+
+![Relatórios quinzenais em tema escuro](docs/relatorios_tema_escuro.png)
+
+![Planner integrado aos relatórios](docs/planner.png)
+
+![Almoxarifado](docs/almoxarifado.png)
+
+## Em um minuto
+
+| | |
+| --- | --- |
+| Problema | Rotinas do grupo distribuídas entre relatórios, planejamento, atas e controles administrativos. |
+| Solução | Um portal com fluxos para membros e administração do PET C3. |
+| Minha participação | Desenvolvimento individual da aplicação. |
+| Código | [Templates das telas](app/templates/) · [Estilos e arquivos estáticos](app/static/) · [Rotas](src/routes/) |
+
+## Interface e experiência
+
+- O planner se conecta aos relatórios para acompanhar atividades planejadas e realizadas.
+- A página inicial autenticada abre diretamente em relatórios, uma das tarefas recorrentes do grupo.
+- As rotas separam atividades dos membros e funções administrativas, com permissões documentadas no [guia de dados e permissões](docs/GUIA_DADOS_E_PERMISSOES.md).
+
+## Módulos principais
+
+- Relatórios quinzenais por membro e projeto.
+- Planner integrado aos relatórios.
+- Sistema de advertências por membro, com auditoria e acompanhamento de 365 dias.
+- Atas com geração de PDF.
+- Almoxarifado: estoque, patrimônio, retiradas, empréstimos e histórico.
+- Presença por eventos: atividades, ouvintes, importação CSV, check-in e exportação.
 - Mensagens privadas e conversas administrativas somente leitura.
 - Escrita geral e escrita privada de tutor.
-- CRUD de membros, projetos e usuarios.
+- CRUD de membros, projetos e usuários.
 
-Observacao: o modulo PETrello nao faz parte da versao atual.
+Observação: o módulo PETrello não faz parte da versão atual.
 
 ## Stack
 
 - Backend: Node.js + Express
 - Templates: Nunjucks
 - Banco: PostgreSQL, normalmente Neon
-- Sessao: `cookie-session`
+- Sessão: `cookie-session`
 - Uploads: local ou Cloudinary
 - PDF: PDFKit
-- XLSX/CSV: `exceljs` e geracao manual de CSV
-- Deploy atual/alvo: Render, podendo rodar localmente com tunel temporario
+- XLSX/CSV: `exceljs` e geração manual de CSV
+- Deploy atual/alvo: Render, podendo rodar localmente com túnel temporário
 
 ## Requisitos
 
 - Node.js 18+
-- NPM 9+
-- PostgreSQL acessivel por `DATABASE_URL`
+- npm 9+
+- PostgreSQL acessível por `DATABASE_URL`
 
 ## Como rodar localmente
 
-1. Instale dependencias:
+1. Instale as dependências:
 
 ```bash
 npm install
 ```
 
-2. Crie um `.env` na raiz. Exemplo minimo:
+2. Crie um `.env` na raiz. Exemplo mínimo:
 
 ```env
 NODE_ENV=development
@@ -56,19 +83,19 @@ REPORTS_TIMEZONE=America/Sao_Paulo
 APP_BASE_URL=http://127.0.0.1:3000
 ```
 
-3. Opcionalmente, crie um usuario inicial:
+3. Opcionalmente, crie um usuário inicial:
 
 ```bash
 npm run create-user
 ```
 
-4. Inicie a aplicacao:
+4. Inicie a aplicação:
 
 ```bash
 npm run dev
 ```
 
-URL local padrao:
+URL local padrão:
 
 ```text
 http://127.0.0.1:3000
@@ -84,57 +111,57 @@ npm run verify
 npm run notify:run-once
 ```
 
-`npm run verify` carrega a aplicacao e valida fluxos principais. Use preferencialmente uma base de teste.
+`npm run verify` carrega a aplicação e valida fluxos principais. Use preferencialmente uma base de teste.
 
 ## Rotas importantes
 
 - `/login`: entrada do sistema.
-- `/relatorios`: pagina inicial autenticada.
+- `/relatorios`: página inicial autenticada.
 - `/planner`: planner.
 - `/home`: atas recentes.
-- `/atas/nova`: criacao de ata.
+- `/atas/nova`: criação de ata.
 - `/almoxarifado`: almoxarifado.
-- `/presenca/check-in`: check-in por cracha.
-- `/presenca/eventos`: atividades de presenca.
-- `/presenca/ouvintes`: cadastro/importacao de ouvintes.
+- `/presenca/check-in`: check-in por crachá.
+- `/presenca/eventos`: atividades de presença.
+- `/presenca/ouvintes`: cadastro/importação de ouvintes.
 - `/mensagens`: chat.
 - `/projects`: projetos.
 - `/members`: membros.
-- `/manutencao-usuarios`: usuarios e senhas.
+- `/manutencao-usuarios`: usuários e senhas.
 - `/healthz`: healthcheck.
 
 ## Regras importantes
 
 - Fuso principal: `America/Sao_Paulo`.
-- Pagina inicial autenticada: `/relatorios`.
-- Usuarios sao desativados logicamente, nao apagados fisicamente, para preservar historico.
+- Página inicial autenticada: `/relatorios`.
+- Usuários são desativados logicamente, não apagados fisicamente, para preservar histórico.
 - Membros inativos deixam de aparecer nas listas operacionais.
-- Relatorios quinzenais possuem tolerancia de 2 dias:
-  - primeira quinzena: ate o fim do dia 17;
-  - segunda quinzena: ate o fim do dia 02 do mes seguinte.
-- O planner e os relatorios se conectam por `report_week_goal.planner_task_id`.
-- Advertencias sao historicas e append-only: nao apagar historico.
-- Presenca usa PostgreSQL como fonte de verdade; CSV local e apenas contingencia.
-- Ouvintes de presenca usam `cracha,nome,cpf,email`.
+- Relatórios quinzenais possuem tolerância de 2 dias:
+  - primeira quinzena: até o fim do dia 17;
+  - segunda quinzena: até o fim do dia 02 do mês seguinte.
+- O planner e os relatórios se conectam por `report_week_goal.planner_task_id`.
+- Advertências são históricas e append-only: não apagar histórico.
+- Presença usa PostgreSQL como fonte de verdade; CSV local é apenas contingência.
+- Ouvintes de presença usam `cracha,nome,cpf,email`.
 
 ## Performance
 
-- `src/database.js` expoe API sincrona para as rotas, mas executa SQL em worker interno.
+- `src/database.js` expõe API síncrona para as rotas, mas executa SQL em worker interno.
 - Evite adicionar consultas em middleware global.
 - Evite consultas dentro de loops quando uma query com join resolver.
-- Telas grandes devem carregar apenas o necessario para a aba/visao atual.
-- Assets estaticos ficam em `/static` e devem passar antes de middlewares caros.
-- Para investigar lentidao:
+- Telas grandes devem carregar apenas o necessário para a aba/visão atual.
+- Assets estáticos ficam em `/static` e devem passar antes de middlewares caros.
+- Para investigar lentidão:
 
 ```env
 REQUEST_LOGS=1
 ```
 
-Depois veja os tempos das rotas nos logs e compare com a latencia do banco.
+Depois veja os tempos das rotas nos logs e compare com a latência do banco.
 
-## Variaveis de ambiente
+## Variáveis de ambiente
 
-Obrigatorias:
+Obrigatórias:
 
 - `DATABASE_URL`
 - `SECRET_KEY`
@@ -162,7 +189,7 @@ Uploads opcionais:
 - `CLOUDINARY_API_SECRET`
 - `CLOUDINARY_FOLDER`
 
-Email/notificacoes opcionais:
+Email/notificações opcionais:
 
 - `EMAIL_PROVIDER`
 - `BREVO_API_KEY`
@@ -171,13 +198,13 @@ Email/notificacoes opcionais:
 - `EMAIL_REPLY_TO`
 - `NOTIFICATION_SWEEP_INTERVAL_MS`
 
-Ajustes tecnicos opcionais:
+Ajustes técnicos opcionais:
 
 - `REQUEST_LOGS`
 - `DB_SYNC_QUERY_TIMEOUT_MS`
 - `PG_CONNECTION_TIMEOUT_MS`
 
-## Hospedagem temporaria local
+## Hospedagem temporária local
 
 Para expor o app local temporariamente:
 
@@ -191,19 +218,19 @@ Em outro terminal:
 .\cloudflared-windows-amd64.exe tunnel --url http://localhost:3000
 ```
 
-O Cloudflare gera uma URL temporaria `trycloudflare.com`. Mantenha o terminal aberto enquanto precisar do tunel.
+O Cloudflare gera uma URL temporária `trycloudflare.com`. Mantenha o terminal aberto enquanto precisar do túnel.
 
-## Documentacao
+## Documentação
 
 Leia os guias em `docs/` antes de mexer:
 
-- [GUIA_DESENVOLVIMENTO.md](./docs/GUIA_DESENVOLVIMENTO.md): arquitetura, mapa de arquivos e como alterar com seguranca.
-- [GUIA_DADOS_E_PERMISSOES.md](./docs/GUIA_DADOS_E_PERMISSOES.md): tabelas, regras, permissoes e advertencias.
-- [GUIA_OPERACAO.md](./docs/GUIA_OPERACAO.md): deploy, ambiente, incidentes, backup, presenca em evento e tunel local.
+- [GUIA_DESENVOLVIMENTO.md](./docs/GUIA_DESENVOLVIMENTO.md): arquitetura, mapa de arquivos e como alterar com segurança.
+- [GUIA_DADOS_E_PERMISSOES.md](./docs/GUIA_DADOS_E_PERMISSOES.md): tabelas, regras, permissões e advertências.
+- [GUIA_OPERACAO.md](./docs/GUIA_OPERACAO.md): deploy, ambiente, incidentes, backup, presença em evento e túnel local.
 
 ## Antes de compartilhar a pasta
 
-Nao envie:
+Não envie:
 
 - `.env`
 - `node_modules/`
@@ -219,3 +246,5 @@ Antes de entregar para outra pessoa:
 npm run verify
 git status --short
 ```
+
+Última revisão: 25/09/2026
